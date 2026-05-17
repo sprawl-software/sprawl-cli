@@ -32,7 +32,7 @@ log_fatal()   { log_error "$*"; exit 1; }
 # ------------------------------------
 SPRAWL_MIN_PYTHON_MAJOR=3
 SPRAWL_MIN_PYTHON_MINOR=10
-SPRAWL_GITHUB_REPO="w3bwizart/atomic-agentic-fabric"
+SPRAWL_GITHUB_REPO="w3bwizart/sprawl-cli"
 # Optional: pin to a specific tag (set to "" to always use latest)
 SPRAWL_VERSION="${SPRAWL_VERSION:-}"
 

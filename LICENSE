@@ -1,0 +1,34 @@
+Business Source License 1.1
+
+License text copyright (c) 2017 MariaDB Corporation Ab, All Rights Reserved.
+"Business Source License" is a trademark of MariaDB Corporation Ab.
+
+Parameters
+
+Licensor: Younes Baghor / BrainBlend AI
+Licensed Work: Sprawl CLI and associated libraries (the "Software").
+Change Date: May 7, 2030
+Change License: Apache License, Version 2.0, as published by the Apache Software Foundation (https://www.apache.org/licenses/LICENSE-2.0).
+
+Additional Use Grant:
+You may use the Software for production purposes only if:
+1. You are an individual using the Software for personal, non-commercial purposes; OR
+2. You are an organization (including its affiliates) that meets ALL of the following criteria:
+    - (a) You have no more than five (5) employees or members; AND
+    - (b) Your total annual gross revenue is less than €200,000 EUR (or equivalent); AND
+    - (c) You have raised less than €200,000 EUR in total outside funding or investment.
+
+Commercial & Agency Restriction:
+This License does NOT grant rights to use the Software to provide a "Managed Service" (defined as providing the Software to a third party as a service, including consulting implementations or sub-licensed setups) for a fee to third-party clients. If you are an agency or consultant intending to deploy or manage Sprawl DNA for third parties, you must obtain a Partner License. Any production use that does not meet these criteria requires a separate commercial license from the Licensor.
+
+Terms
+
+The Licensor hereby grants you the right to copy, modify, create derivative works, redistribute, and make non-production use of the Licensed Work. You may also make production use of the Licensed Work, provided such use does not exceed the Additional Use Grant.
+
+If you distribute the Licensed Work or any derivative works of the Licensed Work, you will include a copy of this License and the following text in each source code file: "This file is part of the Sprawl CLI, which is licensed under the Business Source License 1.1."
+
+Effective on the Change Date, the Licensor hereby grants you the rights provided under the Change License.
+
+Notice
+
+Any use of the Licensed Work that exceeds the Additional Use Grant will require a separate commercial license from the Licensor.

@@ -1,0 +1,39 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "sprawl-cli"
+version = "2.0.0"
+description = "Sprawl CLI Orchestrator - A single-pane Zero-Trust Agentic Fabric execution utility"
+authors = [
+    { name = "Younes Baghor", email = "younes@brainblendai.com" }
+]
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = [
+    "rich>=13.0.0",
+]
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "License :: Other/Proprietary License",
+    "Operating System :: OS Independent",
+]
+
+[project.scripts]
+sprawl = "src.sprawl.cli:main"
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["src*"]
+
+[tool.setuptools]
+include-package-data = true
+
+[tool.bandit]
+# B404: subprocess import — unavoidable for a CLI orchestration tool.
+# B603/B607: subprocess with list args (no shell=True) IS the secure pattern.
+#   Sprawl intentionally calls system binaries (git, pipx, npm, cargo) via
+#   list-form subprocess calls, which prevents shell injection by design.
+# All skipped rules are Low severity and represent intentional design decisions.
+skips = ["B404", "B603", "B607"]

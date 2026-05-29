@@ -2,10 +2,14 @@ import unittest
 import os
 import shutil
 import tempfile
+import sys
 from unittest.mock import patch, MagicMock
 
-from sprawl.commands.artifacts import cmd_add
-from sprawl.exceptions import SprawlError
+# Ensure the local src is available
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '../src')))
+
+from src.sprawl.commands.artifacts import cmd_add
+from src.sprawl.exceptions import SprawlError
 
 
 class TestAddTUI(unittest.TestCase):
@@ -35,10 +39,10 @@ workflows:
     def tearDown(self):
         shutil.rmtree(self.test_dir)
 
-    @patch("sprawl.commands.artifacts.get_active_dna_context")
-    @patch("sprawl.utils.tui.show_checkbox_menu")
-    @patch("sprawl.utils.registry_scanner.RegistryScanner")
-    @patch("sprawl.commands.artifacts.cmd_sync")
+    @patch("src.sprawl.commands.artifacts.get_active_dna_context")
+    @patch("src.sprawl.utils.tui.show_checkbox_menu")
+    @patch("src.sprawl.utils.registry_scanner.RegistryScanner")
+    @patch("src.sprawl.commands.artifacts.cmd_sync")
     def test_cmd_add_tui_cancel(self, mock_sync, mock_scanner_cls, mock_show_menu, mock_get_context):
         """Verify cmd_add exits cleanly and does not modify manifest if TUI is cancelled."""
         mock_get_context.return_value = self.dna_dir
@@ -58,10 +62,10 @@ workflows:
             self.assertEqual(f.read(), initial_content)
         mock_sync.assert_not_called()
 
-    @patch("sprawl.commands.artifacts.get_active_dna_context")
-    @patch("sprawl.utils.tui.show_checkbox_menu")
-    @patch("sprawl.utils.registry_scanner.RegistryScanner")
-    @patch("sprawl.commands.artifacts.cmd_sync")
+    @patch("src.sprawl.commands.artifacts.get_active_dna_context")
+    @patch("src.sprawl.utils.tui.show_checkbox_menu")
+    @patch("src.sprawl.utils.registry_scanner.RegistryScanner")
+    @patch("src.sprawl.commands.artifacts.cmd_sync")
     def test_cmd_add_tui_success(self, mock_sync, mock_scanner_cls, mock_show_menu, mock_get_context):
         """Verify cmd_add saves selection and triggers sync on successful TUI confirmation."""
         mock_get_context.return_value = self.dna_dir

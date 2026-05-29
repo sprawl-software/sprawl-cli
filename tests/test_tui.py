@@ -1,8 +1,12 @@
 import unittest
 from unittest.mock import patch, MagicMock
 import sys
+import os
 
-from sprawl.utils.tui import raw_terminal, read_key, show_checkbox_menu
+# Ensure the local src is available
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '../src')))
+
+from src.sprawl.utils.tui import raw_terminal, read_key, show_checkbox_menu
 
 
 class TestTUI(unittest.TestCase):
@@ -38,7 +42,7 @@ class TestTUI(unittest.TestCase):
 
         self.assertEqual(read_key(), "\x1b[B")
 
-    @patch("sprawl.utils.tui.read_key")
+    @patch("src.sprawl.utils.tui.read_key")
     @patch("sys.stdout.write")
     def test_show_checkbox_menu_cancel(self, mock_write, mock_read_key):
         """Verify show_checkbox_menu returns None when cancelled with Esc or q."""
@@ -50,7 +54,7 @@ class TestTUI(unittest.TestCase):
         res = show_checkbox_menu("Test Menu", categories)
         self.assertIsNone(res)
 
-    @patch("sprawl.utils.tui.read_key")
+    @patch("src.sprawl.utils.tui.read_key")
     @patch("sys.stdout.write")
     def test_show_checkbox_menu_toggle_and_confirm(self, mock_write, mock_read_key):
         """Verify show_checkbox_menu updates checked states and returns result on Enter."""

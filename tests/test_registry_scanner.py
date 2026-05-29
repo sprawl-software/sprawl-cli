@@ -2,9 +2,13 @@ import unittest
 import os
 import shutil
 import tempfile
+import sys
 from unittest.mock import patch
 
-from sprawl.utils.registry_scanner import RegistryScanner
+# Ensure the local src is available
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '../src')))
+
+from src.sprawl.utils.registry_scanner import RegistryScanner
 
 
 class TestRegistryScanner(unittest.TestCase):
@@ -37,7 +41,7 @@ class TestRegistryScanner(unittest.TestCase):
     def tearDown(self):
         shutil.rmtree(self.test_dir)
 
-    @patch("sprawl.utils.registry_scanner.get_active_dna_context")
+    @patch("src.sprawl.utils.registry_scanner.get_active_dna_context")
     def test_scan_no_manifest(self, mock_get_context):
         """Verify scan handles missing sprawl_manifest.yml gracefully (all items unchecked)."""
         mock_get_context.return_value = self.dna_dir
@@ -55,7 +59,7 @@ class TestRegistryScanner(unittest.TestCase):
         self.assertEqual(res["skills"][0], ("skill_one", False))
         self.assertEqual(res["skills"][1], ("skill_two", False))
 
-    @patch("sprawl.utils.registry_scanner.get_active_dna_context")
+    @patch("src.sprawl.utils.registry_scanner.get_active_dna_context")
     def test_scan_with_manifest_checked(self, mock_get_context):
         """Verify scan correctly identifies checked items based on manifest."""
         mock_get_context.return_value = self.dna_dir

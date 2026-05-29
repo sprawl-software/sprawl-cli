@@ -7,7 +7,7 @@ Output functions have been moved to output.py.
 import os
 from typing import Optional
 
-from .config import config
+from ..config import config
 
 
 # Core Architecture Constants
@@ -39,7 +39,7 @@ def get_active_dna_context(app_dir: Optional[str] = None) -> str:
     if app_dir is None:
         app_dir = os.getcwd()
 
-    from .workspace import Workspace
+    from ..workspace import Workspace
     workspace = Workspace(app_dir)
     alias_name = workspace.get_dna_alias()
     

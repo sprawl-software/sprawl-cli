@@ -76,7 +76,7 @@ def get_parser() -> argparse.ArgumentParser:
 
     # add
     add_parser = subparsers.add_parser("add", help="Smart Injection Engine: automatically infers and injects dependencies.")
-    add_parser.add_argument("items", nargs="+", help="Names of the rules/skills/atoms/workflows to add.")
+    add_parser.add_argument("items", nargs="*", default=[], help="Names of the rules/skills/atoms/workflows to add.")
 
     # graft
     subparsers.add_parser("graft", help="Surgically stitch the Sprawl's DNA onto the skin of an existing project.")

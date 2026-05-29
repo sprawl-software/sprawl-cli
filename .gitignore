@@ -91,3 +91,11 @@ web_modules/
 .eslintignore
 .yarn/
 .dummy_dna/
+
+# Agentic / Editor Specific Rules
+.agent
+.gemini/
+.clinerules
+.cursorrules
+.windsurfrules
+

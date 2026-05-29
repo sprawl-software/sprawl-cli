@@ -90,6 +90,64 @@ def cmd_add(items: list[str], target_dir: Optional[str] = None) -> None:
     if not os.path.exists(manifest_path):
         raise SprawlError(f"No sprawl_manifest.yml found at {manifest_path}.")
 
+    if not items:
+        # Keyboard-Interactive Checkbox TUI Selection Menu
+        from ..utils.registry_scanner import RegistryScanner
+        from ..utils.tui import show_checkbox_menu
+        from ..validation import parse_yaml_frontmatter
+
+        scanner = RegistryScanner(workspace_root)
+        categories_data = scanner.scan()
+
+        selection = show_checkbox_menu("DNA Configuration", categories_data)
+        if selection is None:
+            print_status("Add command cancelled.")
+            return
+
+        # Read existing manifest to preserve non-category values
+        with open(manifest_path, "r") as f:
+            content = f.read()
+
+        manifest_data = parse_yaml_frontmatter(f"---\n{content}\n---")
+        dna_val = manifest_data.get("dna", "core")
+
+        # Compile new manifest content in YAML
+        new_manifest = []
+        new_manifest.append(f"dna: {dna_val}\n")
+
+        for category in CATEGORIES:
+            new_manifest.append(f"{category}:")
+            selected_items = selection.get(category, [])
+            if selected_items:
+                for item in selected_items:
+                    new_manifest.append(f"  - {item}")
+            new_manifest.append("")
+
+        # Append any other top-level keys not in CATEGORIES + ['dna']
+        for k, v in manifest_data.items():
+            if k not in CATEGORIES and k != "dna":
+                if isinstance(v, list):
+                    new_manifest.append(f"{k}:")
+                    for item in v:
+                        new_manifest.append(f"  - {item}")
+                else:
+                    new_manifest.append(f"{k}: {v}")
+                new_manifest.append("")
+
+        manifest_text = "\n".join(new_manifest)
+
+        print_status("Modifying sprawl_manifest.yml...")
+        if not config.dry_run:
+            with open(manifest_path, "w") as f:
+                f.write(manifest_text)
+
+        print_status("Injecting DNA...")
+        if not config.dry_run:
+            cmd_sync(workspace_root)
+
+        print_status("DNA successfully synchronized.")
+        return
+
     additions: dict[str, list[str]] = {cat: [] for cat in CATEGORIES}
 
     if "*" in items:

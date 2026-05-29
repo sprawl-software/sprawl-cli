@@ -60,7 +60,27 @@ def cmd_update() -> None:
             except subprocess.CalledProcessError as e:
                 raise SprawlError(f"Failed to run pipx: {e}")
     else:
-        print_warning("Local source checkout not found; skipping self-update of CLI.")
+        print_status("Production/release installation detected. Checking for updates via pipx...")
+        if not config.dry_run:
+            try:
+                # Attempt to upgrade from PyPI first
+                result = subprocess.run(["pipx", "upgrade", "sprawl-cli"], capture_output=True, text=True)
+                if result.returncode == 0:
+                    if "already at the latest version" in result.stdout:
+                        print_status("Sprawl CLI is already at the latest release version on PyPI.")
+                    else:
+                        print_status("Sprawl CLI upgraded successfully via PyPI.")
+                else:
+                    # Fall back to GitHub main branch pull via pipx if PyPI check was not standard
+                    print_warning("PyPI upgrade failed or package not found. Attempting GitHub main fallback...")
+                    subprocess.run(
+                        ["pipx", "install", "git+https://github.com/w3bwizart/sprawl-cli.git", "--force"],
+                        check=True
+                    )
+                    print_status("Sprawl CLI updated successfully from GitHub main branch.")
+            except subprocess.CalledProcessError as e:
+                print_error(f"Failed to update via pipx: {e}")
+                print_warning("Ensure pipx is available and you have active network connectivity.")
 
     print_status("Update Sequence complete.")
 

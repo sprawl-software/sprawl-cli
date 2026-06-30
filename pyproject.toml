@@ -21,7 +21,7 @@ classifiers = [
 ]
 
 [project.scripts]
-sprawl = "src.sprawl.cli:main"
+sprawl = "sprawl.cli:main"
 
 [tool.setuptools.packages.find]
 where = ["."]

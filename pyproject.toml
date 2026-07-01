@@ -24,8 +24,7 @@ classifiers = [
 sprawl = "sprawl.cli:main"
 
 [tool.setuptools.packages.find]
-where = ["."]
-include = ["src*"]
+where = ["src"]
 
 [tool.setuptools]
 include-package-data = true

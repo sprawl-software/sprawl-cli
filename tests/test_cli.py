@@ -221,6 +221,34 @@ rules:
         except SprawlError:
             pass # pipx error occurs next, which raises SprawlError
 
+    @patch('src.sprawl.commands.diagnostics.resolve_repo_root', return_value=None)
+    @patch('src.sprawl.commands.diagnostics.subprocess.run')
+    @patch('src.sprawl.commands.diagnostics.os.path.exists', return_value=False)
+    def test_cmd_update_production_github(self, mock_exists, mock_run, mock_resolve):
+        """cmd_update in production runs pipx install from github via SSH, then HTTPS on fallback."""
+        config.dry_run = False
+        
+        # 1. Test successful SSH path
+        mock_run.return_value = MagicMock(returncode=0)
+        cmd_update()
+        mock_run.assert_any_call(
+            ["pipx", "install", "git+ssh://git@github.com/sprawl-software/sprawl-cli.git", "--force"],
+            capture_output=True, text=True
+        )
+        
+        # 2. Test fallback to HTTPS path
+        mock_run.reset_mock()
+        # Return code 1 for SSH, then success (0) for HTTPS
+        mock_run.side_effect = [
+            MagicMock(returncode=1),
+            MagicMock(returncode=0)
+        ]
+        cmd_update()
+        mock_run.assert_any_call(
+            ["pipx", "install", "git+https://github.com/sprawl-software/sprawl-cli.git", "--force"],
+            check=True
+        )
+
     @patch('builtins.input', return_value='n')
     @patch('src.sprawl.commands.init_cmd.subprocess.run')
     @patch('src.sprawl.commands.init_cmd.os.path.exists')

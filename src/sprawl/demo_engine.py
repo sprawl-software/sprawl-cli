@@ -22,9 +22,9 @@ DEMOS = {
         "title": "Cross-Team Scaffolding",
         "description": "Multi-squad (.NET, React, Sales) parallel execution",
         "squads": [
-            {"name": "dotnet-squad", "artifacts": ["csharp_standards.md", "entity_framework_optimizer", "mcp_sql_server.json", "ci_cd_azure.yml"]},
-            {"name": "web-squad", "artifacts": ["react_best_practices.md", "web_artifacts_builder", "mcp_figma.json", "vercel_production_deployment.yml"]},
-            {"name": "sales-squad", "artifacts": ["sales_outreach_compliance.md", "hubspot_api_connector", "mcp_salesforce.json", "lead_generation.yml"]},
+            {"name": "dotnet-squad", "artifacts": ["csharp_standards.md", "entity_framework_optimizer", "ci_cd_azure.yml"]},
+            {"name": "web-squad", "artifacts": ["react_best_practices.md", "web_artifacts_builder", "vercel_production_deployment.yml"]},
+            {"name": "sales-squad", "artifacts": ["sales_outreach_compliance.md", "hubspot_api_connector", "lead_generation.yml"]},
             {"name": "legacy-squad", "artifacts": []}
         ]
     },
@@ -32,31 +32,31 @@ DEMOS = {
         "title": "E-Commerce & Retail Modernization",
         "description": "Target: Retail clients, E-commerce, Inventory, POS",
         "squads": [
-            {"name": "pos-system", "artifacts": ["hardware_interface_protocols.md", "offline_first_sync.md", "receipt_printer_driver", "local_inventory_cache", "mcp_stripe_terminal.json", "end_of_day_reconciliation.yml"]},
-            {"name": "storefront-nextjs", "artifacts": ["nextjs_performance_budgets.md", "seo_core_web_vitals.md", "shopify_graphql_optimizer", "mcp_shopify.json", "mcp_algolia_search.json", "vercel_production_deployment.yml"]}
+            {"name": "pos-system", "artifacts": ["hardware_interface_protocols.md", "offline_first_sync.md", "receipt_printer_driver", "local_inventory_cache", "end_of_day_reconciliation.yml"]},
+            {"name": "storefront-nextjs", "artifacts": ["nextjs_performance_budgets.md", "seo_core_web_vitals.md", "shopify_graphql_optimizer", "vercel_production_deployment.yml"]}
         ]
     },
     "3": {
         "title": "Fintech & Banking Compliance",
         "description": "Target: Banking infra, strict PCI-DSS, zero-trust data",
         "squads": [
-            {"name": "fintech-core", "artifacts": ["pci_dss_compliance.md", "zero_trust_architecture.md", "transaction_ledger_auditor", "encryption_key_rotation", "mcp_postgres_secure.json", "mcp_vault_transit.json", "daily_compliance_audit.yml", "fraud_detection_pipeline.yml"]},
-            {"name": "risk-analysis", "artifacts": ["data_anonymization_standards.md", "python_pandas_guidelines.md", "anomaly_detection_ml", "mcp_snowflake_readonly.json", "nightly_risk_model_training.yml"]}
+            {"name": "fintech-core", "artifacts": ["pci_dss_compliance.md", "zero_trust_architecture.md", "transaction_ledger_auditor", "encryption_key_rotation", "daily_compliance_audit.yml", "fraud_detection_pipeline.yml"]},
+            {"name": "risk-analysis", "artifacts": ["data_anonymization_standards.md", "python_pandas_guidelines.md", "anomaly_detection_ml", "nightly_risk_model_training.yml"]}
         ]
     },
     "4": {
         "title": "Healthcare & HIPAA Systems",
         "description": "Target: Hospital IT, EHR integrations, patient privacy",
         "squads": [
-            {"name": "ehr-integration", "artifacts": ["hipaa_data_handling.md", "hl7_fhir_standards.md", "epic_api_connector", "patient_record_anonymizer", "mcp_epic_systems.json", "nightly_data_lake_sync.yml"]},
-            {"name": "patient-portal", "artifacts": ["web_accessibility_wcag.md", "secure_session_management.md", "secure_document_viewer", "mcp_auth0.json", "frontend_vulnerability_scan.yml"]}
+            {"name": "ehr-integration", "artifacts": ["hipaa_data_handling.md", "hl7_fhir_standards.md", "epic_api_connector", "patient_record_anonymizer", "nightly_data_lake_sync.yml"]},
+            {"name": "patient-portal", "artifacts": ["web_accessibility_wcag.md", "secure_session_management.md", "secure_document_viewer", "frontend_vulnerability_scan.yml"]}
         ]
     },
     "5": {
         "title": "Industrial & Manufacturing IoT",
         "description": "Target: Assembly lines, SCADA, Predictive Maintenance",
         "squads": [
-            {"name": "scada-telemetry", "artifacts": ["iot_telemetry_standards.md", "zero_trust_flow_sensors.md", "mcp_mqtt_broker.json", "predictive_maintenance.yml"]},
+            {"name": "scada-telemetry", "artifacts": ["iot_telemetry_standards.md", "zero_trust_flow_sensors.md", "predictive_maintenance.yml"]},
             {"name": "assembly-robotics", "artifacts": ["cobol_maintenance_guide.md", "shift_scheduling_guidelines.md", "payroll_compliance.md"]}
         ]
     }
@@ -83,8 +83,6 @@ def generate_dummy_dna() -> str:
                     cat = "rules"
                 elif item.endswith(".yml") or item.endswith(".yaml"):
                     cat = "workflows"
-                elif item.endswith(".json"):
-                    cat = "atoms"
                 else:
                     cat = "skills"
 

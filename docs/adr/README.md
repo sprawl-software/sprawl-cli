@@ -7,3 +7,4 @@ We use ADRs in Sprawl to formally document *why* the codebase is built the way i
 ### Current Records
 - **ADR 001:** Enforces the "Stdlib-Only" dependency rule.
 - **ADR 002:** Defines the "Clean Room" isolation architecture.
+- **ADR 003:** Identifies the technical boundaries, failures, and structural constraints of local SSL MITM proxying for proprietary AI editors (Cursor).

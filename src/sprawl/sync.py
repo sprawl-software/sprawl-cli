@@ -65,14 +65,14 @@ def _sync_app_directory_impl(app_dir: str, local_agents_dir: str, manifest_path:
         print_status(f"Resolved workspace DNA context: {source_dna_dir}")
 
     global_design = os.path.join(source_dna_dir, "DESIGN.md")
-    local_design = os.path.join(local_agents_dir, "DESIGN.md")
+    local_design = os.path.join(app_dir, "design.md")
     if os.path.exists(global_design) and not config.dry_run:
         if not os.path.exists(local_design):
             shutil.copy2(global_design, local_design)
             if config.verbose:
-                print_status("Synced global DESIGN.md -> .agents/DESIGN.md")
+                print_status(f"Synced global DESIGN.md -> {local_design}")
         else:
-            print_status("[DNA Sync] Preserved local DESIGN.md override.")
+            print_status("[DNA Sync] Preserved local design.md override.")
 
     copied_files = []
     pruned_count = 0
@@ -173,9 +173,9 @@ def _sync_app_directory_impl(app_dir: str, local_agents_dir: str, manifest_path:
                     else:
                         print_warning(f"cargo not found. Skipping Rust dependencies in {root}")
 
-    agents_md_path = os.path.join(local_agents_dir, "AGENTS.md")
+    agents_md_path = os.path.join(app_dir, "agent.md")
     if config.verbose and config.dry_run:
-        print_status(f"DRY RUN: Would generate AGENTS.md registry mapping.")
+        print_status(f"DRY RUN: Would generate agent.md registry mapping.")
     elif not config.dry_run:
         persona_content = None
         for skill in reqs.get("skills", []):
@@ -196,7 +196,7 @@ def _sync_app_directory_impl(app_dir: str, local_agents_dir: str, manifest_path:
             print_status(f"Generated standardized registry payload at {agents_md_path}")
 
     # Generate MCP Configuration
-    mcp_config_path = os.path.join(local_agents_dir, "mcp_config.json")
+    mcp_config_path = os.path.join(app_dir, "mcp_config.json")
     if config.verbose and config.dry_run:
         print_status(f"DRY RUN: Would generate mcp_config.json registry.")
     elif not config.dry_run:
@@ -209,6 +209,14 @@ def _sync_app_directory_impl(app_dir: str, local_agents_dir: str, manifest_path:
             venv_python,
             config.vault_path
         )
+        # Double-check JSON structure validity
+        try:
+            import json
+            with open(mcp_config_path, "r") as f:
+                json.loads(f.read())
+        except Exception as e:
+            raise SprawlError(f"Generated mcp_config.json is not valid JSON: {e}")
+
         if config.verbose:
             print_status(f"Generated Claude Desktop standard MCP configuration at {mcp_config_path}")
 
@@ -248,8 +256,50 @@ def sync_app_directory(app_dir: str) -> dict:
         shutil.copytree(local_agents_dir, backup_agents_path, symlinks=True)
 
     try:
+        # Verify sprawl-config.json JSON validity if it exists
+        sprawl_config_path = os.path.join(local_agents_dir, "sprawl-config.json")
+        try:
+            with open(sprawl_config_path, "r") as f:
+                content = f.read().strip()
+                if content:
+                    import json
+                    json.loads(content)
+        except FileNotFoundError:
+            pass
+        except Exception as e:
+            raise SprawlError(f"sprawl-config.json is not valid JSON: {e}")
+
         result = _sync_app_directory_impl(app_dir, local_agents_dir, manifest_path)
         
+        # Clean up root pollution: delete stray folders if they exist at the workspace root
+        if not config.dry_run:
+            stray_categories = ["atoms", "molecules", "rules", "skills", "workflows"]
+            for cat in stray_categories:
+                stray_root_path = os.path.join(app_dir, cat)
+                try:
+                    if os.path.isdir(stray_root_path) and not os.path.islink(stray_root_path):
+                        shutil.rmtree(stray_root_path)
+                    else:
+                        os.remove(stray_root_path)
+                    if config.verbose:
+                        print_status(f"Cleaned up stray root directory: {cat}")
+                except FileNotFoundError:
+                    pass
+
+            # Clean up deprecated categories in .agents/
+            deprecated_categories = ["atoms", "molecules"]
+            for cat in deprecated_categories:
+                dep_path = os.path.join(local_agents_dir, cat)
+                try:
+                    if os.path.isdir(dep_path):
+                        shutil.rmtree(dep_path)
+                    else:
+                        os.remove(dep_path)
+                    if config.verbose:
+                        print_status(f"Cleaned up deprecated category in .agents: {cat}")
+                except FileNotFoundError:
+                    pass
+
         # Update sync state in management plane
         from .workspace import Workspace, WorkspaceRegistry
         workspace = Workspace(app_dir)

@@ -45,30 +45,5 @@ class TestMCPConfigGenerator(unittest.TestCase):
         self.assertIn("sprawl-vault", config["mcpServers"])
         self.assertIn(os.path.abspath(os.path.expanduser(vault_path)), config["mcpServers"]["sprawl-vault"]["args"])
 
-    def test_generate_with_molecules(self):
-        # Create a dummy molecule
-        molecules_dir = os.path.join(self.local_agents_dir, "molecules")
-        os.makedirs(molecules_dir)
-        mol_file = "test_mol.json"
-        mol_data = {
-            "custom-server": {
-                "command": "python",
-                "args": ["$VENV_PYTHON", "script.py"]
-            }
-        }
-        with open(os.path.join(molecules_dir, mol_file), "w") as f:
-            json.dump(mol_data, f)
-            
-        reqs = {"molecules": [mol_file]}
-        app_dir = "/my/app"
-        
-        generate_mcp_config(self.output_path, reqs, app_dir, self.local_agents_dir, self.venv_python)
-        
-        with open(self.output_path, "r") as f:
-            config = json.load(f)
-            
-        self.assertIn("custom-server", config["mcpServers"])
-        self.assertEqual(config["mcpServers"]["custom-server"]["args"][0], self.venv_python)
-
 if __name__ == "__main__":
     unittest.main()

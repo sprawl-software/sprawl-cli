@@ -51,8 +51,6 @@ rules:
 skills:
   - web_artifacts_builder
 
-atoms:
-
 workflows:
 """
         with open(manifest_path, "w") as f:
@@ -112,9 +110,7 @@ def cmd_graft() -> None:
         discovered_artifacts["skills"].append("web_artifacts_builder") # absolute fallback
 
     # 3. Detect MCP configuration
-    if os.path.exists(os.path.join(cwd, "mcp_config.json")) or os.path.exists(os.path.join(local_agents_dir, "mcp_config.json")):
-        if "sprawl-workspace-fs" not in discovered_artifacts["atoms"]:
-            discovered_artifacts["atoms"].append("sprawl-workspace-fs")
+    # (atoms is deprecated, skipping atoms discovery)
 
     # Build the YAML manifest string
     content_lines = [f"# {app_name}", "dna: core", ""]

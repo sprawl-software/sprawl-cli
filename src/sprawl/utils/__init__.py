@@ -11,7 +11,7 @@ from ..config import config
 
 
 # Core Architecture Constants
-CATEGORIES: list[str] = ["rules", "skills", "atoms", "molecules", "workflows"]
+CATEGORIES: list[str] = ["rules", "skills", "workflows"]
 
 DNA_ALIASES: dict[str, str] = {
     "@python-fastapi": "https://github.com/w3bwizart/aaf-python-fastapi.git",

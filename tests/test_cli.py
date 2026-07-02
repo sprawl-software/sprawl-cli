@@ -20,7 +20,7 @@ from src.sprawl.core import cmd_graft, cmd_create, cmd_init, cmd_update, cmd_cle
 class TestSprawlCLI(unittest.TestCase):
     
     def test_categories_constant(self):
-        self.assertEqual(CATEGORIES, ["rules", "skills", "atoms", "molecules", "workflows"])
+        self.assertEqual(CATEGORIES, ["rules", "skills", "workflows"])
 
     def test_parse_sprawl_manifest(self):
         test_content = """# test app
@@ -31,12 +31,6 @@ rules:
 
 skills:
   - web_artifacts_builder
-
-atoms:
-  - data_schema.md
-
-molecules:
-  - none
 
 workflows:
   - execution.md
@@ -51,8 +45,6 @@ workflows:
             self.assertIn('engineering.md', reqs['rules'])
             self.assertIn('web_artifacts_builder', reqs['skills'])
             self.assertIn('execution.md', reqs['workflows'])
-            self.assertEqual(len(reqs['atoms']), 1)
-            self.assertEqual(len(reqs['molecules']), 0)
         finally:
             os.remove(temp_path)
 
@@ -253,7 +245,7 @@ rules:
         mock_exists.return_value = True
         mock_cmp.return_value = True
         
-        reqs = {"rules": ["rule1.md"], "skills": [], "atoms": [], "molecules": [], "workflows": []}
+        reqs = {"rules": ["rule1.md"], "skills": [], "workflows": []}
         
         with patch('src.sprawl.sync.parse_sprawl_manifest', return_value=reqs):
             with patch('src.sprawl.sync.os.makedirs'):
@@ -304,7 +296,7 @@ rules:
         
         mock_walk.return_value = [('/fake/app/.agents/skills/malicious_skill', [], ['package.json'])]
         
-        reqs = {"rules": [], "skills": ["approved_skill"], "atoms": [], "molecules": [], "workflows": []}
+        reqs = {"rules": [], "skills": ["approved_skill"], "workflows": []}
         
         with patch('src.sprawl.sync.parse_sprawl_manifest', return_value=reqs):
             with patch('src.sprawl.sync.os.makedirs'):

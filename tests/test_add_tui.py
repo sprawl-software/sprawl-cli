@@ -31,8 +31,6 @@ class TestAddTUI(unittest.TestCase):
             f.write("""dna: core
 rules:
 skills:
-atoms:
-molecules:
 workflows:
 """)
 
@@ -47,7 +45,7 @@ workflows:
         """Verify cmd_add exits cleanly and does not modify manifest if TUI is cancelled."""
         mock_get_context.return_value = self.dna_dir
         mock_scanner = MagicMock()
-        mock_scanner.scan.return_value = {"atoms": [("atom1.json", False)]}
+        mock_scanner.scan.return_value = {"skills": [("skill1", False)]}
         mock_scanner_cls.return_value = mock_scanner
         mock_show_menu.return_value = None  # Cancelled
 
@@ -71,15 +69,12 @@ workflows:
         mock_get_context.return_value = self.dna_dir
         mock_scanner = MagicMock()
         mock_scanner.scan.return_value = {
-            "atoms": [("atom1.json", False)],
             "skills": [("skill1", False)],
         }
         mock_scanner_cls.return_value = mock_scanner
         mock_show_menu.return_value = {
-            "atoms": ["atom1.json"],
-            "skills": [],
+            "skills": ["skill1"],
             "rules": [],
-            "molecules": [],
             "workflows": [],
         }
 
@@ -88,7 +83,7 @@ workflows:
         # Check if sprawl_manifest.yml got updated correctly
         with open(self.manifest_path, "r") as f:
             content = f.read()
-            self.assertIn("atom1.json", content)
+            self.assertIn("skill1", content)
             self.assertIn("dna: core", content)
 
         mock_sync.assert_called_once_with(self.workspace_dir)

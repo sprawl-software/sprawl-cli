@@ -47,47 +47,7 @@ def generate_mcp_config(
             ]
         }
 
-    # 3. Process Molecules (Additional servers)
-    for molecule_file in reqs.get("molecules", []):
-        molecule_path = os.path.join(local_agents_dir, "molecules", molecule_file)
-        if os.path.exists(molecule_path):
-            try:
-                with open(molecule_path, "r") as f:
-                    molecule_data = json.load(f)
-                    
-                for server_name, server_config in molecule_data.items():
-                    if "command" in server_config:
-                        cmd = server_config["command"]
-                        
-                        interpolated_args = []
-                        for arg in server_config.get("args", []):
-                            if arg == "$VENV_PYTHON":
-                                interpolated_args.append(venv_python)
-                            elif arg.startswith("$LOCAL_SKILL:"):
-                                skill_name = arg.split(":", 1)[1]
-                                interpolated_args.append(os.path.join(local_agents_dir, "skills", skill_name))
-                            elif arg.startswith("$VENV_SKILL_BIN:"):
-                                parts = arg.split(":", 2)
-                                if len(parts) == 3:
-                                    skill_name = parts[1]
-                                    bin_name = parts[2]
-                                    interpolated_args.append(os.path.join(local_agents_dir, ".venv", "bin", bin_name))
-                                else:
-                                    interpolated_args.append(arg) 
-                            else:
-                                interpolated_args.append(arg)
-                        
-                        mcp_config["mcpServers"][server_name] = {
-                            "command": cmd,
-                            "args": interpolated_args
-                        }
-                        if "env" in server_config:
-                            mcp_config["mcpServers"][server_name]["env"] = server_config["env"]
-
-            except (json.JSONDecodeError, IOError):
-                # We skip malformed molecules in the generator; 
-                # validation should happen elsewhere if needed.
-                pass
+    # 3. Process Molecules (Deprecated, skipped)
 
     with open(output_path, "w") as f:
         json.dump(mcp_config, f, indent=4)

@@ -22,17 +22,16 @@ class TestRegistryScanner(unittest.TestCase):
 
         # Create a mock global DNA vault
         self.dna_dir = os.path.join(self.test_dir, "mock-dna-vault")
-        os.makedirs(os.path.join(self.dna_dir, "atoms"))
-        os.makedirs(os.path.join(self.dna_dir, "skills"))
         os.makedirs(os.path.join(self.dna_dir, "rules"))
+        os.makedirs(os.path.join(self.dna_dir, "skills"))
 
         # Add some mock DNA files
-        with open(os.path.join(self.dna_dir, "atoms", "atom_a.json"), "w") as f:
-            f.write("{}")
-        with open(os.path.join(self.dna_dir, "atoms", "atom_b.json"), "w") as f:
-            f.write("{}")
-        with open(os.path.join(self.dna_dir, "atoms", ".hidden_atom"), "w") as f:
-            f.write("{}")
+        with open(os.path.join(self.dna_dir, "rules", "rule_a.md"), "w") as f:
+            f.write("# Rule A")
+        with open(os.path.join(self.dna_dir, "rules", "rule_b.md"), "w") as f:
+            f.write("# Rule B")
+        with open(os.path.join(self.dna_dir, "rules", ".hidden_rule"), "w") as f:
+            f.write("# Hidden")
         
         # Skill folder
         os.makedirs(os.path.join(self.dna_dir, "skills", "skill_one"))
@@ -49,10 +48,10 @@ class TestRegistryScanner(unittest.TestCase):
         scanner = RegistryScanner(self.workspace_dir)
         res = scanner.scan()
 
-        # Check atoms
-        self.assertEqual(len(res["atoms"]), 2)
-        self.assertEqual(res["atoms"][0], ("atom_a.json", False))
-        self.assertEqual(res["atoms"][1], ("atom_b.json", False))
+        # Check rules
+        self.assertEqual(len(res["rules"]), 2)
+        self.assertEqual(res["rules"][0], ("rule_a.md", False))
+        self.assertEqual(res["rules"][1], ("rule_b.md", False))
 
         # Check skills
         self.assertEqual(len(res["skills"]), 2)
@@ -67,8 +66,8 @@ class TestRegistryScanner(unittest.TestCase):
         # Write a manifest
         with open(self.manifest_path, "w") as f:
             f.write("""
-atoms:
-  - atom_a.json
+rules:
+  - rule_a.md
 skills:
   - skill_two
 """)
@@ -76,9 +75,9 @@ skills:
         scanner = RegistryScanner(self.workspace_dir)
         res = scanner.scan()
 
-        # atom_a.json should be True, atom_b.json should be False
-        self.assertEqual(res["atoms"][0], ("atom_a.json", True))
-        self.assertEqual(res["atoms"][1], ("atom_b.json", False))
+        # rule_a.md should be True, rule_b.md should be False
+        self.assertEqual(res["rules"][0], ("rule_a.md", True))
+        self.assertEqual(res["rules"][1], ("rule_b.md", False))
 
         # skill_one should be False, skill_two should be True
         self.assertEqual(res["skills"][0], ("skill_one", False))

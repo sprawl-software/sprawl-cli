@@ -69,14 +69,50 @@ def cmd_sync(target_dir: Optional[str] = None) -> None:
                     console.print(Panel(text, title="[accent]Workspace Orchestration[/accent]", border_style="#5D5CFF"))
 
 
-def cmd_bind(target_dir: Optional[str] = None, force: bool = False) -> bool:
-    """Generates universal IDE/Agent bindings (Antigravity, Cursor, RooCode).
+def cmd_bind(
+    target_dir: Optional[str] = None, 
+    force: bool = False, 
+    all_adapters: bool = False, 
+    only: Optional[str] = None
+) -> bool:
+    """Generates selective or universal IDE/Agent bindings.
 
     Args:
         target_dir: Optional target directory. Defaults to cwd.
         force: If True, overwrites existing bindings.
+        all_adapters: If True, bypasses TUI prompt and binds all adapters.
+        only: Comma-separated list of adapters to bind.
     """
+    import sys
     if not target_dir:
         target_dir = os.getcwd()
-    from ..bind import bind_adapters
-    return bind_adapters(target_dir, force=force)
+
+    from ..bind import bind_adapters, ADAPTER_MAP
+
+    targets = None
+
+    if only:
+        targets = [t.strip() for t in only.split(",")]
+    elif not all_adapters:
+        # Check if stdin/stdout are TTYs for interactive checkboxes TUI
+        if sys.stdin.isatty() and sys.stdout.isatty():
+            from ..utils.tui import show_checkbox_menu
+            # Present interactive checkbox menu of the 14 available integrations
+            categories = {
+                "IDE / AI Agent Integrations": [
+                    (key, True) for key in ADAPTER_MAP.keys()
+                ]
+            }
+            selection = show_checkbox_menu("Select IDE & Agent Adapters", categories)
+            if selection is None:
+                print_status("Binding cancelled.")
+                return False
+            targets = selection.get("IDE / AI Agent Integrations", [])
+        else:
+            # Non-interactive or non-TTY mode defaults to binding all (backward compatibility)
+            targets = list(ADAPTER_MAP.keys())
+    else:
+        # --all flag passed explicitly
+        targets = list(ADAPTER_MAP.keys())
+
+    return bind_adapters(target_dir, force=force, targets=targets)

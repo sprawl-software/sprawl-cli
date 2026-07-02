@@ -89,6 +89,8 @@ def get_parser() -> argparse.ArgumentParser:
     bind_parser = subparsers.add_parser("bind", help="Generates universal IDE/Agent bindings (Antigravity, Cursor, RooCode, Windsurf, Copilot).")
     bind_parser.add_argument("target_dir", nargs="?", default=None, help="Target directory to bind")
     bind_parser.add_argument("--force", action="store_true", default=False, help="Overwrite existing bindings.")
+    bind_parser.add_argument("--all", action="store_true", default=False, help="Bypass interactive menu and bind all adapters.")
+    bind_parser.add_argument("--only", default=None, help="Comma-separated list of adapters to bind (e.g. --only cursor,copilot).")
     # diff
     diff_parser = subparsers.add_parser("diff", help="Visualizes DNA drift between local workspace and upstream registry.")
     diff_parser.add_argument("target_dir", nargs="?", default=None, help="Target workspace path to analyze.")
@@ -294,7 +296,7 @@ def main() -> None:
         "create":     lambda a: cmd_create(a.workspace, getattr(a, 'path', None)),
         "graft":      lambda a: cmd_graft(),
         "sync":       lambda a: cmd_sync(a.target_dir),
-        "bind":       lambda a: cmd_bind(a.target_dir, force=getattr(a, 'force', False)),
+        "bind":       lambda a: cmd_bind(a.target_dir, force=getattr(a, 'force', False), all_adapters=getattr(a, 'all', False), only=getattr(a, 'only', None)),
         "diff":       lambda a: cmd_diff(a.target_dir),
         "shell":      lambda a: cmd_shell(a.target_dir),
         "update":     lambda a: cmd_update(),

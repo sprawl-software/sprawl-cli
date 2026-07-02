@@ -32,6 +32,79 @@ Follow the conventions and protocols defined in `agent.md` and `.agents/` withou
 """
 
 
+ADAPTER_MAP = {
+    "claude-code": {
+        "label": "Claude Code",
+        "path": ".clauderules",
+        "type": "file"
+    },
+    "gemini-cli": {
+        "label": "Gemini CLI",
+        "path": ".geminirules",
+        "type": "file"
+    },
+    "google-antigravity": {
+        "label": "Google Antigravity",
+        "type": "antigravity"
+    },
+    "copilot": {
+        "label": "GitHub Copilot",
+        "path": os.path.join(".github", "copilot-instructions.md"),
+        "type": "file"
+    },
+    "cursor": {
+        "label": "Cursor",
+        "path": ".cursorrules",
+        "type": "file"
+    },
+    "windsurf": {
+        "label": "Windsurf",
+        "path": ".windsurfrules",
+        "type": "file"
+    },
+    "codex": {
+        "label": "Codex",
+        "path": ".codexrules",
+        "type": "file"
+    },
+    "intellij": {
+        "label": "IntelliJ",
+        "path": ".intellijrules",
+        "type": "file"
+    },
+    "jupyter": {
+        "label": "Jupyter Notebooks",
+        "path": ".jupyterrules",
+        "type": "file"
+    },
+    "vscode": {
+        "label": "VS Code",
+        "path": ".vscoderules",
+        "type": "file"
+    },
+    "vscodium": {
+        "label": "VS Codium",
+        "path": ".vscodiumrules",
+        "type": "file"
+    },
+    "cline-roo": {
+        "label": "RooCode/Cline",
+        "path": ".clinerules",
+        "type": "file"
+    },
+    "zed": {
+        "label": "Zed",
+        "path": ".zedrules",
+        "type": "file"
+    },
+    "opencode": {
+        "label": "OpenCode",
+        "path": ".opencoderules",
+        "type": "file"
+    }
+}
+
+
 def _write_binding(
     label: str,
     target_path: str,
@@ -121,12 +194,13 @@ def _write_antigravity_gemini_json(target_dir: str, force: bool) -> bool:
     return _write_binding("Antigravity gemini.json", gemini_json_path, content, force)
 
 
-def bind_adapters(target_dir: str = ".", force: bool = False) -> bool:
-    """Generates IDE/Agent bindings to the Sprawl .agents/ directory.
+def bind_adapters(target_dir: str = ".", force: bool = False, targets: list[str] = None) -> bool:
+    """Generates selective or universal IDE/Agent bindings to the Sprawl .agents/ directory.
 
     Args:
         target_dir: Workspace root directory to bind.
         force: If True, overwrites existing bindings.
+        targets: Optional list of target adapter keys to bind.
 
     Returns:
         bool: True if all critical bindings succeeded.
@@ -140,49 +214,38 @@ def bind_adapters(target_dir: str = ".", force: bool = False) -> bool:
         )
         return False
 
+    if targets is None:
+        targets = list(ADAPTER_MAP.keys())
+    else:
+        from .exceptions import SprawlError
+        # Normalize and validate target keys
+        targets = [t.strip().lower() for t in targets]
+        invalid_targets = [t for t in targets if t not in ADAPTER_MAP]
+        if invalid_targets:
+            raise SprawlError(f"Unsupported bind target(s): {', '.join(invalid_targets)}")
+
     mode_label = "[bold accent]FORCE[/bold accent]" if force else "standard"
     print_status(f"Generating IDE & Agent bindings ({mode_label} mode)...")
 
     results = []
 
-    # 1. Antigravity .agent symlink
-    ag_link = os.path.join(target_dir, ".agent")
-    results.append(_write_symlink("Antigravity .agent", ag_link, ".agents", force))
+    for tkey in targets:
+        adapter = ADAPTER_MAP[tkey]
+        if adapter["type"] == "antigravity":
+            # 1. Antigravity .agent symlink
+            ag_link = os.path.join(target_dir, ".agent")
+            results.append(_write_symlink("Antigravity .agent", ag_link, ".agents", force))
 
-    # 2. Antigravity gemini.json workspace manifest
-    results.append(_write_antigravity_gemini_json(target_dir, force))
-
-    # 3. Cursor
-    results.append(_write_binding(
-        "Cursor",
-        os.path.join(target_dir, ".cursorrules"),
-        _RULES_CONTENT,
-        force,
-    ))
-
-    # 4. Cline / RooCode
-    results.append(_write_binding(
-        "RooCode/Cline",
-        os.path.join(target_dir, ".clinerules"),
-        _RULES_CONTENT,
-        force,
-    ))
-
-    # 5. Windsurf
-    results.append(_write_binding(
-        "Windsurf",
-        os.path.join(target_dir, ".windsurfrules"),
-        _RULES_CONTENT,
-        force,
-    ))
-
-    # 6. GitHub Copilot
-    results.append(_write_binding(
-        "GitHub Copilot",
-        os.path.join(target_dir, ".github", "copilot-instructions.md"),
-        _RULES_CONTENT,
-        force,
-    ))
+            # 2. Antigravity gemini.json workspace manifest
+            results.append(_write_antigravity_gemini_json(target_dir, force))
+        else:
+            # File binding
+            results.append(_write_binding(
+                adapter["label"],
+                os.path.join(target_dir, adapter["path"]),
+                _RULES_CONTENT,
+                force,
+            ))
 
     # Summary
     written = sum(1 for r in results if r)

@@ -41,11 +41,15 @@ def get_parser() -> argparse.ArgumentParser:
     init_parser = subparsers.add_parser("init", help="Clones your Sovereign DNA globally (~/.sprawl/core) and links the CLI.")
     init_parser.add_argument("git_url", help="Target Git remote URL")
     init_parser.add_argument("target_dir", nargs="?", default=config.sprawl_dir, help="Target directory to initialize the Hub")
+    init_parser.add_argument("--non-interactive", action="store_true", help="Bypasses the onboarding flow.")
+    init_parser.add_argument("--yes", "-y", action="store_true", help="Bypasses the onboarding flow.")
 
     # create
     create_parser = subparsers.add_parser("create", help="Scaffolds a new standard workspace.")
     create_parser.add_argument("workspace", help="Name of the workspace to create")
     create_parser.add_argument("--path", default=None, help="Path to create the workspace in")
+    create_parser.add_argument("--non-interactive", action="store_true", help="Bypasses the onboarding flow.")
+    create_parser.add_argument("--yes", "-y", action="store_true", help="Bypasses the onboarding flow.")
 
     # fetch-dna
     fetch_parser = subparsers.add_parser("fetch-dna", help="Downloads a secondary DNA into the registry without modifying global context.")
@@ -318,6 +322,11 @@ def main() -> None:
             
         handler = COMMAND_REGISTRY.get(args.command)
         if handler:
+            if args.command in ("init", "create"):
+                non_interactive = getattr(args, "non_interactive", False) or getattr(args, "yes", False)
+                if not non_interactive and sys.stdin.isatty() and sys.stdout.isatty():
+                    from .onboarding import run_onboarding_wizard
+                    run_onboarding_wizard()
             handler(args)
         else:
             print_error(f"Unknown command: {args.command}")

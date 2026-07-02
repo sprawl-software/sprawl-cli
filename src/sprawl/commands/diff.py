@@ -126,6 +126,8 @@ def cmd_diff(target_dir: Optional[str] = None) -> None:
         drift_found = True
 
     for category, files in reqs.items():
+        if category == "local_rules":
+            continue
         if not files:
             continue
             

@@ -246,6 +246,8 @@ def bind_adapters(target_dir: str = ".", force: bool = False, targets: list[str]
                 _RULES_CONTENT,
                 force,
             ))
+            if tkey == "copilot":
+                _export_copilot_prompts(target_dir)
 
     # Summary
     written = sum(1 for r in results if r)
@@ -256,3 +258,71 @@ def bind_adapters(target_dir: str = ".", force: bool = False, targets: list[str]
         console.print("\n[dim]All bindings already present. Use --force to refresh.[/dim]")
 
     return True
+
+
+def _export_copilot_prompts(target_dir: str) -> None:
+    """Compiles local skills and workflows into .github/prompts/*.prompt.md files."""
+    agents_dir = os.path.join(target_dir, ".agents")
+    prompts_dir = os.path.join(target_dir, ".github", "prompts")
+
+    if os.path.exists(prompts_dir):
+        for f in os.listdir(prompts_dir):
+            if f.endswith(".prompt.md"):
+                try:
+                    os.remove(os.path.join(prompts_dir, f))
+                except Exception:
+                    pass
+
+    # Export skills
+    skills_dir = os.path.join(agents_dir, "skills")
+    if os.path.exists(skills_dir):
+        for item in os.listdir(skills_dir):
+            if item.startswith("."):
+                continue
+            item_path = os.path.join(skills_dir, item)
+
+            content = None
+            if os.path.isfile(item_path) and item.endswith(".md"):
+                with open(item_path, "r", encoding="utf-8", errors="ignore") as f:
+                    content = f.read()
+                name = item[:-3]
+            elif os.path.isdir(item_path):
+                skill_md = os.path.join(item_path, "SKILL.md")
+                if os.path.exists(skill_md):
+                    with open(skill_md, "r", encoding="utf-8", errors="ignore") as f:
+                        content = f.read()
+                name = item
+
+            if content:
+                os.makedirs(prompts_dir, exist_ok=True)
+                prompt_file = os.path.join(prompts_dir, f"{name}.prompt.md")
+                try:
+                    with open(prompt_file, "w", encoding="utf-8") as f:
+                        f.write(content)
+                    print_status(f"Exported Copilot prompt: .github/prompts/{name}.prompt.md")
+                except Exception as e:
+                    print_warning(f"Failed to export prompt {name}: {e}")
+
+    # Export workflows
+    workflows_dir = os.path.join(agents_dir, "workflows")
+    if os.path.exists(workflows_dir):
+        for item in os.listdir(workflows_dir):
+            if item.startswith("."):
+                continue
+            item_path = os.path.join(workflows_dir, item)
+
+            content = None
+            if os.path.isfile(item_path) and item.endswith(".md"):
+                with open(item_path, "r", encoding="utf-8", errors="ignore") as f:
+                    content = f.read()
+                name = item[:-3]
+
+            if content:
+                os.makedirs(prompts_dir, exist_ok=True)
+                prompt_file = os.path.join(prompts_dir, f"{name}.prompt.md")
+                try:
+                    with open(prompt_file, "w", encoding="utf-8") as f:
+                        f.write(content)
+                    print_status(f"Exported Copilot prompt: .github/prompts/{name}.prompt.md")
+                except Exception as e:
+                    print_warning(f"Failed to export prompt {name}: {e}")

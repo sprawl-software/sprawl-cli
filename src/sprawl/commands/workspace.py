@@ -83,6 +83,12 @@ def cmd_graft() -> None:
 
     print_status(f"Grafting Sprawl DNA onto '{app_name}' at {cwd}...")
 
+    # Harvest legacy configurations first
+    from ..graft import harvest_legacy_rules
+    harvested = []
+    if not config.dry_run:
+        harvested = harvest_legacy_rules(cwd, local_agents_dir)
+
     from ..utils import CATEGORIES
     discovered_artifacts = {cat: [] for cat in CATEGORIES}
 
@@ -119,6 +125,12 @@ def cmd_graft() -> None:
         if discovered_artifacts[category]:
             for item in sorted(discovered_artifacts[category]):
                 content_lines.append(f"  - {item}")
+        content_lines.append("")
+
+    if harvested:
+        content_lines.append("local_rules:")
+        for item in sorted(harvested):
+            content_lines.append(f"  - {item}")
         content_lines.append("")
 
     manifest_content = "\n".join(content_lines)

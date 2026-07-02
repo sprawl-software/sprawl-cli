@@ -14,6 +14,7 @@ def parse_sprawl_manifest(file_path: str) -> dict[str, list[str]]:
     Core Schema Evaluation: Dynamically parses a given `.agents/sprawl_manifest.yml` identifying listed dependencies.
     """
     required_files = {cat: [] for cat in CATEGORIES}
+    required_files["local_rules"] = []
 
     if not os.path.exists(file_path):
         return required_files
@@ -38,6 +39,19 @@ def parse_sprawl_manifest(file_path: str) -> dict[str, list[str]]:
                         raise SprawlError(f"Security Violation: Path traversal detected in '{stripped}'. Execution aborted.")
                     sanitized_items.append(stripped)
             required_files[category] = sanitized_items
+
+    local_rules = manifest_data.get("local_rules", [])
+    if isinstance(local_rules, list):
+        sanitized_local_rules = []
+        for item in local_rules:
+            if isinstance(item, str):
+                stripped = item.strip()
+                if stripped.lower() == "none":
+                    continue
+                if ".." in stripped or "/" in stripped or "\\" in stripped:
+                    raise SprawlError(f"Security Violation: Path traversal detected in '{stripped}'. Execution aborted.")
+                sanitized_local_rules.append(stripped)
+        required_files["local_rules"] = sanitized_local_rules
 
     return required_files
 
@@ -122,6 +136,8 @@ def _sync_app_directory_impl(app_dir: str, local_agents_dir: str, manifest_path:
             category_dir = os.path.join(local_agents_dir, category)
             if os.path.exists(category_dir):
                 allowed_items = reqs.get(category, [])
+                if category == "rules":
+                    allowed_items = allowed_items + reqs.get("local_rules", [])
                 for existing_item in os.listdir(category_dir):
                     if existing_item not in allowed_items:
                         item_path = os.path.join(category_dir, existing_item)

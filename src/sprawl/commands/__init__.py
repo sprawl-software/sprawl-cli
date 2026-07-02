@@ -19,6 +19,7 @@ from .shell import cmd_shell
 from .man import cmd_man
 from .doctor import cmd_doctor
 from .status import cmd_status
+from .wipe import cmd_wipe
 
 __all__ = [
     "cmd_init", "cmd_fetch_dna",
@@ -28,4 +29,5 @@ __all__ = [
     "cmd_update", "cmd_clean_test", "cmd_clean_demo", "cmd_man", "cmd_demo", "cmd_doctor",
     "cmd_shell",
     "cmd_status",
+    "cmd_wipe",
 ]

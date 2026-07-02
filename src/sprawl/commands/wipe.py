@@ -70,6 +70,46 @@ def cmd_wipe(target_dir: Optional[str] = None, force: bool = False, local_only: 
         except Exception as e:
             raise SprawlError(f"Failed to wipe local workspace: {e}")
 
+    # Scan known workspaces in the registry and clean up editor rules files/symlinks
+    if not local_only and has_global:
+        try:
+            from ..workspace import WorkspaceRegistry
+            from ..bind import ADAPTER_MAP
+            workspaces = WorkspaceRegistry.get_all()
+            for ws_name, ws_info in workspaces.items():
+                ws_path = ws_info.get("path")
+                if ws_path and os.path.exists(ws_path):
+                    # Remove .agent symlink/file
+                    ag_symlink = os.path.join(ws_path, ".agent")
+                    if os.path.islink(ag_symlink) or os.path.exists(ag_symlink):
+                        try:
+                            os.remove(ag_symlink)
+                        except Exception:
+                            pass
+                    
+                    # Remove all standard rules files
+                    for adapter in ADAPTER_MAP.values():
+                        if "path" in adapter:
+                            rule_path = os.path.join(ws_path, adapter["path"])
+                            if os.path.exists(rule_path):
+                                try:
+                                    os.remove(rule_path)
+                                except Exception:
+                                    pass
+                    print_status(f"Cleaned up editor bindings in workspace: {ws_path}")
+        except Exception:
+            pass
+
+    # Delete global configuration overrides (~/.sprawl_rc) if present
+    if not local_only:
+        sprawl_rc = os.path.expanduser("~/.sprawl_rc")
+        if os.path.exists(sprawl_rc):
+            try:
+                os.remove(sprawl_rc)
+                print_status(f"Destroyed global configuration override: {sprawl_rc}")
+            except Exception as e:
+                raise SprawlError(f"Failed to delete {sprawl_rc}: {e}")
+
     # Wiping global
     if not local_only and has_global:
         global_dir = os.path.dirname(config.config_path)

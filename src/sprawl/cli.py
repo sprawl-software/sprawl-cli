@@ -141,29 +141,22 @@ def print_help() -> None:
 
     # Gradient ASCII Logo
     raw_logo = [
-        r"    _____                           __   ________    ____",
-        r"   / ___/____  _________ __      __/ /  / ____/ /   /  _/",
-        r"   \__ \/ __ \/ ___/ __ `/ | /| / / /  / /   / /    / /  ",
-        r"  ___/ / /_/ / /  / /_/ /| |/ |/ / /  / /___/ /____/ /   ",
-        r" /____/ .___/_/   \__,_/ |__/|__/_/   \____/_____/___/   ",
-        r"     /_/                                                 ",
+        r"   _____ ____  ____  ___ _       ____                 ___ ",
+        r"  / ___// __ \/ __ \/   | |     / / /           _____/ (_)",
+        r"  \__ \/ /_/ / /_/ / /| | | /| / / /           / ___/ / / ",
+        r" ___/ / ____/ _, _/ ___ | |/ |/ / /___   _    / /__/ / /  ",
+        r"/____/_/   /_/ |_/_/  |_|__/|__/_____/  (_)   \___/_/_/   ",
     ]
     
-    gradient_colors = ["#5D5CFF", "#6A62FF", "#7868FF", "#856FFF", "#9375FF", "#A07BFF"]
+    gradient_colors = ["#5D5CFF", "#7265FF", "#876EFF", "#9D77FF", "#B27FFF"]
     
-    logo = Text()
+    console.print(f"[bold #5D5CFF]SPRAWL.software v{__version__}[/bold #5D5CFF]")
     for i, line in enumerate(raw_logo):
         color = gradient_colors[i % len(gradient_colors)]
-        logo.append(line + "\n", style=f"bold {color}")
-
-    header = Text.assemble(
-        (" [ OS: BRAINBLEND AI // FRAMEWORK: ATOMIC AGENTIC FABRIC ]\n", "info"),
-        (f" [ ARCHITECT: Younes_Baghor // VERSION: {__version__} ]", "info")
-    )
-
-    console.print("\n")
-    console.print(Align.center(logo))
-    console.print(Align.center(header))
+        console.print(f"[bold {color}]{line}[/bold {color}]")
+    console.print()
+    console.print("[info]AI Governance // BSL 1.1 // Editor-agnostic // Zero dependencies[/info]")
+    console.print("[accent]================================================================[/accent]")
     console.print("\n[info]Usage:[/info] sprawl [accent]<command>[/accent] [args]\n")
 
     # Cognitive Journey Tables

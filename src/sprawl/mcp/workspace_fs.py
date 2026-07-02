@@ -24,8 +24,43 @@ class WorkspaceFS:
         if not os.path.isdir(self.root):
             raise ValueError(f"Root path {self.root} is not a directory.")
 
+        # Load allowed mounts from sprawl-config.json
+        self.allowed_mounts = {}
+        config_path = os.path.join(self.root, ".agents", "sprawl-config.json")
+        if os.path.exists(config_path):
+            try:
+                with open(config_path, "r", encoding="utf-8") as f:
+                    cfg = json.load(f)
+                self.allowed_mounts = cfg.get("allowed_mounts", {})
+            except Exception:
+                pass
+        if not isinstance(self.allowed_mounts, dict):
+            self.allowed_mounts = {}
+
     def _get_safe_path(self, rel_path: str) -> str:
-        """Resolves relative path and ensures it stays within root."""
+        """Resolves relative path and ensures it stays within root or allowed mounts."""
+        if rel_path.startswith("@"):
+            parts = rel_path.split("/", 1)
+            alias = parts[0][1:]
+            
+            if alias in self.allowed_mounts:
+                mount_root = os.path.abspath(os.path.expanduser(self.allowed_mounts[alias]))
+                sub_path = parts[1] if len(parts) > 1 else ""
+                
+                # Prevent absolute paths or home expansion inside mount
+                if os.path.isabs(sub_path) or sub_path.startswith("~"):
+                    raise MCPError(-32602, "Security Violation: Absolute paths and home expansion are not allowed inside mounts.")
+                
+                abs_path = os.path.abspath(os.path.join(mount_root, sub_path))
+                real_path = os.path.realpath(abs_path)
+                real_mount_root = os.path.realpath(mount_root)
+                
+                if not real_path.startswith(real_mount_root):
+                    raise MCPError(-32602, f"Security Violation: Path '{rel_path}' resolves outside mount root '{alias}'.")
+                return real_path
+            else:
+                raise MCPError(-32602, f"Security Violation: Mount alias '{alias}' is not allowed/configured.")
+
         # Prevent absolute paths or home expansion
         if os.path.isabs(rel_path) or rel_path.startswith("~"):
             raise MCPError(-32602, "Security Violation: Absolute paths and home expansion are not allowed.")

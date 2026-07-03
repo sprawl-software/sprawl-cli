@@ -18,7 +18,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Nuclear Wipe Command (`TASK-010-15`)**: Added `sprawl wipe` to safely clean up all generated rules files in registered workspaces, delete local config directories, and purge system configuration databases.
 - **Lead Generation Onboarding Flow (`TASK-010-17`)**: Implemented a first-run interactive questionnaire for onboarding and lead capture on `sprawl init` and `sprawl create`. Can be bypassed cleanly with `--non-interactive` or `--yes` flags.
 
+### Security
+- **Fix path containment prefix escape (P0)**: Patched a critical `startswith()` vulnerability in `workspace_fs.py` where sibling directories sharing a name prefix (e.g., `/mount` vs `/mount-secrets`) could bypass path containment checks. Both mount root and workspace root guards now enforce strict directory boundary using `os.sep`-appended comparison. Added 8 security-specific regression tests.
+
 ### Changed
 - **Workspace Path Restructuring (`TASK-012-04`)**: Re-routed virtual files (`agent.md`, `design.md`, `mcp_config.json`) to keep the workspace root clean, containing all sprawl configuration databases (`sprawl_manifest.yml` and `sprawl-config.json`) within the `.agents/` folder.
 - **CLI Self-Upgrade Pipeline (`TASK-010-16`)**: Shifted self-upgrade source in `sprawl update` from PyPI to target Git repository via SSH (cloning from repository URL with a graceful HTTPS fallback).
 - **ASCII logo spelling (`TASK-010-14`)**: Corrected spelling of `SPRAWL` in ASCII header and updated command-line brand metadata details.
+- **Unified adapter interface (P2)**: Refactored `graft.py` so both `FileHarvestAdapter` and `PromptsFolderAdapter` share a common `HarvestAdapter` ABC with a consistent `harvest() -> List[str]` return type.
+- **DRY copilot export (P2)**: Extracted duplicated skills/workflows export logic in `bind.py` into a shared `_export_category_to_prompts()` helper, eliminating 30+ lines of duplication.
+

@@ -364,7 +364,7 @@ def bind_adapters(target_dir: str = ".", force: bool = False, targets: list[str]
     if written > 0 or force:
         console.print(f"\n[success]✔ Binding complete:[/success] {written}/{total} adapters registered.")
     else:
-        console.print("\n[dim]All bindings already present. Use --force to refresh.[/dim]")
+        console.print("\n[dim]Bindings are present, to configure you bindings run sprawl bind.[/dim]")
 
     return True
 

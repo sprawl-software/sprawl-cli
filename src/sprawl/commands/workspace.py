@@ -46,10 +46,8 @@ def cmd_create(workspace_name: str, path: str = None) -> None:
 dna: core
 
 rules:
-  - engineering.md
 
 skills:
-  - web_artifacts_builder
 
 workflows:
 

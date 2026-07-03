@@ -169,6 +169,20 @@ sprawl update
 ```
 
 *This powerful dual-target command will securely navigate into your Global DNA (`~/.sprawl/core/`) and run a `git pull` to fetch your latest rules and skills. Simultaneously, it will intelligently self-update the local Sprawl CLI Engine itself if running from a cloned repository, automatically running `pipx install . --force` to push the latest source code to your global system path.*
+### Step 7: Nuclear Wipe & Uninstall (`wipe`)
+
+If you want to cleanly remove all Sprawl footprints, databases, directories, and configurations from your local workspace or your entire system, use the `wipe` command:
+
+```bash
+# Nuclear wipe: purges local workspace (.agents/) and global registry (~/.sprawl/)
+sprawl wipe
+
+# Wipe local workspace only, leaving the global registry intact
+sprawl wipe --local-only
+
+# Force wipe without confirmation prompts
+sprawl wipe --force
+```
 
 ---
 

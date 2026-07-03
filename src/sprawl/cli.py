@@ -292,6 +292,23 @@ def main() -> None:
         else:
             print_error(f"Unknown Workspace command: {a.ws_command}")
             sys.exit(1)
+    def handle_test_command(a: Any) -> None:
+        # Dynamically locate the tests package relative to the active file location
+        sprawl_dir = os.path.dirname(os.path.abspath(__file__))
+        repo_root = os.path.dirname(os.path.dirname(sprawl_dir))
+        tests_dir = os.path.join(repo_root, "tests")
+        
+        if os.path.isdir(tests_dir) and os.path.isfile(os.path.join(tests_dir, "run_tests.py")):
+            import sys
+            if repo_root not in sys.path:
+                sys.path.insert(0, repo_root)
+            if tests_dir not in sys.path:
+                sys.path.insert(0, tests_dir)
+            
+            from tests.run_tests import run_tests
+            run_tests()
+        else:
+            raise SprawlError("Test suite runner is only available in developer source installations.")
 
     COMMAND_REGISTRY = {
         "init":       lambda a: cmd_init(a.git_url, a.target_dir),

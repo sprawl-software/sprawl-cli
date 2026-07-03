@@ -118,6 +118,20 @@ def get_parser() -> argparse.ArgumentParser:
     wipe_parser.add_argument("--force", action="store_true", default=False, help="Skip confirmation prompts.")
     wipe_parser.add_argument("--local-only", action="store_true", default=False, help="Only wipe the local workspace, leaving global registry intact.")
 
+    # mount
+    mount_parser = subparsers.add_parser("mount", help="Configure allowed directory mounts for the sandboxed MCP server.")
+    mount_parser.add_argument("--project", default=None, help="Optional workspace target directory.")
+    mount_subparsers = mount_parser.add_subparsers(dest="mount_command", required=False)
+
+    mount_add_parser = mount_subparsers.add_parser("add", help="Add a directory mount.")
+    mount_add_parser.add_argument("path", help="Absolute or relative path of the directory to mount.")
+    mount_add_parser.add_argument("--alias", help="Optional alias for the mount. Defaults to slugified directory name.")
+
+    mount_remove_parser = mount_subparsers.add_parser("remove", help="Remove an active directory mount.")
+    mount_remove_parser.add_argument("alias", help="Alias of the mount to remove.")
+
+    mount_subparsers.add_parser("list", help="List all configured mounts.")
+
     # scaffold
     scaffold_parser = subparsers.add_parser("scaffold", help="Automated boilerplate scaffolding for personas, rules, and skills.")
     scaffold_parser.add_argument("type", choices=["persona", "rule", "skill", "atom", "workflow"], help="The type of artifact to scaffold (e.g., 'persona').")
@@ -292,6 +306,9 @@ def main() -> None:
         else:
             print_error(f"Unknown Workspace command: {a.ws_command}")
             sys.exit(1)
+    def handle_mount_command(a: Any) -> None:
+        from .commands.mount import cmd_mount
+        cmd_mount(a)
     def handle_test_command(a: Any) -> None:
         # Dynamically locate the tests package relative to the active file location
         sprawl_dir = os.path.dirname(os.path.abspath(__file__))
@@ -333,6 +350,7 @@ def main() -> None:
         "status":     lambda a: cmd_status(getattr(a, 'target_dir', None)),
         "demo":       lambda a: cmd_demo(a.name),
         "wipe":       lambda a: cmd_wipe(a.target_dir, force=getattr(a, 'force', False), local_only=getattr(a, 'local_only', False)),
+        "mount":      handle_mount_command,
         "test":       handle_test_command,
     }
 

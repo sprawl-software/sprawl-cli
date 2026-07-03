@@ -52,6 +52,8 @@ skills:
   - web_artifacts_builder
 
 workflows:
+
+bindings: []
 """
         with open(manifest_path, "w") as f:
             f.write(default_content)
@@ -73,7 +75,8 @@ workflows:
     text += f"• Name: {workspace_name}\n"
     text += f"• Path: {workspace_dir}\n"
     text += f"• DNA Binding: @core\n"
-    text += f"\nRun [accent]sprawl sync[/accent] inside to orchestrate."
+    text += f"\n• Run [accent]sprawl bind[/accent] inside to select rules bindings for your IDEs/agents."
+    text += f"\n• Run [accent]sprawl sync[/accent] inside to orchestrate."
     console.print()
     console.print(Panel(text, title="[accent]Workspace Initialization[/accent]", border_style="#5D5CFF"))
 

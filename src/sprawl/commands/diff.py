@@ -121,7 +121,7 @@ def cmd_diff(target_dir: Optional[str] = None) -> None:
 
     # Check DESIGN.md override
     src_design = os.path.join(source_dna_dir, "DESIGN.md")
-    dest_design = os.path.join(local_agents_dir, "DESIGN.md")
+    dest_design = os.path.join(cwd, "DESIGN.md")
     if diff_files(src_design, dest_design, "DESIGN.md"):
         drift_found = True
 

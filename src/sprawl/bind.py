@@ -20,28 +20,28 @@ from .output import print_status, print_error, console
 _RULES_CONTENT = """\
 # Agentic Workspace Directives
 
-Your behavior and knowledge base for this workspace are defined in the `AGENT.md` file and the `.agents/` directory.
+Your behavior and knowledge base for this workspace are defined in the `AGENTS.md` file and the `.agents/` directory.
 
 **MANDATORY INSTRUCTIONS:**
-1. Before taking any action, you MUST read `AGENT.md` at the workspace root.
-2. If a persona is defined in `AGENT.md`, you must adopt its tone, expertise, and behavioral protocols absolutely.
+1. Before taking any action, you MUST read `AGENTS.md` at the workspace root.
+2. If a persona is defined in `AGENTS.md`, you must adopt its tone, expertise, and behavioral protocols absolutely.
 3. When asked to execute a workflow, check `.agents/workflows/` for the exact step-by-step procedure.
 4. If a specific skill or capability is mentioned, check `.agents/skills/` for the relevant documentation.
 
-Follow the conventions and protocols defined in `AGENT.md` and `.agents/` without deviation.
+Follow the conventions and protocols defined in `AGENTS.md` and `.agents/` without deviation.
 """
 
 
 ADAPTER_MAP = {
     "claude-code": {
         "label": "Claude Code",
-        "path": ".clauderules",
-        "type": "file"
+        "path": "CLAUDE.md",
+        "type": "symlink"
     },
     "gemini-cli": {
         "label": "Gemini CLI",
-        "path": ".geminirules",
-        "type": "file"
+        "path": "GEMINI.md",
+        "type": "symlink"
     },
     "google-antigravity": {
         "label": "Google Antigravity",
@@ -50,57 +50,57 @@ ADAPTER_MAP = {
     "copilot": {
         "label": "GitHub Copilot",
         "path": os.path.join(".github", "copilot-instructions.md"),
-        "type": "file"
+        "type": "symlink"
     },
     "cursor": {
         "label": "Cursor",
         "path": ".cursorrules",
-        "type": "file"
+        "type": "symlink"
     },
     "windsurf": {
         "label": "Windsurf",
         "path": ".windsurfrules",
-        "type": "file"
+        "type": "symlink"
     },
     "codex": {
         "label": "Codex",
-        "path": ".codexrules",
-        "type": "file"
+        "path": os.path.join("rules", ".rules"),
+        "type": "symlink"
     },
     "intellij": {
         "label": "IntelliJ",
-        "path": ".intellijrules",
-        "type": "file"
+        "path": os.path.join(".aiassistant", "rules", "agents.md"),
+        "type": "symlink"
     },
     "jupyter": {
         "label": "Jupyter Notebooks",
         "path": ".jupyterrules",
-        "type": "file"
+        "type": "symlink"
     },
     "vscode": {
         "label": "VS Code",
         "path": ".vscoderules",
-        "type": "file"
+        "type": "symlink"
     },
     "vscodium": {
         "label": "VS Codium",
         "path": ".vscodiumrules",
-        "type": "file"
+        "type": "symlink"
     },
     "cline-roo": {
         "label": "RooCode/Cline",
         "path": ".clinerules",
-        "type": "file"
+        "type": "symlink"
     },
     "zed": {
         "label": "Zed",
         "path": ".zedrules",
-        "type": "file"
+        "type": "symlink"
     },
     "opencode": {
         "label": "OpenCode",
-        "path": ".opencoderules",
-        "type": "file"
+        "path": os.path.join(".opencode", "rules", "agents.md"),
+        "type": "symlink"
     }
 }
 
@@ -194,6 +194,61 @@ def _write_antigravity_gemini_json(target_dir: str, force: bool) -> bool:
     return _write_binding("Antigravity gemini.json", gemini_json_path, content, force)
 
 
+def _bind_rules_symlink(
+    label: str,
+    rules_path: str,
+    agents_md_path: str,
+    force: bool,
+) -> bool:
+    """Binds a rules path as a symlink to AGENTS.md, falling back to copy if needed.
+
+    Args:
+        label: Human-readable name.
+        rules_path: Absolute path to the rules file (e.g. CLAUDE.md).
+        agents_md_path: Absolute path to the AGENTS.md file.
+        force: Whether to overwrite existing rules.
+
+    Returns:
+        bool: True if created successfully, False otherwise.
+    """
+    if (os.path.exists(rules_path) or os.path.islink(rules_path)) and not force:
+        console.print(f"  [dim]○ {label} Binding:[/dim] already exists (use --force to overwrite)")
+        return False
+
+    os.makedirs(os.path.dirname(rules_path), exist_ok=True)
+    
+    # Calculate target path of the symlink (relative to the directory of rules_path)
+    rel_target = os.path.relpath(agents_md_path, os.path.dirname(rules_path))
+    
+    # Try to create symlink
+    try:
+        if os.path.exists(rules_path) or os.path.islink(rules_path):
+            os.remove(rules_path)
+        os.symlink(rel_target, rules_path)
+        action = "Overwritten symlink" if force else "Created symlink"
+        console.print(f"  [success]✔ {label} Binding:[/success] {action} → {rel_target}")
+        return True
+    except OSError:
+        # Fallback to copy content of AGENTS.md
+        try:
+            content = _RULES_CONTENT
+            if os.path.exists(agents_md_path):
+                with open(agents_md_path, "r", encoding="utf-8") as f:
+                    content = f.read()
+            
+            if os.path.exists(rules_path) or os.path.islink(rules_path):
+                os.remove(rules_path)
+                
+            with open(rules_path, "w", encoding="utf-8") as f:
+                f.write(content)
+            action = "Overwritten copy (fallback)" if force else "Created copy (fallback)"
+            console.print(f"  [success]✔ {label} Binding:[/success] {action} → {os.path.basename(rules_path)}")
+            return True
+        except Exception as e:
+            console.print(f"  [error]✗ {label} Binding:[/error] Failed: {e}")
+            return False
+
+
 def bind_adapters(target_dir: str = ".", force: bool = False, targets: list[str] = None) -> bool:
     """Generates selective or universal IDE/Agent bindings to the Sprawl .agents/ directory.
 
@@ -238,13 +293,13 @@ def bind_adapters(target_dir: str = ".", force: bool = False, targets: list[str]
 
             # 2. Antigravity gemini.json workspace manifest
             results.append(_write_antigravity_gemini_json(target_dir, force))
-        else:
-            # File binding
-            results.append(_write_binding(
+        elif adapter["type"] == "symlink":
+            rules_path = os.path.join(target_dir, adapter["path"])
+            results.append(_bind_rules_symlink(
                 adapter["label"],
-                os.path.join(target_dir, adapter["path"]),
-                _RULES_CONTENT,
-                force,
+                rules_path,
+                os.path.join(target_dir, "AGENTS.md"),
+                force
             ))
             if tkey == "copilot":
                 _export_copilot_prompts(target_dir)

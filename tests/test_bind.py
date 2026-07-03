@@ -19,30 +19,28 @@ class TestBind(unittest.TestCase):
         shutil.rmtree(self.test_dir, ignore_errors=True)
 
     def test_bind_creates_cursorrules(self):
-        """bind_adapters creates .cursorrules with correct content."""
+        """bind_adapters creates .cursorrules as a symlink to AGENTS.md."""
         self.assertTrue(bind_adapters(self.test_dir))
         cursor_file = os.path.join(self.test_dir, ".cursorrules")
-        self.assertTrue(os.path.exists(cursor_file))
-        with open(cursor_file, "r") as f:
-            content = f.read()
-        self.assertIn("# Agentic Workspace Directives", content)
-        self.assertIn("AGENT.md", content)
+        self.assertTrue(os.path.islink(cursor_file))
+        self.assertEqual(os.readlink(cursor_file), "AGENTS.md")
 
     def test_bind_creates_clinerules(self):
         """bind_adapters creates .clinerules."""
         bind_adapters(self.test_dir)
-        self.assertTrue(os.path.exists(os.path.join(self.test_dir, ".clinerules")))
+        self.assertTrue(os.path.islink(os.path.join(self.test_dir, ".clinerules")))
 
     def test_bind_creates_windsurfrules(self):
         """bind_adapters creates .windsurfrules."""
         bind_adapters(self.test_dir)
-        self.assertTrue(os.path.exists(os.path.join(self.test_dir, ".windsurfrules")))
+        self.assertTrue(os.path.islink(os.path.join(self.test_dir, ".windsurfrules")))
 
     def test_bind_creates_copilot_instructions(self):
-        """bind_adapters creates .github/copilot-instructions.md."""
+        """bind_adapters creates .github/copilot-instructions.md as relative symlink."""
         bind_adapters(self.test_dir)
         copilot = os.path.join(self.test_dir, ".github", "copilot-instructions.md")
-        self.assertTrue(os.path.exists(copilot))
+        self.assertTrue(os.path.islink(copilot))
+        self.assertEqual(os.readlink(copilot), "../AGENTS.md")
 
     def test_bind_creates_antigravity_gemini_json(self):
         """bind_adapters creates .gemini/antigravity/gemini.json."""
@@ -64,6 +62,7 @@ class TestBind(unittest.TestCase):
 
         bind_adapters(self.test_dir, force=False)
 
+        self.assertFalse(os.path.islink(cursor_file))
         with open(cursor_file, "r") as f:
             content = f.read()
         self.assertEqual(content, original)
@@ -76,10 +75,8 @@ class TestBind(unittest.TestCase):
 
         bind_adapters(self.test_dir, force=True)
 
-        with open(cursor_file, "r") as f:
-            content = f.read()
-        self.assertIn("# Agentic Workspace Directives", content)
-        self.assertNotIn("OLD CONTENT", content)
+        self.assertTrue(os.path.islink(cursor_file))
+        self.assertEqual(os.readlink(cursor_file), "AGENTS.md")
 
     def test_bind_no_agents_dir_returns_false(self):
         """bind_adapters returns False when .agents/ doesn't exist."""
@@ -93,9 +90,9 @@ class TestBind(unittest.TestCase):
     def test_bind_adapters_selective_filtering(self):
         """bind_adapters writes only files matched in target keys list."""
         self.assertTrue(bind_adapters(self.test_dir, targets=["cursor"]))
-        self.assertTrue(os.path.exists(os.path.join(self.test_dir, ".cursorrules")))
-        self.assertFalse(os.path.exists(os.path.join(self.test_dir, ".clinerules")))
-        self.assertFalse(os.path.exists(os.path.join(self.test_dir, ".github", "copilot-instructions.md")))
+        self.assertTrue(os.path.islink(os.path.join(self.test_dir, ".cursorrules")))
+        self.assertFalse(os.path.islink(os.path.join(self.test_dir, ".clinerules")))
+        self.assertFalse(os.path.islink(os.path.join(self.test_dir, ".github", "copilot-instructions.md")))
 
     def test_bind_adapters_invalid_target_raises(self):
         """bind_adapters raises SprawlError when invalid target key is passed."""

@@ -81,12 +81,12 @@ class TestFileHarvestAdapterEdgeCases(unittest.TestCase):
         result = adapter.harvest(self.root_dir, self.dest_dir)
         self.assertEqual(result, ["local_claude.md"])
 
-    def test_harvests_agent_md(self):
-        """Adapter harvests AGENT.md content correctly."""
-        with open(os.path.join(self.root_dir, "AGENT.md"), "w") as f:
+    def test_harvests_agents_md(self):
+        """Adapter harvests AGENTS.md content correctly."""
+        with open(os.path.join(self.root_dir, "AGENTS.md"), "w") as f:
             f.write("agent instructions")
 
-        adapter = FileHarvestAdapter("AGENT.md", "agent")
+        adapter = FileHarvestAdapter("AGENTS.md", "agent")
         result = adapter.harvest(self.root_dir, self.dest_dir)
         self.assertEqual(result, ["local_agent.md"])
 

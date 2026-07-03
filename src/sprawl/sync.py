@@ -77,6 +77,16 @@ def _sync_app_directory_impl(app_dir: str, local_agents_dir: str, manifest_path:
     
     if config.verbose:
         print_status(f"Resolved workspace DNA context: {source_dna_dir}")
+    # Clean up obsolete lowercase design.md
+    if not config.dry_run:
+        old_design_path = os.path.join(app_dir, "design.md")
+        if os.path.exists(old_design_path):
+            try:
+                os.remove(old_design_path)
+                if config.verbose:
+                    print_status("Pruned deprecated workspace-root file: design.md")
+            except Exception:
+                pass
 
     global_design = os.path.join(source_dna_dir, "DESIGN.md")
     local_design = os.path.join(app_dir, "DESIGN.md")
@@ -189,9 +199,21 @@ def _sync_app_directory_impl(app_dir: str, local_agents_dir: str, manifest_path:
                     else:
                         print_warning(f"cargo not found. Skipping Rust dependencies in {root}")
 
-    agents_md_path = os.path.join(app_dir, "AGENT.md")
+    # Clean up obsolete rule files to avoid workspace pollution
+    if not config.dry_run:
+        for old_file in ("agent.md", "AGENT.md"):
+            old_path = os.path.join(app_dir, old_file)
+            if os.path.exists(old_path):
+                try:
+                    os.remove(old_path)
+                    if config.verbose:
+                        print_status(f"Pruned deprecated workspace-root file: {old_file}")
+                except Exception:
+                    pass
+
+    agents_md_path = os.path.join(app_dir, "AGENTS.md")
     if config.verbose and config.dry_run:
-        print_status(f"DRY RUN: Would generate AGENT.md registry mapping.")
+        print_status(f"DRY RUN: Would generate AGENTS.md registry mapping.")
     elif not config.dry_run:
         persona_content = None
         for skill in reqs.get("skills", []):

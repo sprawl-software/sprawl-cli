@@ -119,7 +119,7 @@ def harvest_legacy_rules(root_dir: str, dest_dir: str) -> List[str]:
         FileHarvestAdapter(".windsurfrules", "windsurf"),
         FileHarvestAdapter(".github/copilot-instructions.md", "copilot"),
         FileHarvestAdapter("CLAUDE.md", "claude"),
-        FileHarvestAdapter("AGENT.md", "agent"),
+        FileHarvestAdapter("AGENTS.md", "agent"),
         FileHarvestAdapter("DESIGN.md", "design"),
         PromptsFolderAdapter(),
     ]

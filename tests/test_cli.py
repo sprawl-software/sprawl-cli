@@ -595,10 +595,10 @@ rules:
                 
                 # Verify files and directories are created
                 self.assertTrue(os.path.exists(os.path.join(temp_dir, ".agent")))
-                self.assertTrue(os.path.exists(os.path.join(temp_dir, ".cursorrules")))
-                self.assertTrue(os.path.exists(os.path.join(temp_dir, ".clinerules")))
-                self.assertTrue(os.path.exists(os.path.join(temp_dir, ".windsurfrules")))
-                self.assertTrue(os.path.exists(os.path.join(temp_dir, ".github", "copilot-instructions.md")))
+                self.assertTrue(os.path.islink(os.path.join(temp_dir, ".cursorrules")))
+                self.assertTrue(os.path.islink(os.path.join(temp_dir, ".clinerules")))
+                self.assertTrue(os.path.islink(os.path.join(temp_dir, ".windsurfrules")))
+                self.assertTrue(os.path.islink(os.path.join(temp_dir, ".github", "copilot-instructions.md")))
                 
             finally:
                 os.chdir(original_cwd)

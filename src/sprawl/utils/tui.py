@@ -335,38 +335,13 @@ def show_mount_dashboard(workspace_root: str) -> None:
             elif key == " ":  # Space to toggle or add
                 r = rows[active_idx]
                 if r["is_add_btn"]:
-                    # Open Directory Picker
                     if last_printed_lines > 0:
                         sys.stdout.write(f"\r\033[{last_printed_lines}A")
                         sys.stdout.write("\033[J")
                         sys.stdout.flush()
                         last_printed_lines = 0
                     
-                    new_paths = show_directory_picker(workspace_root)
-                    if new_paths:
-                        for new_path in new_paths:
-                            default_alias = slugify(os.path.basename(new_path))
-                            sys.stdout.write(f"\rEnter mount alias for {os.path.basename(new_path)} (default: {default_alias}): ")
-                            sys.stdout.flush()
-                            sys.stdout.write("\033[?25h")
-                            sys.stdout.flush()
-                            
-                            fd = sys.stdin.fileno()
-                            old_settings = termios.tcgetattr(fd)
-                            try:
-                                termios.tcsetattr(fd, termios.TCSADRAIN, old_settings)
-                                alias_input = sys.stdin.readline().strip()
-                            finally:
-                                tty.setcbreak(fd)
-                                sys.stdout.write("\033[?25l")
-                                sys.stdout.flush()
-
-                            alias = slugify(alias_input) if alias_input else default_alias
-                            if not alias:
-                                alias = "mount"
-
-                            mounts[alias] = new_path
-                            checked_states[alias] = True
+                    _add_new_mounts(workspace_root, mounts, checked_states)
                 else:
                     alias = r["alias"]
                     checked_states[alias] = not checked_states[alias]
@@ -379,28 +354,7 @@ def show_mount_dashboard(workspace_root: str) -> None:
                         sys.stdout.write("\033[J")
                         sys.stdout.flush()
                         last_printed_lines = 0
-                    new_paths = show_directory_picker(workspace_root)
-                    if new_paths:
-                        for new_path in new_paths:
-                            default_alias = slugify(os.path.basename(new_path))
-                            sys.stdout.write(f"\rEnter mount alias for {os.path.basename(new_path)} (default: {default_alias}): ")
-                            sys.stdout.flush()
-                            sys.stdout.write("\033[?25h")
-                            sys.stdout.flush()
-                            fd = sys.stdin.fileno()
-                            old_settings = termios.tcgetattr(fd)
-                            try:
-                                termios.tcsetattr(fd, termios.TCSADRAIN, old_settings)
-                                alias_input = sys.stdin.readline().strip()
-                            finally:
-                                tty.setcbreak(fd)
-                                sys.stdout.write("\033[?25l")
-                                sys.stdout.flush()
-                            alias = slugify(alias_input) if alias_input else default_alias
-                            if not alias:
-                                alias = "mount"
-                            mounts[alias] = new_path
-                            checked_states[alias] = True
+                    _add_new_mounts(workspace_root, mounts, checked_states)
                 else:
                     # Save and exit!
                     if last_printed_lines > 0:
@@ -411,9 +365,42 @@ def show_mount_dashboard(workspace_root: str) -> None:
                     cfg["allowed_mounts"] = {alias: path for alias, path in mounts.items() if checked_states.get(alias, False)}
                     _write_config(config_path, cfg)
 
+                    from ..output import print_status
                     print_status("Synchronizing workspace configurations...")
                     cmd_sync(workspace_root)
                     return
+
+
+def _add_new_mounts(workspace_root: str, mounts: dict, checked_states: dict) -> None:
+    """Helper to run the directory picker and prompt for aliases without key bleeding."""
+    from ..commands.mount import slugify
+    new_paths = show_directory_picker(workspace_root)
+    if new_paths:
+        for new_path in new_paths:
+            default_alias = slugify(os.path.basename(new_path))
+            sys.stdout.write(f"\rEnter mount alias for {os.path.basename(new_path)} (default: {default_alias}): ")
+            sys.stdout.flush()
+            sys.stdout.write("\033[?25h")
+            sys.stdout.flush()
+            
+            fd = sys.stdin.fileno()
+            old_settings = termios.tcgetattr(fd)
+            try:
+                termios.tcsetattr(fd, termios.TCSADRAIN, old_settings)
+                alias_input = sys.stdin.readline().strip()
+            finally:
+                tty.setcbreak(fd)
+                termios.tcflush(fd, termios.TCIFLUSH)
+                sys.stdout.write("\033[?25l")
+                sys.stdout.flush()
+
+            alias = slugify(alias_input) if alias_input else default_alias
+            if not alias:
+                alias = "mount"
+
+            mounts[alias] = new_path
+            checked_states[alias] = True
+
 
 
 def show_directory_picker(start_dir: str) -> Optional[List[str]]:

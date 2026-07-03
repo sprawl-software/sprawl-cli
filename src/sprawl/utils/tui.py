@@ -341,7 +341,13 @@ def show_mount_dashboard(workspace_root: str) -> None:
                         sys.stdout.flush()
                         last_printed_lines = 0
                     
-                    _add_new_mounts(workspace_root, mounts, checked_states)
+                    if _add_new_mounts(workspace_root, mounts, checked_states):
+                        cfg["allowed_mounts"] = {alias: path for alias, path in mounts.items() if checked_states.get(alias, False)}
+                        _write_config(config_path, cfg)
+                        from ..output import print_status
+                        print_status("Synchronizing workspace configurations...")
+                        cmd_sync(workspace_root)
+                        return
                 else:
                     alias = r["alias"]
                     checked_states[alias] = not checked_states[alias]
@@ -354,7 +360,13 @@ def show_mount_dashboard(workspace_root: str) -> None:
                         sys.stdout.write("\033[J")
                         sys.stdout.flush()
                         last_printed_lines = 0
-                    _add_new_mounts(workspace_root, mounts, checked_states)
+                    if _add_new_mounts(workspace_root, mounts, checked_states):
+                        cfg["allowed_mounts"] = {alias: path for alias, path in mounts.items() if checked_states.get(alias, False)}
+                        _write_config(config_path, cfg)
+                        from ..output import print_status
+                        print_status("Synchronizing workspace configurations...")
+                        cmd_sync(workspace_root)
+                        return
                 else:
                     # Save and exit!
                     if last_printed_lines > 0:
@@ -364,14 +376,14 @@ def show_mount_dashboard(workspace_root: str) -> None:
                     
                     cfg["allowed_mounts"] = {alias: path for alias, path in mounts.items() if checked_states.get(alias, False)}
                     _write_config(config_path, cfg)
-
+ 
                     from ..output import print_status
                     print_status("Synchronizing workspace configurations...")
                     cmd_sync(workspace_root)
                     return
 
 
-def _add_new_mounts(workspace_root: str, mounts: dict, checked_states: dict) -> None:
+def _add_new_mounts(workspace_root: str, mounts: dict, checked_states: dict) -> bool:
     """Helper to run the directory picker and prompt for aliases without key bleeding."""
     from ..commands.mount import slugify
     new_paths = show_directory_picker(workspace_root)
@@ -400,6 +412,8 @@ def _add_new_mounts(workspace_root: str, mounts: dict, checked_states: dict) -> 
 
             mounts[alias] = new_path
             checked_states[alias] = True
+        return True
+    return False
 
 
 

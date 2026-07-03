@@ -220,23 +220,29 @@ def show_mount_dashboard(workspace_root: str) -> None:
 
     _, _, config_path = _get_workspace_paths(workspace_root)
 
+    cfg = _load_config(config_path)
+    mounts = cfg.get("allowed_mounts", {})
+    if not isinstance(mounts, dict):
+        mounts = {}
+
+    # Copy to mutable local state
+    mounts = dict(mounts)
+    checked_states = {alias: True for alias in mounts}
+
     active_idx = 0
+    scroll_offset = 0
+    max_viewport = 10
     last_printed_lines = 0
 
     with raw_terminal():
         while True:
-            cfg = _load_config(config_path)
-            mounts = cfg.get("allowed_mounts", {})
-            if not isinstance(mounts, dict):
-                mounts = {}
-
             # Construct dashboard rows
             rows = []
             for alias, path in sorted(mounts.items()):
                 rows.append({
                     "alias": alias,
                     "path": path,
-                    "checked": True,
+                    "checked": checked_states.get(alias, False),
                     "is_add_btn": False
                 })
             rows.append({
@@ -246,36 +252,67 @@ def show_mount_dashboard(workspace_root: str) -> None:
                 "is_add_btn": True
             })
 
+            # Selectable index bounds
+            if active_idx < 0:
+                active_idx = 0
+            if active_idx >= len(rows):
+                active_idx = len(rows) - 1
+
+            # Adjust scroll offset
+            if active_idx < scroll_offset:
+                scroll_offset = active_idx
+            elif active_idx >= scroll_offset + max_viewport:
+                scroll_offset = active_idx - max_viewport + 1
+
+            visible_rows = rows[scroll_offset : scroll_offset + max_viewport]
+
+            # Render dashboard with capture
+            with console.capture() as capture:
+                console.print("[bold]━━━ Manage Allowed Workspace Mounts ━━━[/bold]")
+                console.print("Press Space to toggle mounts. Unchecking will remove them.\n")
+
+                if scroll_offset > 0:
+                    console.print("   [accent]▲ (more items above)[/accent]")
+                else:
+                    console.print()
+
+                for idx, r in enumerate(visible_rows):
+                    abs_idx = scroll_offset + idx
+                    pointer = "→" if abs_idx == active_idx else " "
+                    
+                    if r["is_add_btn"]:
+                        btn_text = f"[success]{r['alias']}[/success]"
+                        if abs_idx == active_idx:
+                            console.print(f"  [accent]→[/accent] [bold]{btn_text}[/bold]")
+                        else:
+                            console.print(f"     {btn_text}")
+                    else:
+                        checkbox = "[success]✔[/success]" if r["checked"] else "[muted]☐[/muted]"
+                        if abs_idx == active_idx:
+                            console.print(f"  [accent]→[/accent] {checkbox} [accent][bold]@{r['alias']}[/bold][/accent] → {r['path']}")
+                        else:
+                            item_style = "info" if r["checked"] else "muted"
+                            console.print(f"     {checkbox} [{item_style}]@{r['alias']}[/{item_style}] → {r['path']}")
+
+                if scroll_offset + max_viewport < len(rows):
+                    console.print("   [accent]▼ (more items below)[/accent]")
+                else:
+                    console.print()
+
+                console.print("\n[muted][Enter] Save & Sync | [Space] Toggle | [Esc/q] Cancel[/muted]")
+
             # Erase previous print
+            output_text = capture.get()
+            lines_to_print = output_text.splitlines()
             if last_printed_lines > 0:
                 sys.stdout.write(f"\r\033[{last_printed_lines}A")
                 sys.stdout.write("\033[J")
                 sys.stdout.flush()
 
-            # Render dashboard
-            output_lines = []
-            output_lines.append("\033[1m━━━ Manage Allowed Workspace Mounts ━━━\033[0m")
-            output_lines.append("Press Space to toggle mounts. Unchecking will remove them.\n")
-
-            for i, r in enumerate(rows):
-                pointer = "→" if i == active_idx else " "
-                if r["is_add_btn"]:
-                    btn_text = f"\033[38;2;16;185;129m{r['alias']}\033[0m"
-                    output_lines.append(f" {pointer}   {btn_text}")
-                else:
-                    status_icon = "✔" if r["checked"] else "☐"
-                    status_color = "\033[38;2;16;185;129m" if r["checked"] else "\033[38;2;239;68;68m"
-                    reset = "\033[0m"
-                    line = f" {pointer} [{status_color}{status_icon}{reset}] \033[38;2;93;92;255m@{r['alias']}\033[0m → {r['path']}"
-                    output_lines.append(line)
-
-            output_lines.append("\n\033[2m[Enter] Save & Sync | [Esc/q] Cancel\033[0m")
-            
-            # Print dashboard
-            for line in output_lines:
-                sys.stdout.write(line + "\n")
+            # Print current state
+            sys.stdout.write(output_text)
             sys.stdout.flush()
-            last_printed_lines = len(output_lines)
+            last_printed_lines = len(lines_to_print)
 
             # Read keypress
             key = read_key()
@@ -305,37 +342,34 @@ def show_mount_dashboard(workspace_root: str) -> None:
                         sys.stdout.flush()
                         last_printed_lines = 0
                     
-                    new_path = show_directory_picker(workspace_root)
-                    if new_path:
-                        default_alias = slugify(os.path.basename(new_path))
-                        sys.stdout.write(f"\rEnter mount alias (default: {default_alias}): ")
-                        sys.stdout.flush()
-                        sys.stdout.write("\033[?25h")
-                        sys.stdout.flush()
-                        
-                        fd = sys.stdin.fileno()
-                        old_settings = termios.tcgetattr(fd)
-                        try:
-                            termios.tcsetattr(fd, termios.TCSADRAIN, old_settings)
-                            alias_input = sys.stdin.readline().strip()
-                        finally:
-                            tty.setcbreak(fd)
-                            sys.stdout.write("\033[?25l")
+                    new_paths = show_directory_picker(workspace_root)
+                    if new_paths:
+                        for new_path in new_paths:
+                            default_alias = slugify(os.path.basename(new_path))
+                            sys.stdout.write(f"\rEnter mount alias for {os.path.basename(new_path)} (default: {default_alias}): ")
                             sys.stdout.flush()
+                            sys.stdout.write("\033[?25h")
+                            sys.stdout.flush()
+                            
+                            fd = sys.stdin.fileno()
+                            old_settings = termios.tcgetattr(fd)
+                            try:
+                                termios.tcsetattr(fd, termios.TCSADRAIN, old_settings)
+                                alias_input = sys.stdin.readline().strip()
+                            finally:
+                                tty.setcbreak(fd)
+                                sys.stdout.write("\033[?25l")
+                                sys.stdout.flush()
 
-                        alias = slugify(alias_input) if alias_input else default_alias
-                        if not alias:
-                            alias = "mount"
+                            alias = slugify(alias_input) if alias_input else default_alias
+                            if not alias:
+                                alias = "mount"
 
-                        cfg["allowed_mounts"][alias] = new_path
-                        _write_config(config_path, cfg)
+                            mounts[alias] = new_path
+                            checked_states[alias] = True
                 else:
                     alias = r["alias"]
-                    if alias in cfg.get("allowed_mounts", {}):
-                        cfg["allowed_mounts"].pop(alias)
-                    else:
-                        cfg["allowed_mounts"][alias] = r["path"]
-                    _write_config(config_path, cfg)
+                    checked_states[alias] = not checked_states[alias]
 
             elif key in ("\r", "\n"):  # Enter to confirm or add
                 r = rows[active_idx]
@@ -345,51 +379,60 @@ def show_mount_dashboard(workspace_root: str) -> None:
                         sys.stdout.write("\033[J")
                         sys.stdout.flush()
                         last_printed_lines = 0
-                    new_path = show_directory_picker(workspace_root)
-                    if new_path:
-                        default_alias = slugify(os.path.basename(new_path))
-                        sys.stdout.write(f"\rEnter mount alias (default: {default_alias}): ")
-                        sys.stdout.flush()
-                        sys.stdout.write("\033[?25h")
-                        sys.stdout.flush()
-                        fd = sys.stdin.fileno()
-                        old_settings = termios.tcgetattr(fd)
-                        try:
-                            termios.tcsetattr(fd, termios.TCSADRAIN, old_settings)
-                            alias_input = sys.stdin.readline().strip()
-                        finally:
-                            tty.setcbreak(fd)
-                            sys.stdout.write("\033[?25l")
+                    new_paths = show_directory_picker(workspace_root)
+                    if new_paths:
+                        for new_path in new_paths:
+                            default_alias = slugify(os.path.basename(new_path))
+                            sys.stdout.write(f"\rEnter mount alias for {os.path.basename(new_path)} (default: {default_alias}): ")
                             sys.stdout.flush()
-                        alias = slugify(alias_input) if alias_input else default_alias
-                        if not alias:
-                            alias = "mount"
-                        cfg["allowed_mounts"][alias] = new_path
-                        _write_config(config_path, cfg)
+                            sys.stdout.write("\033[?25h")
+                            sys.stdout.flush()
+                            fd = sys.stdin.fileno()
+                            old_settings = termios.tcgetattr(fd)
+                            try:
+                                termios.tcsetattr(fd, termios.TCSADRAIN, old_settings)
+                                alias_input = sys.stdin.readline().strip()
+                            finally:
+                                tty.setcbreak(fd)
+                                sys.stdout.write("\033[?25l")
+                                sys.stdout.flush()
+                            alias = slugify(alias_input) if alias_input else default_alias
+                            if not alias:
+                                alias = "mount"
+                            mounts[alias] = new_path
+                            checked_states[alias] = True
                 else:
+                    # Save and exit!
                     if last_printed_lines > 0:
                         sys.stdout.write(f"\r\033[{last_printed_lines}A")
                         sys.stdout.write("\033[J")
                         sys.stdout.flush()
+                    
+                    cfg["allowed_mounts"] = {alias: path for alias, path in mounts.items() if checked_states.get(alias, False)}
+                    _write_config(config_path, cfg)
+
                     print_status("Synchronizing workspace configurations...")
                     cmd_sync(workspace_root)
                     return
 
 
-def show_directory_picker(start_dir: str) -> Optional[str]:
-    """Renders a keyboard-interactive directory selection browser TUI."""
+def show_directory_picker(start_dir: str) -> Optional[List[str]]:
+    """Renders a keyboard-interactive directory selection browser TUI with checkboxes."""
     current_dir = os.path.abspath(start_dir)
+    selected_paths = set()
     active_idx = 0
+    scroll_offset = 0
+    max_viewport = 10
     last_printed_lines = 0
     
     while True:
         rows = []
         rows.append({
-            "label": f"[Select this directory: {current_dir}]",
-            "path": current_dir,
-            "is_dir": True,
-            "is_select_btn": True,
-            "is_parent": False
+            "label": f"[Confirm Selection ({len(selected_paths)} folders checked)]",
+            "path": None,
+            "is_confirm": True,
+            "is_parent": False,
+            "is_dir": False
         })
         
         parent = os.path.dirname(current_dir)
@@ -397,9 +440,9 @@ def show_directory_picker(start_dir: str) -> Optional[str]:
             rows.append({
                 "label": ".. (Up one level)",
                 "path": parent,
-                "is_dir": True,
-                "is_select_btn": False,
-                "is_parent": True
+                "is_confirm": False,
+                "is_parent": True,
+                "is_dir": False
             })
             
         try:
@@ -411,42 +454,74 @@ def show_directory_picker(start_dir: str) -> Optional[str]:
                     rows.append({
                         "label": f"{item}/",
                         "path": full_path,
-                        "is_dir": True,
-                        "is_select_btn": False,
-                        "is_parent": False
+                        "is_confirm": False,
+                        "is_parent": False,
+                        "is_dir": True
                     })
         except Exception:
             pass
 
-        if active_idx >= len(rows):
-            active_idx = len(rows) - 1
         if active_idx < 0:
             active_idx = 0
+        if active_idx >= len(rows):
+            active_idx = len(rows) - 1
 
+        if active_idx < scroll_offset:
+            scroll_offset = active_idx
+        elif active_idx >= scroll_offset + max_viewport:
+            scroll_offset = active_idx - max_viewport + 1
+
+        visible_rows = rows[scroll_offset : scroll_offset + max_viewport]
+
+        with console.capture() as capture:
+            console.print("[bold]━━━ Select Directories to Mount ━━━[/bold]")
+            console.print(f"Current Path: [accent]{current_dir}[/accent]\n")
+            
+            if scroll_offset > 0:
+                console.print("   [accent]▲ (more items above)[/accent]")
+            else:
+                console.print()
+                
+            for idx, r in enumerate(visible_rows):
+                abs_idx = scroll_offset + idx
+                pointer = "→" if abs_idx == active_idx else " "
+                
+                if r["is_confirm"]:
+                    if abs_idx == active_idx:
+                        console.print(f"  [accent]→[/accent] [success][bold]{r['label']}[/bold][/success]")
+                    else:
+                        console.print(f"     [success]{r['label']}[/success]")
+                elif r["is_parent"]:
+                    if abs_idx == active_idx:
+                        console.print(f"  [accent]→[/accent] [muted][bold]{r['label']}[/bold][/muted]")
+                    else:
+                        console.print(f"     [muted]{r['label']}[/muted]")
+                else:
+                    checked = r["path"] in selected_paths
+                    checkbox = "[success]✔[/success]" if checked else "[muted]☐[/muted]"
+                    if abs_idx == active_idx:
+                        console.print(f"  [accent]→[/accent] {checkbox} [accent][bold]{r['label']}[/bold][/accent]")
+                    else:
+                        item_style = "info" if checked else "muted"
+                        console.print(f"     {checkbox} [{item_style}]{r['label']}[/{item_style}]")
+                        
+            if scroll_offset + max_viewport < len(rows):
+                console.print("   [accent]▼ (more items below)[/accent]")
+            else:
+                console.print()
+                
+            console.print("\n[muted][Space] Toggle Checkbox | [Enter] Navigate/Confirm | [Left] Go Up | [Esc/q] Cancel[/muted]")
+
+        output_text = capture.get()
+        lines_to_print = output_text.splitlines()
         if last_printed_lines > 0:
             sys.stdout.write(f"\r\033[{last_printed_lines}A")
             sys.stdout.write("\033[J")
             sys.stdout.flush()
 
-        output_lines = []
-        output_lines.append("\033[1m━━━ Select Directory to Mount ━━━\033[0m")
-        output_lines.append(f"Current Path: \033[38;2;93;92;255m{current_dir}\033[0m\n")
-
-        for i, r in enumerate(rows):
-            pointer = "→" if i == active_idx else " "
-            if r["is_select_btn"]:
-                output_lines.append(f" {pointer}   \033[38;2;16;185;129m{r['label']}\033[0m")
-            elif r["is_parent"]:
-                output_lines.append(f" {pointer}   \033[2m{r['label']}\033[0m")
-            else:
-                output_lines.append(f" {pointer}   {r['label']}")
-
-        output_lines.append("\n\033[2m[Enter] Navigate/Select | [Left] Go Up | [q/Esc] Back\033[0m")
-
-        for line in output_lines:
-            sys.stdout.write(line + "\n")
+        sys.stdout.write(output_text)
         sys.stdout.flush()
-        last_printed_lines = len(output_lines)
+        last_printed_lines = len(lines_to_print)
 
         key = read_key()
 
@@ -470,16 +545,27 @@ def show_directory_picker(start_dir: str) -> Optional[str]:
             if parent != current_dir:
                 current_dir = parent
                 active_idx = 0
+                scroll_offset = 0
+
+        elif key == " ":
+            r = rows[active_idx]
+            if r["is_dir"]:
+                path = r["path"]
+                if path in selected_paths:
+                    selected_paths.remove(path)
+                else:
+                    selected_paths.add(path)
 
         elif key in ("\r", "\n", "\x1b[C"):
             r = rows[active_idx]
-            if r["is_select_btn"]:
+            if r["is_confirm"]:
                 if last_printed_lines > 0:
                     sys.stdout.write(f"\r\033[{last_printed_lines}A")
                     sys.stdout.write("\033[J")
                     sys.stdout.flush()
-                return r["path"]
+                return list(selected_paths)
             elif r["is_parent"] or r["is_dir"]:
                 current_dir = r["path"]
                 active_idx = 0
+                scroll_offset = 0
 

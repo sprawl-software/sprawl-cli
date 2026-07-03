@@ -128,6 +128,20 @@ def cmd_graft() -> None:
     # 3. Detect MCP configuration
     # (atoms is deprecated, skipping atoms discovery)
 
+    # Map harvested keys to active bindings
+    harvest_map = {
+        "local_cursor.md": "cursor",
+        "local_cline.md": "cline-roo",
+        "local_windsurf.md": "windsurf",
+        "local_copilot.md": "copilot",
+        "local_claude.md": "claude-code",
+        "local_agent.md": "google-antigravity"
+    }
+    active_bindings = []
+    for file in harvested:
+        if file in harvest_map:
+            active_bindings.append(harvest_map[file])
+
     # Build the YAML manifest string
     content_lines = [f"# {app_name}", "dna: core", ""]
     for category in CATEGORIES:
@@ -143,6 +157,15 @@ def cmd_graft() -> None:
             content_lines.append(f"  - {item}")
         content_lines.append("")
 
+    if active_bindings:
+        content_lines.append("bindings:")
+        for b in sorted(active_bindings):
+            content_lines.append(f"  - {b}")
+        content_lines.append("")
+    else:
+        content_lines.append("bindings: []")
+        content_lines.append("")
+
     manifest_content = "\n".join(content_lines)
 
     if config.verbose and config.dry_run:
@@ -152,7 +175,11 @@ def cmd_graft() -> None:
         with open(manifest_path, "w") as f:
             f.write(manifest_content)
         WorkspaceRegistry.register(app_name, cwd)
-        print_status(f"Successfully grafted sprawl_manifest.yml into {local_agents_dir}. You can now update the manifest and run 'sprawl sync'.")
+        print_status(
+            f"Successfully grafted sprawl_manifest.yml into {local_agents_dir}.\n"
+            "• You can now run [accent]sprawl bind[/accent] to select rules bindings for your active IDEs/agents.\n"
+            "• Run [accent]sprawl sync[/accent] to orchestrate the workspace."
+        )
 
 def cmd_ws_list() -> None:
     """Lists all tracked workspaces with their details."""

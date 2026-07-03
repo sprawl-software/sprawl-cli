@@ -48,12 +48,16 @@ def cmd_status(target_dir: Optional[str] = None) -> None:
 
     # --- Scan local .agents/ for real file state ---
     local_artifacts: dict[str, list[str]] = {cat: [] for cat in CATEGORIES}
+    local_rules_installed = []
     for cat in CATEGORIES:
         cat_dir = os.path.join(local_agents_dir, cat)
         if os.path.exists(cat_dir):
-            local_artifacts[cat] = sorted(
-                [f for f in os.listdir(cat_dir) if not f.startswith(".")]
-            )
+            files = sorted([f for f in os.listdir(cat_dir) if not f.startswith(".")])
+            if cat == "rules":
+                local_artifacts[cat] = [f for f in files if not f.startswith("local_")]
+                local_rules_installed = [f for f in files if f.startswith("local_")]
+            else:
+                local_artifacts[cat] = files
 
     # --- Venv health ---
     venv_dir = os.path.join(local_agents_dir, ".venv")
@@ -142,6 +146,12 @@ def cmd_status(target_dir: Optional[str] = None) -> None:
         requested = ", ".join(reqs.get(cat, [])) or "[dim]—[/dim]"
         installed = ", ".join(local_artifacts.get(cat, [])) or "[dim]—[/dim]"
         artifact_table.add_row(cat.capitalize(), requested, installed)
+
+    local_rules_requested = reqs.get("local_rules", [])
+    if local_rules_requested or local_rules_installed:
+        requested_str = ", ".join(local_rules_requested) or "[dim]—[/dim]"
+        installed_str = ", ".join(local_rules_installed) or "[dim]—[/dim]"
+        artifact_table.add_row("Local Rules", requested_str, installed_str)
 
     console.print(Panel(artifact_table, title="[bold accent]DNA Artifacts[/bold accent]", border_style="#5D5CFF"))
     console.print()

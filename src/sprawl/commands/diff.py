@@ -155,3 +155,15 @@ def cmd_diff(target_dir: Optional[str] = None) -> None:
             title="[bold yellow]Sync Status[/bold yellow]",
             border_style="yellow"
         ))
+
+    local_rules = reqs.get("local_rules", [])
+    if local_rules:
+        console.print()
+        console.print(Panel(
+            f"[info]ℹ Workspace Extensions Discovered:[/info]\n"
+            f"This workspace contains [bold]{len(local_rules)}[/bold] local-only custom rules not managed in the upstream DNA registry:\n"
+            f"• " + ", ".join(local_rules) + "\n\n"
+            f"[dim]Note: Local rules are exempted from DNA validation. In strict enterprise environments, ensure only approved DNA templates are committed.[/dim]",
+            title="[bold info]Workspace Extensions[/bold info]",
+            border_style="cyan"
+        ))

@@ -102,7 +102,7 @@ def cmd_wipe(target_dir: Optional[str] = None, force: bool = False, local_only: 
 
     # Delete global configuration overrides (~/.sprawl_rc) if present
     if not local_only:
-        sprawl_rc = os.path.expanduser("~/.sprawl_rc")
+        sprawl_rc = os.path.expanduser("~/.sprawl_rc_test" if config.test_mode else "~/.sprawl_rc")
         if os.path.exists(sprawl_rc):
             try:
                 os.remove(sprawl_rc)

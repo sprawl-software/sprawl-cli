@@ -228,8 +228,19 @@ def _sync_app_directory_impl(app_dir: str, local_agents_dir: str, manifest_path:
                     except Exception as e:
                         print_warning(f"Failed to read persona file {persona_path}: {e}")
 
+        allowed_mounts = {}
+        config_path = os.path.join(local_agents_dir, "sprawl-config.json")
+        if os.path.exists(config_path):
+            try:
+                import json
+                with open(config_path, "r", encoding="utf-8") as f:
+                    cfg = json.load(f)
+                    allowed_mounts = cfg.get("allowed_mounts", {})
+            except Exception:
+                pass
+
         from .generators.agents_md import generate_agents_md
-        generate_agents_md(agents_md_path, reqs, app_dir, persona_content)
+        generate_agents_md(agents_md_path, reqs, app_dir, persona_content, allowed_mounts=allowed_mounts)
 
         if config.verbose:
             print_status(f"Generated standardized registry payload at {agents_md_path}")

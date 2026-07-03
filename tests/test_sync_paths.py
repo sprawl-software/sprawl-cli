@@ -78,7 +78,7 @@ workflows:
             
         # Write default sprawl-config.json
         with open(os.path.join(local_agents_dir, "sprawl-config.json"), "w") as f:
-            json.dump({"allowed_mounts": {}}, f)
+            json.dump({"allowed_mounts": {"my_custom_mount": "/tmp/custom_mount"}}, f)
 
         # 2. Add some stray/polluted folders in the workspace root
         os.makedirs(os.path.join(ws_path, "atoms"))
@@ -98,6 +98,13 @@ workflows:
         self.assertTrue(os.path.exists(os.path.join(ws_path, "AGENTS.md")), "AGENTS.md should be in root")
         self.assertTrue(os.path.exists(os.path.join(ws_path, "DESIGN.md")), "DESIGN.md should be in root")
         self.assertTrue(os.path.exists(os.path.join(ws_path, "mcp_config.json")), "mcp_config.json should be in root")
+
+        # Verify mounts documentation inside AGENTS.md
+        with open(os.path.join(ws_path, "AGENTS.md"), "r") as f:
+            agents_md_content = f.read()
+            self.assertIn("@my_custom_mount", agents_md_content)
+            self.assertIn("/tmp/custom_mount", agents_md_content)
+            self.assertIn("except through the allowed mounts mapped via the MCP server", agents_md_content)
 
         # Verify JSON validity of mcp_config.json
         with open(os.path.join(ws_path, "mcp_config.json"), "r") as f:

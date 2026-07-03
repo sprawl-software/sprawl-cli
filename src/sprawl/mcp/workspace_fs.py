@@ -164,6 +164,11 @@ class MCPServer:
             return None
 
         if method == "tools/list":
+            mounts_desc = ""
+            if self.fs.allowed_mounts:
+                aliases_str = ", ".join(f"@{a}" for a in sorted(self.fs.allowed_mounts.keys()))
+                mounts_desc = f" You can also access allowed mount directories outside the workspace using the '@<alias>/<subpath>' prefix. Configured mounts: {aliases_str}."
+
             return {
                 "jsonrpc": "2.0",
                 "id": msg_id,
@@ -171,7 +176,7 @@ class MCPServer:
                     "tools": [
                         {
                             "name": "read_file",
-                            "description": "Read the content of a file within the workspace.",
+                            "description": f"Read the content of a file within the workspace.{mounts_desc}",
                             "inputSchema": {
                                 "type": "object",
                                 "properties": {"path": {"type": "string"}},
@@ -180,7 +185,7 @@ class MCPServer:
                         },
                         {
                             "name": "write_file",
-                            "description": "Write content to a file within the workspace.",
+                            "description": f"Write content to a file within the workspace.{mounts_desc}",
                             "inputSchema": {
                                 "type": "object",
                                 "properties": {"path": {"type": "string"}, "content": {"type": "string"}},
@@ -189,7 +194,7 @@ class MCPServer:
                         },
                         {
                             "name": "list_directory",
-                            "description": "List contents of a directory within the workspace.",
+                            "description": f"List contents of a directory within the workspace.{mounts_desc}",
                             "inputSchema": {
                                 "type": "object",
                                 "properties": {"path": {"type": "string"}},

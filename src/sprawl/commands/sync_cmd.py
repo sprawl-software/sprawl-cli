@@ -69,6 +69,58 @@ def cmd_sync(target_dir: Optional[str] = None) -> None:
                     console.print(Panel(text, title="[accent]Workspace Orchestration[/accent]", border_style="#5D5CFF"))
 
 
+def update_manifest_bindings(target_dir: str, targets: list[str]) -> None:
+    manifest_path = os.path.join(target_dir, ".agents", "sprawl_manifest.yml")
+    if not os.path.exists(manifest_path):
+        return
+        
+    with open(manifest_path, "r") as f:
+        content = f.read()
+        
+    from ..validation import parse_yaml_frontmatter
+    manifest_data = parse_yaml_frontmatter(f"---\n{content}\n---")
+    
+    # Preserve the rest of the manifest and replace/add the `bindings` key
+    dna_val = manifest_data.get("dna", "core")
+    new_manifest = []
+    new_manifest.append(f"dna: {dna_val}\n")
+    
+    from ..utils import CATEGORIES
+    for category in CATEGORIES:
+        items = manifest_data.get(category, [])
+        new_manifest.append(f"{category}:")
+        if items:
+            for item in items:
+                new_manifest.append(f"  - {item}")
+        new_manifest.append("")
+        
+    local_rules = manifest_data.get("local_rules", [])
+    if local_rules:
+        new_manifest.append("local_rules:")
+        for item in local_rules:
+            new_manifest.append(f"  - {item}")
+        new_manifest.append("")
+        
+    new_manifest.append("bindings:")
+    for target in sorted(targets):
+        new_manifest.append(f"  - {target}")
+    new_manifest.append("")
+    
+    for k, v in manifest_data.items():
+        if k not in CATEGORIES and k not in ("dna", "local_rules", "bindings"):
+            if isinstance(v, list):
+                new_manifest.append(f"{k}:")
+                for item in v:
+                    new_manifest.append(f"  - {item}")
+            else:
+                new_manifest.append(f"{k}: {v}")
+            new_manifest.append("")
+            
+    manifest_text = "\n".join(new_manifest)
+    with open(manifest_path, "w") as f:
+        f.write(manifest_text)
+
+
 def cmd_bind(
     target_dir: Optional[str] = None, 
     force: bool = False, 
@@ -89,18 +141,40 @@ def cmd_bind(
 
     from ..bind import bind_adapters, ADAPTER_MAP
 
+    # Check if bindings are defined in the manifest
+    manifest_bindings = None
+    manifest_path = os.path.join(target_dir, ".agents", "sprawl_manifest.yml")
+    if os.path.exists(manifest_path):
+        try:
+            from ..validation import parse_yaml_frontmatter
+            with open(manifest_path, "r") as f:
+                content = f.read()
+            manifest_data = parse_yaml_frontmatter(f"---\n{content}\n---")
+            if "bindings" in manifest_data:
+                manifest_bindings = manifest_data["bindings"]
+                if not isinstance(manifest_bindings, list):
+                    manifest_bindings = [manifest_bindings] if manifest_bindings else []
+                manifest_bindings = [str(b).strip().lower() for b in manifest_bindings]
+        except Exception:
+            pass
+
     targets = None
 
     if only:
         targets = [t.strip() for t in only.split(",")]
-    elif not all_adapters:
-        # Check if stdin/stdout are TTYs for interactive checkboxes TUI
+        update_manifest_bindings(target_dir, targets)
+    elif all_adapters:
+        targets = list(ADAPTER_MAP.keys())
+        update_manifest_bindings(target_dir, targets)
+    else:
+        # If no flags are passed, check if we are in interactive TTY mode
         if sys.stdin.isatty() and sys.stdout.isatty():
             from ..utils.tui import show_checkbox_menu
-            # Present interactive checkbox menu of the 14 available integrations
+            # Present interactive checkbox menu of the available integrations
+            # Precheck based on manifest_bindings (if defined), otherwise default to all True
             categories = {
                 "IDE / AI Agent Integrations": [
-                    (key, True) for key in ADAPTER_MAP.keys()
+                    (key, manifest_bindings is None or key in manifest_bindings) for key in ADAPTER_MAP.keys()
                 ]
             }
             selection = show_checkbox_menu("Select IDE & Agent Adapters", categories)
@@ -108,11 +182,14 @@ def cmd_bind(
                 print_status("Binding cancelled.")
                 return False
             targets = selection.get("IDE / AI Agent Integrations", [])
+            update_manifest_bindings(target_dir, targets)
         else:
-            # Non-interactive or non-TTY mode defaults to binding all (backward compatibility)
-            targets = list(ADAPTER_MAP.keys())
-    else:
-        # --all flag passed explicitly
-        targets = list(ADAPTER_MAP.keys())
+            # Non-interactive / non-TTY (like sync or script running)
+            # Use manifest_bindings if available, otherwise bind all
+            if manifest_bindings is not None:
+                targets = manifest_bindings
+            else:
+                targets = list(ADAPTER_MAP.keys())
+                update_manifest_bindings(target_dir, targets)
 
     return bind_adapters(target_dir, force=force, targets=targets)

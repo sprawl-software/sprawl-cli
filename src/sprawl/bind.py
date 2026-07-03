@@ -249,6 +249,17 @@ def _bind_rules_symlink(
             return False
 
 
+def _prune_empty_dirs(path: str) -> None:
+    """Recursively prunes empty directories up to the workspace root."""
+    try:
+        dir_name = os.path.dirname(path)
+        if os.path.isdir(dir_name) and not os.listdir(dir_name):
+            os.rmdir(dir_name)
+            _prune_empty_dirs(dir_name)
+    except Exception:
+        pass
+
+
 def bind_adapters(target_dir: str = ".", force: bool = False, targets: list[str] = None) -> bool:
     """Generates selective or universal IDE/Agent bindings to the Sprawl .agents/ directory.
 
@@ -303,6 +314,49 @@ def bind_adapters(target_dir: str = ".", force: bool = False, targets: list[str]
             ))
             if tkey == "copilot":
                 _export_copilot_prompts(target_dir)
+
+    # Deletion of excluded bindings
+    excluded_targets = [k for k in ADAPTER_MAP.keys() if k not in targets]
+    import shutil
+    for tkey in excluded_targets:
+        adapter = ADAPTER_MAP[tkey]
+        if adapter["type"] == "antigravity":
+            # 1. Antigravity .agent symlink removal
+            ag_link = os.path.join(target_dir, ".agent")
+            if os.path.exists(ag_link) or os.path.islink(ag_link):
+                try:
+                    os.remove(ag_link)
+                    console.print(f"  [info][-] Antigravity .agent Binding:[/info] Removed → .agent")
+                except Exception:
+                    pass
+            # 2. Antigravity gemini.json manifest removal
+            gemini_json_path = os.path.join(target_dir, ".gemini", "antigravity", "gemini.json")
+            if os.path.exists(gemini_json_path):
+                try:
+                    os.remove(gemini_json_path)
+                    console.print(f"  [info][-] Antigravity gemini.json Binding:[/info] Removed → gemini.json")
+                    _prune_empty_dirs(gemini_json_path)
+                except Exception:
+                    pass
+        elif adapter["type"] == "symlink":
+            rules_path = os.path.join(target_dir, adapter["path"])
+            if os.path.exists(rules_path) or os.path.islink(rules_path):
+                try:
+                    os.remove(rules_path)
+                    console.print(f"  [info][-] {adapter['label']} Binding:[/info] Removed → {adapter['path']}")
+                    _prune_empty_dirs(rules_path)
+                except Exception:
+                    pass
+            if tkey == "copilot":
+                # Clean up prompts folder
+                prompts_dir = os.path.join(target_dir, ".github", "prompts")
+                if os.path.exists(prompts_dir):
+                    try:
+                        shutil.rmtree(prompts_dir)
+                        console.print("  [info][-] GitHub Copilot Prompts:[/info] Removed prompts directory")
+                        _prune_empty_dirs(os.path.join(prompts_dir, "dummy.txt"))
+                    except Exception:
+                        pass
 
     # Summary
     written = sum(1 for r in results if r)

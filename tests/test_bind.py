@@ -94,6 +94,25 @@ class TestBind(unittest.TestCase):
         self.assertFalse(os.path.islink(os.path.join(self.test_dir, ".clinerules")))
         self.assertFalse(os.path.islink(os.path.join(self.test_dir, ".github", "copilot-instructions.md")))
 
+    def test_bind_adapters_symmetric_cleanup(self):
+        """bind_adapters removes excluded rules and directories when targets are updated."""
+        # 1. Bind cursor and cline-roo
+        self.assertTrue(bind_adapters(self.test_dir, targets=["cursor", "cline-roo"]))
+        
+        cursor_file = os.path.join(self.test_dir, ".cursorrules")
+        cline_file = os.path.join(self.test_dir, ".clinerules")
+        
+        self.assertTrue(os.path.islink(cursor_file))
+        self.assertTrue(os.path.islink(cline_file))
+        
+        # 2. Run bind targeting only cursor
+        self.assertTrue(bind_adapters(self.test_dir, targets=["cursor"]))
+        
+        # 3. Assert cursor is kept, cline-roo is deleted
+        self.assertTrue(os.path.islink(cursor_file))
+        self.assertFalse(os.path.exists(cline_file))
+        self.assertFalse(os.path.islink(cline_file))
+
     def test_bind_adapters_invalid_target_raises(self):
         """bind_adapters raises SprawlError when invalid target key is passed."""
         from src.sprawl.exceptions import SprawlError

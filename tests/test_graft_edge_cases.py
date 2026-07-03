@@ -59,7 +59,7 @@ class TestFileHarvestAdapterEdgeCases(unittest.TestCase):
 
         adapter = FileHarvestAdapter(".clinerules", "cline")
         result = adapter.harvest(self.root_dir, self.dest_dir)
-        self.assertEqual(result, ["local_cline.md"])
+        self.assertEqual(result, ["rules/local_cline.md"])
         with open(os.path.join(self.dest_dir, "rules", "local_cline.md")) as f:
             self.assertEqual(f.read(), "cline custom rules")
 
@@ -70,7 +70,7 @@ class TestFileHarvestAdapterEdgeCases(unittest.TestCase):
 
         adapter = FileHarvestAdapter(".windsurfrules", "windsurf")
         result = adapter.harvest(self.root_dir, self.dest_dir)
-        self.assertEqual(result, ["local_windsurf.md"])
+        self.assertEqual(result, ["rules/local_windsurf.md"])
 
     def test_harvests_claude_md(self):
         """Adapter harvests CLAUDE.md content correctly."""
@@ -79,7 +79,7 @@ class TestFileHarvestAdapterEdgeCases(unittest.TestCase):
 
         adapter = FileHarvestAdapter("CLAUDE.md", "claude")
         result = adapter.harvest(self.root_dir, self.dest_dir)
-        self.assertEqual(result, ["local_claude.md"])
+        self.assertEqual(result, ["rules/local_claude.md"])
 
     def test_harvests_agents_md(self):
         """Adapter harvests AGENTS.md content correctly."""
@@ -88,7 +88,7 @@ class TestFileHarvestAdapterEdgeCases(unittest.TestCase):
 
         adapter = FileHarvestAdapter("AGENTS.md", "agent")
         result = adapter.harvest(self.root_dir, self.dest_dir)
-        self.assertEqual(result, ["local_agent.md"])
+        self.assertEqual(result, ["rules/local_agent.md"])
 
     def test_nonexistent_file_returns_empty(self):
         """Adapter returns empty list for a file that doesn't exist on disk."""
@@ -151,9 +151,9 @@ class TestHarvestLegacyRulesIntegration(unittest.TestCase):
             f.write("windsurf rules")
 
         result = harvest_legacy_rules(self.root_dir, self.dest_dir)
-        self.assertIn("local_cursor.md", result)
-        self.assertIn("local_claude.md", result)
-        self.assertIn("local_windsurf.md", result)
+        self.assertIn("rules/local_cursor.md", result)
+        self.assertIn("rules/local_claude.md", result)
+        self.assertIn("rules/local_windsurf.md", result)
         self.assertEqual(len(result), 3)
 
     def test_empty_project_returns_empty(self):

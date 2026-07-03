@@ -138,9 +138,17 @@ def cmd_graft() -> None:
         "local_agent.md": "google-antigravity"
     }
     active_bindings = []
-    for file in harvested:
-        if file in harvest_map:
-            active_bindings.append(harvest_map[file])
+    local_groups = {f"local_{cat}": [] for cat in CATEGORIES}
+
+    for path in harvested:
+        parts = path.split("/", 1)
+        if len(parts) == 2:
+            cat, fname = parts
+            grp_key = f"local_{cat}"
+            if grp_key in local_groups:
+                local_groups[grp_key].append(fname)
+            if fname in harvest_map:
+                active_bindings.append(harvest_map[fname])
 
     # Build the YAML manifest string
     content_lines = [f"# {app_name}", "dna: core", ""]
@@ -151,11 +159,13 @@ def cmd_graft() -> None:
                 content_lines.append(f"  - {item}")
         content_lines.append("")
 
-    if harvested:
-        content_lines.append("local_rules:")
-        for item in sorted(harvested):
-            content_lines.append(f"  - {item}")
-        content_lines.append("")
+    for grp_key in [f"local_{cat}" for cat in CATEGORIES]:
+        items = local_groups[grp_key]
+        if items:
+            content_lines.append(f"{grp_key}:")
+            for item in sorted(items):
+                content_lines.append(f"  - {item}")
+            content_lines.append("")
 
     if active_bindings:
         content_lines.append("bindings:")

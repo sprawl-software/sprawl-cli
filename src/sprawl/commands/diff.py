@@ -126,7 +126,7 @@ def cmd_diff(target_dir: Optional[str] = None) -> None:
         drift_found = True
 
     for category, files in reqs.items():
-        if category == "local_rules":
+        if category.startswith("local_"):
             continue
         if not files:
             continue
@@ -157,13 +157,23 @@ def cmd_diff(target_dir: Optional[str] = None) -> None:
         ))
 
     local_rules = reqs.get("local_rules", [])
-    if local_rules:
+    local_skills = reqs.get("local_skills", [])
+    local_workflows = reqs.get("local_workflows", [])
+    if local_rules or local_skills or local_workflows:
         console.print()
+        lines = ["[info]ℹ Workspace Extensions Discovered:[/info]"]
+        lines.append("This workspace contains local-only custom artifacts not managed in the upstream DNA registry:")
+        if local_rules:
+            lines.append("  • Rules: " + ", ".join(local_rules))
+        if local_skills:
+            lines.append("  • Skills: " + ", ".join(local_skills))
+        if local_workflows:
+            lines.append("  • Workflows: " + ", ".join(local_workflows))
+        lines.append("")
+        lines.append("[dim]Note: Local artifacts are exempted from DNA validation. In strict enterprise environments, ensure only approved DNA templates are committed.[/dim]")
+        
         console.print(Panel(
-            f"[info]ℹ Workspace Extensions Discovered:[/info]\n"
-            f"This workspace contains [bold]{len(local_rules)}[/bold] local-only custom rules not managed in the upstream DNA registry:\n"
-            f"• " + ", ".join(local_rules) + "\n\n"
-            f"[dim]Note: Local rules are exempted from DNA validation. In strict enterprise environments, ensure only approved DNA templates are committed.[/dim]",
+            "\n".join(lines),
             title="[bold info]Workspace Extensions[/bold info]",
             border_style="cyan"
         ))

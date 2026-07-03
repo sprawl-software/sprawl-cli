@@ -49,6 +49,8 @@ def cmd_status(target_dir: Optional[str] = None) -> None:
     # --- Scan local .agents/ for real file state ---
     local_artifacts: dict[str, list[str]] = {cat: [] for cat in CATEGORIES}
     local_rules_installed = []
+    local_skills_installed = []
+    local_workflows_installed = []
     for cat in CATEGORIES:
         cat_dir = os.path.join(local_agents_dir, cat)
         if os.path.exists(cat_dir):
@@ -56,6 +58,12 @@ def cmd_status(target_dir: Optional[str] = None) -> None:
             if cat == "rules":
                 local_artifacts[cat] = [f for f in files if not f.startswith("local_")]
                 local_rules_installed = [f for f in files if f.startswith("local_")]
+            elif cat == "skills":
+                local_artifacts[cat] = [f for f in files if not f.startswith("local_")]
+                local_skills_installed = [f for f in files if f.startswith("local_")]
+            elif cat == "workflows":
+                local_artifacts[cat] = [f for f in files if not f.startswith("local_")]
+                local_workflows_installed = [f for f in files if f.startswith("local_")]
             else:
                 local_artifacts[cat] = files
 
@@ -152,6 +160,18 @@ def cmd_status(target_dir: Optional[str] = None) -> None:
         requested_str = ", ".join(local_rules_requested) or "[dim]—[/dim]"
         installed_str = ", ".join(local_rules_installed) or "[dim]—[/dim]"
         artifact_table.add_row("Local Rules", requested_str, installed_str)
+
+    local_skills_requested = reqs.get("local_skills", [])
+    if local_skills_requested or local_skills_installed:
+        requested_str = ", ".join(local_skills_requested) or "[dim]—[/dim]"
+        installed_str = ", ".join(local_skills_installed) or "[dim]—[/dim]"
+        artifact_table.add_row("Local Skills", requested_str, installed_str)
+
+    local_workflows_requested = reqs.get("local_workflows", [])
+    if local_workflows_requested or local_workflows_installed:
+        requested_str = ", ".join(local_workflows_requested) or "[dim]—[/dim]"
+        installed_str = ", ".join(local_workflows_installed) or "[dim]—[/dim]"
+        artifact_table.add_row("Local Workflows", requested_str, installed_str)
 
     console.print(Panel(artifact_table, title="[bold accent]DNA Artifacts[/bold accent]", border_style="#5D5CFF"))
     console.print()

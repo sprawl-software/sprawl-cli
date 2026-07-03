@@ -69,7 +69,7 @@ class FileHarvestAdapter(HarvestAdapter):
         with open(dest_path, "w", encoding="utf-8") as f:
             f.write(content)
 
-        return [local_name]
+        return [f"rules/{local_name}"]
 
 
 class PromptsFolderAdapter(HarvestAdapter):
@@ -84,6 +84,8 @@ class PromptsFolderAdapter(HarvestAdapter):
         harvested_files = []
         if not os.path.exists(prompts_dir) or not os.path.isdir(prompts_dir):
             return harvested_files
+
+        from .validation import parse_yaml_frontmatter
 
         for file in os.listdir(prompts_dir):
             if file.endswith(".prompt.md") or file.endswith(".md"):
@@ -101,12 +103,22 @@ class PromptsFolderAdapter(HarvestAdapter):
                     elif base_name.endswith(".md"):
                         base_name = base_name[:-3]
 
+                    frontmatter = parse_yaml_frontmatter(content)
+                    ft_type = str(frontmatter.get("type", "rule")).strip().lower()
+                    
+                    if ft_type == "skill":
+                        category = "skills"
+                    elif ft_type == "workflow":
+                        category = "workflows"
+                    else:
+                        category = "rules"
+
                     local_name = f"local_{base_name}.md"
-                    dest_path = os.path.join(dest_dir, "rules", local_name)
+                    dest_path = os.path.join(dest_dir, category, local_name)
                     os.makedirs(os.path.dirname(dest_path), exist_ok=True)
                     with open(dest_path, "w", encoding="utf-8") as f:
                         f.write(content)
-                    harvested_files.append(local_name)
+                    harvested_files.append(f"{category}/{local_name}")
 
         return harvested_files
 
@@ -131,7 +143,7 @@ def harvest_legacy_rules(root_dir: str, dest_dir: str) -> List[str]:
             harvested_rules.extend(adapter.harvest(root_dir, dest_dir))
 
     if harvested_rules:
-        print_status(f"Harvested {len(harvested_rules)} legacy rules/prompts files into .agents/rules/")
+        print_status(f"Harvested {len(harvested_rules)} legacy rules/prompts files into .agents/")
 
     return harvested_rules
 

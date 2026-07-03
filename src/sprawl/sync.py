@@ -14,7 +14,8 @@ def parse_sprawl_manifest(file_path: str) -> dict[str, list[str]]:
     Core Schema Evaluation: Dynamically parses a given `.agents/sprawl_manifest.yml` identifying listed dependencies.
     """
     required_files = {cat: [] for cat in CATEGORIES}
-    required_files["local_rules"] = []
+    for cat in CATEGORIES:
+        required_files[f"local_{cat}"] = []
 
     if not os.path.exists(file_path):
         return required_files
@@ -40,18 +41,20 @@ def parse_sprawl_manifest(file_path: str) -> dict[str, list[str]]:
                     sanitized_items.append(stripped)
             required_files[category] = sanitized_items
 
-    local_rules = manifest_data.get("local_rules", [])
-    if isinstance(local_rules, list):
-        sanitized_local_rules = []
-        for item in local_rules:
-            if isinstance(item, str):
-                stripped = item.strip()
-                if stripped.lower() == "none":
-                    continue
-                if ".." in stripped or "/" in stripped or "\\" in stripped:
-                    raise SprawlError(f"Security Violation: Path traversal detected in '{stripped}'. Execution aborted.")
-                sanitized_local_rules.append(stripped)
-        required_files["local_rules"] = sanitized_local_rules
+    for cat in CATEGORIES:
+        local_key = f"local_{cat}"
+        local_items = manifest_data.get(local_key, [])
+        if isinstance(local_items, list):
+            sanitized_local = []
+            for item in local_items:
+                if isinstance(item, str):
+                    stripped = item.strip()
+                    if stripped.lower() == "none":
+                        continue
+                    if ".." in stripped or "/" in stripped or "\\" in stripped:
+                        raise SprawlError(f"Security Violation: Path traversal detected in '{stripped}'. Execution aborted.")
+                    sanitized_local.append(stripped)
+            required_files[local_key] = sanitized_local
 
     return required_files
 
@@ -106,7 +109,7 @@ def _sync_app_directory_impl(app_dir: str, local_agents_dir: str, manifest_path:
             os.makedirs(os.path.join(local_agents_dir, cat), exist_ok=True)
 
     for category, files in reqs.items():
-        if files:
+        if category in CATEGORIES and files:
             category_dir = os.path.join(local_agents_dir, category)
             if not config.dry_run:
                 os.makedirs(category_dir, exist_ok=True)
@@ -145,9 +148,7 @@ def _sync_app_directory_impl(app_dir: str, local_agents_dir: str, manifest_path:
         for category in CATEGORIES:
             category_dir = os.path.join(local_agents_dir, category)
             if os.path.exists(category_dir):
-                allowed_items = reqs.get(category, [])
-                if category == "rules":
-                    allowed_items = allowed_items + reqs.get("local_rules", [])
+                allowed_items = reqs.get(category, []) + reqs.get(f"local_{category}", [])
                 for existing_item in os.listdir(category_dir):
                     if existing_item not in allowed_items:
                         item_path = os.path.join(category_dir, existing_item)

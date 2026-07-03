@@ -20,15 +20,15 @@ from .output import print_status, print_error, console
 _RULES_CONTENT = """\
 # Agentic Workspace Directives
 
-Your behavior and knowledge base for this workspace are defined in the `agent.md` file and the `.agents/` directory.
+Your behavior and knowledge base for this workspace are defined in the `AGENT.md` file and the `.agents/` directory.
 
 **MANDATORY INSTRUCTIONS:**
-1. Before taking any action, you MUST read `agent.md` at the workspace root.
-2. If a persona is defined in `agent.md`, you must adopt its tone, expertise, and behavioral protocols absolutely.
+1. Before taking any action, you MUST read `AGENT.md` at the workspace root.
+2. If a persona is defined in `AGENT.md`, you must adopt its tone, expertise, and behavioral protocols absolutely.
 3. When asked to execute a workflow, check `.agents/workflows/` for the exact step-by-step procedure.
 4. If a specific skill or capability is mentioned, check `.agents/skills/` for the relevant documentation.
 
-Follow the conventions and protocols defined in `agent.md` and `.agents/` without deviation.
+Follow the conventions and protocols defined in `AGENT.md` and `.agents/` without deviation.
 """
 
 

@@ -26,7 +26,7 @@ class TestBind(unittest.TestCase):
         with open(cursor_file, "r") as f:
             content = f.read()
         self.assertIn("# Agentic Workspace Directives", content)
-        self.assertIn("agent.md", content)
+        self.assertIn("AGENT.md", content)
 
     def test_bind_creates_clinerules(self):
         """bind_adapters creates .clinerules."""

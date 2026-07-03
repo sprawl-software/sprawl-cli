@@ -79,14 +79,14 @@ def _sync_app_directory_impl(app_dir: str, local_agents_dir: str, manifest_path:
         print_status(f"Resolved workspace DNA context: {source_dna_dir}")
 
     global_design = os.path.join(source_dna_dir, "DESIGN.md")
-    local_design = os.path.join(app_dir, "design.md")
+    local_design = os.path.join(app_dir, "DESIGN.md")
     if os.path.exists(global_design) and not config.dry_run:
         if not os.path.exists(local_design):
             shutil.copy2(global_design, local_design)
             if config.verbose:
                 print_status(f"Synced global DESIGN.md -> {local_design}")
         else:
-            print_status("[DNA Sync] Preserved local design.md override.")
+            print_status("[DNA Sync] Preserved local DESIGN.md override.")
 
     copied_files = []
     pruned_count = 0
@@ -189,9 +189,9 @@ def _sync_app_directory_impl(app_dir: str, local_agents_dir: str, manifest_path:
                     else:
                         print_warning(f"cargo not found. Skipping Rust dependencies in {root}")
 
-    agents_md_path = os.path.join(app_dir, "agent.md")
+    agents_md_path = os.path.join(app_dir, "AGENT.md")
     if config.verbose and config.dry_run:
-        print_status(f"DRY RUN: Would generate agent.md registry mapping.")
+        print_status(f"DRY RUN: Would generate AGENT.md registry mapping.")
     elif not config.dry_run:
         persona_content = None
         for skill in reqs.get("skills", []):

@@ -95,8 +95,8 @@ workflows:
         sync_app_directory(ws_path)
 
         # 4. Verify Root-Level Exclusions (Human-Agent Interfaces)
-        self.assertTrue(os.path.exists(os.path.join(ws_path, "agent.md")), "agent.md should be in root")
-        self.assertTrue(os.path.exists(os.path.join(ws_path, "design.md")), "design.md should be in root")
+        self.assertTrue(os.path.exists(os.path.join(ws_path, "AGENT.md")), "AGENT.md should be in root")
+        self.assertTrue(os.path.exists(os.path.join(ws_path, "DESIGN.md")), "DESIGN.md should be in root")
         self.assertTrue(os.path.exists(os.path.join(ws_path, "mcp_config.json")), "mcp_config.json should be in root")
 
         # Verify JSON validity of mcp_config.json

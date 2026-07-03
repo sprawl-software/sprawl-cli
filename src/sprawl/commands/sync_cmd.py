@@ -153,10 +153,13 @@ def cmd_bind(
                 content = f.read()
             manifest_data = parse_yaml_frontmatter(f"---\n{content}\n---")
             if "bindings" in manifest_data:
-                manifest_bindings = manifest_data["bindings"]
-                if not isinstance(manifest_bindings, list):
-                    manifest_bindings = [manifest_bindings] if manifest_bindings else []
-                manifest_bindings = [str(b).strip().lower() for b in manifest_bindings]
+                val = manifest_data["bindings"]
+                if val is None or str(val).strip() in ("[]", "", "none"):
+                    manifest_bindings = []
+                elif isinstance(val, list):
+                    manifest_bindings = [str(b).strip().lower() for b in val if str(b).strip() and str(b).strip() != "[]"]
+                else:
+                    manifest_bindings = [str(val).strip().lower()]
         except Exception:
             pass
 

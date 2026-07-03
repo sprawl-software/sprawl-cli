@@ -28,7 +28,7 @@ def cmd_sync(target_dir: Optional[str] = None) -> None:
             print_status(f"Running sync in TARGETED MODE at {cwd}.")
         with operation_spinner(f"Syncing workspace at {cwd}"):
             stats = sync_app_directory(cwd)
-            bindings = cmd_bind(cwd)
+            bindings = cmd_bind(cwd, is_sync=True)
             
         if stats:
             from rich.panel import Panel
@@ -55,7 +55,7 @@ def cmd_sync(target_dir: Optional[str] = None) -> None:
             if os.path.isdir(item_path):
                 with operation_spinner(f"Syncing workspace at {item_path}"):
                     stats = sync_app_directory(item_path)
-                    bindings = cmd_bind(item_path)
+                    bindings = cmd_bind(item_path, is_sync=True)
                     
                 if stats:
                     from rich.panel import Panel
@@ -125,7 +125,8 @@ def cmd_bind(
     target_dir: Optional[str] = None, 
     force: bool = False, 
     all_adapters: bool = False, 
-    only: Optional[str] = None
+    only: Optional[str] = None,
+    is_sync: bool = False
 ) -> bool:
     """Generates selective or universal IDE/Agent bindings.
 
@@ -134,6 +135,7 @@ def cmd_bind(
         force: If True, overwrites existing bindings.
         all_adapters: If True, bypasses TUI prompt and binds all adapters.
         only: Comma-separated list of adapters to bind.
+        is_sync: If True, behaves non-interactively and synchronizes with manifest bindings.
     """
     import sys
     if not target_dir:
@@ -166,6 +168,13 @@ def cmd_bind(
     elif all_adapters:
         targets = list(ADAPTER_MAP.keys())
         update_manifest_bindings(target_dir, targets)
+    elif is_sync:
+        # Sync mode does not prompt: it uses manifest bindings if available
+        if manifest_bindings is not None:
+            targets = manifest_bindings
+        else:
+            targets = list(ADAPTER_MAP.keys())
+            update_manifest_bindings(target_dir, targets)
     else:
         # If no flags are passed, check if we are in interactive TTY mode
         if sys.stdin.isatty() and sys.stdout.isatty():
@@ -184,8 +193,7 @@ def cmd_bind(
             targets = selection.get("IDE / AI Agent Integrations", [])
             update_manifest_bindings(target_dir, targets)
         else:
-            # Non-interactive / non-TTY (like sync or script running)
-            # Use manifest_bindings if available, otherwise bind all
+            # Non-interactive / non-TTY (like script running or fallback)
             if manifest_bindings is not None:
                 targets = manifest_bindings
             else:

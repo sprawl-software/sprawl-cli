@@ -55,6 +55,16 @@ workflows:
 """
         with open(manifest_path, "w") as f:
             f.write(default_content)
+        
+        # Scaffold clean sprawl-config.json
+        config_path = os.path.join(local_agents_dir, "sprawl-config.json")
+        default_config = """{
+  "allowed_mounts": {}
+}
+"""
+        with open(config_path, "w") as f:
+            f.write(default_config)
+
         WorkspaceRegistry.register(workspace_name, workspace_dir)
         
     from rich.panel import Panel

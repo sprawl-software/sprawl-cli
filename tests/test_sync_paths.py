@@ -53,7 +53,7 @@ class TestSyncPathsAndRootPollution(unittest.TestCase):
         # Verify JSON validity of sprawl-config.json
         with open(os.path.join(ws_path, ".agents", "sprawl-config.json"), "r") as f:
             data = json.load(f)
-            self.assertEqual(data["gateway"]["port"], 4000)
+            self.assertIn("allowed_mounts", data)
 
     @patch('sprawl.workspace.WorkspaceRegistry.update_sync_timestamp')
     @patch('sprawl.workspace.Workspace.update_sync_state')
@@ -78,7 +78,7 @@ workflows:
             
         # Write default sprawl-config.json
         with open(os.path.join(local_agents_dir, "sprawl-config.json"), "w") as f:
-            json.dump({"gateway": {"port": 4000}}, f)
+            json.dump({"allowed_mounts": {}}, f)
 
         # 2. Add some stray/polluted folders in the workspace root
         os.makedirs(os.path.join(ws_path, "atoms"))

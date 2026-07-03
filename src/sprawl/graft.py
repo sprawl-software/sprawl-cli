@@ -4,12 +4,42 @@ Scans the root project directory for existing AI agent rules configuration files
 and copies them as local-only rules inside the workspace registry.
 """
 
+import abc
 import os
-from typing import List, Optional
+from typing import List
 from .output import print_status
 
 
-class BaseHarvestAdapter:
+class HarvestAdapter(abc.ABC):
+    """Abstract base class for all harvest adapters.
+
+    All adapters must implement matches() and harvest() with a consistent
+    interface returning a list of harvested filenames.
+    """
+
+    @abc.abstractmethod
+    def matches(self, root_dir: str) -> bool:
+        """Return True if this adapter detects harvestable content in root_dir."""
+
+    @abc.abstractmethod
+    def harvest(self, root_dir: str, dest_dir: str) -> List[str]:
+        """Harvest content from root_dir into dest_dir/rules/.
+
+        Returns:
+            List of harvested local rule filenames (e.g. ['local_cursor.md']).
+        """
+
+
+# Sentinel strings used to detect Sprawl's own generated workspace directives.
+_SPRAWL_DIRECTIVES = (
+    "Agentic Workspace Directives",
+    "Your behavior and knowledge base for this workspace",
+)
+
+
+class FileHarvestAdapter(HarvestAdapter):
+    """Adapter for harvesting a single file-based legacy rules config."""
+
     def __init__(self, filename: str, target_key: str):
         self.filename = filename
         self.target_key = target_key
@@ -18,20 +48,20 @@ class BaseHarvestAdapter:
         path = os.path.join(root_dir, self.filename)
         return os.path.exists(path) and os.path.isfile(path)
 
-    def harvest(self, root_dir: str, dest_dir: str) -> Optional[str]:
+    def harvest(self, root_dir: str, dest_dir: str) -> List[str]:
         src_path = os.path.join(root_dir, self.filename)
         if not os.path.exists(src_path):
-            return None
+            return []
 
         with open(src_path, "r", encoding="utf-8", errors="ignore") as f:
             content = f.read()
 
         # Ignore our own generated workspace directives
-        if "Agentic Workspace Directives" in content or "Your behavior and knowledge base for this workspace" in content:
-            return None
+        if any(sentinel in content for sentinel in _SPRAWL_DIRECTIVES):
+            return []
 
         if not content.strip():
-            return None
+            return []
 
         local_name = f"local_{self.target_key}.md"
         dest_path = os.path.join(dest_dir, "rules", local_name)
@@ -39,10 +69,12 @@ class BaseHarvestAdapter:
         with open(dest_path, "w", encoding="utf-8") as f:
             f.write(content)
 
-        return local_name
+        return [local_name]
 
 
-class PromptsFolderAdapter:
+class PromptsFolderAdapter(HarvestAdapter):
+    """Adapter for harvesting .github/prompts/ folder contents."""
+
     def matches(self, root_dir: str) -> bool:
         prompts_dir = os.path.join(root_dir, ".github", "prompts")
         return os.path.exists(prompts_dir) and os.path.isdir(prompts_dir)
@@ -81,30 +113,28 @@ class PromptsFolderAdapter:
 
 def harvest_legacy_rules(root_dir: str, dest_dir: str) -> List[str]:
     """Harvests existing rules/prompts configuration files from root_dir to dest_dir."""
-    adapters = [
-        BaseHarvestAdapter(".cursorrules", "cursor"),
-        BaseHarvestAdapter(".clinerules", "cline"),
-        BaseHarvestAdapter(".windsurfrules", "windsurf"),
-        BaseHarvestAdapter(".github/copilot-instructions.md", "copilot"),
-        BaseHarvestAdapter("CLAUDE.md", "claude"),
-        BaseHarvestAdapter("AGENT.md", "agent"),
-        BaseHarvestAdapter("DESIGN.md", "design"),
+    adapters: List[HarvestAdapter] = [
+        FileHarvestAdapter(".cursorrules", "cursor"),
+        FileHarvestAdapter(".clinerules", "cline"),
+        FileHarvestAdapter(".windsurfrules", "windsurf"),
+        FileHarvestAdapter(".github/copilot-instructions.md", "copilot"),
+        FileHarvestAdapter("CLAUDE.md", "claude"),
+        FileHarvestAdapter("AGENT.md", "agent"),
+        FileHarvestAdapter("DESIGN.md", "design"),
+        PromptsFolderAdapter(),
     ]
 
     harvested_rules = []
 
     for adapter in adapters:
         if adapter.matches(root_dir):
-            local_name = adapter.harvest(root_dir, dest_dir)
-            if local_name:
-                harvested_rules.append(local_name)
-
-    folder_adapter = PromptsFolderAdapter()
-    if folder_adapter.matches(root_dir):
-        files = folder_adapter.harvest(root_dir, dest_dir)
-        harvested_rules.extend(files)
+            harvested_rules.extend(adapter.harvest(root_dir, dest_dir))
 
     if harvested_rules:
         print_status(f"Harvested {len(harvested_rules)} legacy rules/prompts files into .agents/rules/")
 
     return harvested_rules
+
+
+# Backward compatibility aliases
+BaseHarvestAdapter = FileHarvestAdapter

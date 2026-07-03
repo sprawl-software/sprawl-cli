@@ -55,7 +55,9 @@ class WorkspaceFS:
                 real_path = os.path.realpath(abs_path)
                 real_mount_root = os.path.realpath(mount_root)
                 
-                if not real_path.startswith(real_mount_root):
+                # Enforce strict directory boundary — prevent sibling-directory prefix escapes
+                # e.g. /home/user/mount vs /home/user/mount-secrets
+                if real_path != real_mount_root and not real_path.startswith(real_mount_root + os.sep):
                     raise MCPError(-32602, f"Security Violation: Path '{rel_path}' resolves outside mount root '{alias}'.")
                 return real_path
             else:
@@ -69,7 +71,8 @@ class WorkspaceFS:
         real_path = os.path.realpath(abs_path)
         real_root = os.path.realpath(self.root)
         
-        if not real_path.startswith(real_root):
+        # Enforce strict directory boundary — prevent sibling-directory prefix escapes
+        if real_path != real_root and not real_path.startswith(real_root + os.sep):
             raise MCPError(-32602, f"Security Violation: Path '{rel_path}' resolves outside workspace root.")
         return real_path
 

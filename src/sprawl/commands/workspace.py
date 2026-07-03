@@ -107,7 +107,7 @@ def cmd_graft() -> None:
         cat_dir = os.path.join(local_agents_dir, category)
         if os.path.exists(cat_dir):
             for item in os.listdir(cat_dir):
-                if not item.startswith("."):
+                if not item.startswith(".") and not item.startswith("local_"):
                     discovered_artifacts[category].append(item)
 
     # 2. Heuristic discovery based on workspace root files

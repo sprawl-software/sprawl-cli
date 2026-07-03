@@ -134,6 +134,8 @@ def cmd_diff(target_dir: Optional[str] = None) -> None:
         category_dir = os.path.join(local_agents_dir, category)
         
         for file_name in files:
+            if file_name.startswith("local_"):
+                continue
             src_path = os.path.join(source_dna_dir, category, file_name)
             dest_path = os.path.join(category_dir, file_name)
             rel_path = f"{category}/{file_name}"

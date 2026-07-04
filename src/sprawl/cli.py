@@ -154,6 +154,9 @@ def get_parser() -> argparse.ArgumentParser:
     status_parser = subparsers.add_parser("status", help="Displays workspace status: DNA binding, artifacts, venv health, and last sync.")
     status_parser.add_argument("target_dir", nargs="?", default=None, help="Target workspace path.")
 
+    if os.environ.get("SPRAWL_DEV") == "1":
+        subparsers.add_parser("test", help="Runs the test suite (Dev only).")
+
     return parser
 
 
@@ -310,6 +313,8 @@ def main() -> None:
         from .commands.mount import cmd_mount
         cmd_mount(a)
     def handle_test_command(a: Any) -> None:
+        if os.environ.get("SPRAWL_DEV") != "1":
+            raise SprawlError("Unknown command: test")
         # Dynamically locate the tests package relative to the active file location
         sprawl_dir = os.path.dirname(os.path.abspath(__file__))
         repo_root = os.path.dirname(os.path.dirname(sprawl_dir))

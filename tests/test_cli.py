@@ -201,6 +201,22 @@ rules:
             with self.assertRaises(SprawlError):
                 cmd_create(name)
 
+    @patch.dict(os.environ, {}, clear=True)
+    def test_sprawl_test_command_gated_by_default(self):
+        from src.sprawl.cli import get_parser
+        parser = get_parser()
+        # By default (SPRAWL_DEV not set), parsing 'test' should fail (raise SystemExit)
+        with self.assertRaises(SystemExit):
+            parser.parse_args(["test"])
+
+    @patch.dict(os.environ, {"SPRAWL_DEV": "1"})
+    def test_sprawl_test_command_allowed_in_dev(self):
+        from src.sprawl.cli import get_parser
+        parser = get_parser()
+        # When SPRAWL_DEV=1 is set, parsing 'test' should succeed
+        args = parser.parse_args(["test"])
+        self.assertEqual(args.command, "test")
+
     @patch('src.sprawl.commands.diagnostics.subprocess.check_output')
     @patch('src.sprawl.commands.diagnostics.subprocess.run')
     @patch('src.sprawl.commands.diagnostics.os.path.exists')

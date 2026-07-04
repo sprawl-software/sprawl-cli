@@ -138,8 +138,7 @@ def cmd_mount(args: Any) -> None:
     elif args.mount_command is None:
         # Launch interactive TUI Dashboard
         if not sys.stdin.isatty() or not sys.stdout.isatty():
-            print_error("Cannot launch interactive mount dashboard in a non-TTY environment.")
-            sys.exit(1)
+            raise SprawlError("Cannot launch interactive mount dashboard in a non-TTY environment.")
             
         workspace_root, _, _ = _get_workspace_paths(target_dir)
         from ..utils.tui import show_mount_dashboard

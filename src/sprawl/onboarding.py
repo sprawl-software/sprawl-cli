@@ -31,8 +31,7 @@ def run_onboarding_wizard() -> None:
         try:
             name = input("\033[38;2;93;92;255m[1/4] Name:\033[0m ").strip()
         except (KeyboardInterrupt, EOFError):
-            print("\nAborted.")
-            sys.exit(130)
+            raise KeyboardInterrupt
 
     # Question 2: Business Email
     email = ""
@@ -40,8 +39,7 @@ def run_onboarding_wizard() -> None:
         try:
             email = input("\033[38;2;93;92;255m[2/4] Business Email:\033[0m ").strip()
         except (KeyboardInterrupt, EOFError):
-            print("\nAborted.")
-            sys.exit(130)
+            raise KeyboardInterrupt
 
     # Question 3: Company Size
     company_sizes = ["1-10", "11-50", "51-200", "200+"]
@@ -57,8 +55,7 @@ def run_onboarding_wizard() -> None:
             if 0 <= idx < len(company_sizes):
                 size_choice = company_sizes[idx]
         except (KeyboardInterrupt, EOFError):
-            print("\nAborted.")
-            sys.exit(130)
+            raise KeyboardInterrupt
         except ValueError:
             pass
 
@@ -80,8 +77,7 @@ def run_onboarding_wizard() -> None:
             if 0 <= idx < len(use_cases):
                 case_choice = use_cases[idx]
         except (KeyboardInterrupt, EOFError):
-            print("\nAborted.")
-            sys.exit(130)
+            raise KeyboardInterrupt
         except ValueError:
             pass
 

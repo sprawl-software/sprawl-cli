@@ -295,8 +295,7 @@ def main() -> None:
         elif a.dna_command == "list":
             cmd_dna_list()
         else:
-            print_error(f"Unknown DNA command: {a.dna_command}")
-            sys.exit(1)
+            raise SprawlError(f"Unknown DNA command: {a.dna_command}")
 
     def handle_ws_command(a: Any) -> None:
         from .commands.workspace import cmd_ws_list, cmd_ws_remove, cmd_ws_push
@@ -307,8 +306,7 @@ def main() -> None:
         elif a.ws_command == "push":
             cmd_ws_push(a.name)
         else:
-            print_error(f"Unknown Workspace command: {a.ws_command}")
-            sys.exit(1)
+            raise SprawlError(f"Unknown Workspace command: {a.ws_command}")
     def handle_mount_command(a: Any) -> None:
         from .commands.mount import cmd_mount
         cmd_mount(a)
@@ -373,9 +371,8 @@ def main() -> None:
                     run_onboarding_wizard()
             handler(args)
         else:
-            print_error(f"Unknown command: {args.command}")
             print_help()
-            sys.exit(1)
+            raise SprawlError(f"Unknown command: {args.command}")
             
     except SprawlError as e:
         print_error(str(e))

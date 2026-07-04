@@ -93,7 +93,7 @@ class TestMountCommand(unittest.TestCase):
             mount_command = None
             project = self.workspace_dir
 
-        with self.assertRaises(SystemExit):
+        with self.assertRaises(SprawlError):
             cmd_mount(Args())
 
 

@@ -31,9 +31,14 @@ class VaultManager:
              rel_path += ".md"
              
         abs_path = os.path.abspath(os.path.join(self.root, rel_path))
-        if not abs_path.startswith(self.root):
-            raise MCPError(-32602, f"Security Violation: Path '{rel_path}' is outside vault root.")
-        return abs_path
+        real_path = os.path.realpath(abs_path)
+        real_root = os.path.realpath(self.root)
+        
+        # Enforce strict directory boundary — prevent sibling-directory prefix escapes
+        if real_path != real_root and not real_path.startswith(real_root + os.sep):
+            raise MCPError(-32602, f"Security Violation: Path '{rel_path}' resolves outside vault root.")
+        return real_path
+
 
     def read_note(self, path: str) -> str:
         safe_path = self._get_safe_path(path)

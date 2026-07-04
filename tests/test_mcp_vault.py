@@ -36,6 +36,20 @@ class TestVaultManager(unittest.TestCase):
         with self.assertRaises(MCPError):
             self.mgr.read_note("../../etc/passwd")
 
+    def test_read_note_prefix_escape(self):
+        sibling_dir = self.vault_root + "-secrets"
+        os.makedirs(sibling_dir, exist_ok=True)
+        try:
+            sibling_file = os.path.join(sibling_dir, "private.md")
+            with open(sibling_file, "w") as f:
+                f.write("secret data")
+            
+            with self.assertRaises(MCPError):
+                self.mgr.read_note("../my-vault-secrets/private.md")
+        finally:
+            shutil.rmtree(sibling_dir, ignore_errors=True)
+
+
     def test_write_note(self):
         self.mgr.write_note("Draft", "some content")
         path = os.path.join(self.vault_root, "Draft.md")

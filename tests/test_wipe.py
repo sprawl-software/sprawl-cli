@@ -46,7 +46,7 @@ class TestWipe(unittest.TestCase):
         shutil.rmtree(self.test_dir, ignore_errors=True)
 
     @patch("src.sprawl.commands.wipe.os.path.expanduser")
-    @patch("src.sprawl.workspace.WorkspaceRegistry.get_all")
+    @patch("src.sprawl.commands.wipe.get_all_workspaces")
     def test_wipe_local_only(self, mock_get_all, mock_expanduser):
         """wipe local_only deletes .agents/ but leaves global registry and sprawl_rc intact."""
         mock_expanduser.return_value = self.sprawl_rc
@@ -58,7 +58,7 @@ class TestWipe(unittest.TestCase):
         self.assertTrue(os.path.exists(self.cursorrules))
 
     @patch("src.sprawl.commands.wipe.os.path.expanduser")
-    @patch("src.sprawl.workspace.WorkspaceRegistry.get_all")
+    @patch("src.sprawl.commands.wipe.get_all_workspaces")
     def test_wipe_nuclear_purges_everything(self, mock_get_all, mock_expanduser):
         """wipe nuclear deletes local workspace, global registry, sprawl_rc, and cleans adapter files."""
         mock_expanduser.return_value = self.sprawl_rc

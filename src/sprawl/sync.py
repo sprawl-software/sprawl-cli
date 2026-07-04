@@ -352,10 +352,10 @@ def sync_app_directory(app_dir: str) -> dict:
                     pass
 
         # Update sync state in management plane
-        from .workspace import Workspace, WorkspaceRegistry
+        from .workspace import Workspace, update_workspace_sync_timestamp
         workspace = Workspace(app_dir)
         workspace.update_sync_state({"last_manifest_sync": True})
-        WorkspaceRegistry.update_sync_timestamp(workspace.path)
+        update_workspace_sync_timestamp(workspace.path)
         
         if backup_dir and not config.dry_run:
             shutil.rmtree(backup_dir, ignore_errors=True)

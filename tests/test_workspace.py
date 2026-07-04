@@ -6,7 +6,11 @@ import shutil
 from unittest.mock import patch
 
 from src.sprawl.config import create_config, config
-from src.sprawl.workspace import WorkspaceRegistry, WorkspaceError
+from src.sprawl.workspace import (
+    register_workspace, deregister_workspace, get_workspace_info,
+    get_all_workspaces, update_workspace_sync_timestamp,
+    load_workspace_registry, WorkspaceError
+)
 
 
 class TestWorkspaceRegistry(unittest.TestCase):
@@ -24,55 +28,55 @@ class TestWorkspaceRegistry(unittest.TestCase):
         shutil.rmtree(self.test_dir)
 
     def test_load_empty(self):
-        data = WorkspaceRegistry.load()
+        data = load_workspace_registry()
         self.assertEqual(data, {})
 
     def test_register_new_workspace(self):
-        WorkspaceRegistry.register("test-ws", "/tmp/test-ws", "github.com/test/dna")
-        data = WorkspaceRegistry.load()
+        register_workspace("test-ws", "/tmp/test-ws", "github.com/test/dna")
+        data = load_workspace_registry()
         self.assertIn("test-ws", data)
         self.assertEqual(data["test-ws"]["path"], os.path.abspath("/tmp/test-ws"))
         self.assertEqual(data["test-ws"]["dna_source"], "github.com/test/dna")
         self.assertIsNone(data["test-ws"]["last_sync_timestamp"])
 
     def test_register_update_existing(self):
-        WorkspaceRegistry.register("test-ws", "/tmp/test-ws")
-        WorkspaceRegistry.register("test-ws", "/tmp/test-ws-2", "new-dna")
+        register_workspace("test-ws", "/tmp/test-ws")
+        register_workspace("test-ws", "/tmp/test-ws-2", "new-dna")
         
-        data = WorkspaceRegistry.load()
+        data = load_workspace_registry()
         self.assertEqual(data["test-ws"]["path"], os.path.abspath("/tmp/test-ws-2"))
         self.assertEqual(data["test-ws"]["dna_source"], "new-dna")
 
     def test_deregister(self):
-        WorkspaceRegistry.register("test-ws", "/tmp/test-ws")
-        self.assertIn("test-ws", WorkspaceRegistry.get_all())
+        register_workspace("test-ws", "/tmp/test-ws")
+        self.assertIn("test-ws", get_all_workspaces())
         
-        WorkspaceRegistry.deregister("test-ws")
-        self.assertNotIn("test-ws", WorkspaceRegistry.get_all())
+        deregister_workspace("test-ws")
+        self.assertNotIn("test-ws", get_all_workspaces())
         
         with self.assertRaises(WorkspaceError):
-            WorkspaceRegistry.deregister("nonexistent")
+            deregister_workspace("nonexistent")
 
     def test_get(self):
-        WorkspaceRegistry.register("test-ws", "/tmp/test-ws")
-        ws = WorkspaceRegistry.get("test-ws")
+        register_workspace("test-ws", "/tmp/test-ws")
+        ws = get_workspace_info("test-ws")
         self.assertIsNotNone(ws)
         self.assertEqual(ws["path"], os.path.abspath("/tmp/test-ws"))
         
-        self.assertIsNone(WorkspaceRegistry.get("missing"))
+        self.assertIsNone(get_workspace_info("missing"))
 
     def test_update_sync_timestamp(self):
-        WorkspaceRegistry.register("test-ws", "/tmp/test-ws")
-        ws_before = WorkspaceRegistry.get("test-ws")
+        register_workspace("test-ws", "/tmp/test-ws")
+        ws_before = get_workspace_info("test-ws")
         self.assertIsNone(ws_before["last_sync_timestamp"])
         
-        WorkspaceRegistry.update_sync_timestamp("test-ws")
+        update_workspace_sync_timestamp("test-ws")
         
-        ws_after = WorkspaceRegistry.get("test-ws")
+        ws_after = get_workspace_info("test-ws")
         self.assertIsNotNone(ws_after["last_sync_timestamp"])
 
         with self.assertRaises(WorkspaceError):
-            WorkspaceRegistry.update_sync_timestamp("missing")
+            update_workspace_sync_timestamp("missing")
 
 if __name__ == "__main__":
     unittest.main()

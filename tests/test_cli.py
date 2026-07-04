@@ -65,7 +65,7 @@ rules:
         finally:
             os.remove(temp_path)
 
-    @patch('src.sprawl.commands.workspace.WorkspaceRegistry.register')
+    @patch('src.sprawl.commands.workspace.register_workspace')
     def test_cmd_graft(self, mock_register):
         original_cwd = os.getcwd()
         with tempfile.TemporaryDirectory() as temp_dir:
@@ -99,7 +99,7 @@ rules:
             finally:
                 os.chdir(original_cwd)
 
-    @patch('src.sprawl.commands.workspace.WorkspaceRegistry.register')
+    @patch('src.sprawl.commands.workspace.register_workspace')
     def test_cmd_create(self, mock_register):
         original_cwd = os.getcwd()
         with tempfile.TemporaryDirectory() as temp_dir:
@@ -118,7 +118,7 @@ rules:
             finally:
                 os.chdir(original_cwd)
 
-    @patch('src.sprawl.commands.workspace.WorkspaceRegistry.get_all')
+    @patch('src.sprawl.commands.workspace.get_all_workspaces')
     @patch('src.sprawl.commands.workspace.console.print')
     def test_cmd_ws_list(self, mock_print, mock_get_all):
         from src.sprawl.commands.workspace import cmd_ws_list
@@ -133,7 +133,7 @@ rules:
         self.assertIsInstance(table, Table)
         self.assertEqual(len(table.rows), 2)
 
-    @patch('src.sprawl.commands.workspace.WorkspaceRegistry.get_all')
+    @patch('src.sprawl.commands.workspace.get_all_workspaces')
     @patch('src.sprawl.commands.workspace.print_status')
     def test_cmd_ws_list_empty(self, mock_print_status, mock_get_all):
         from src.sprawl.commands.workspace import cmd_ws_list
@@ -141,8 +141,8 @@ rules:
         cmd_ws_list()
         mock_print_status.assert_called_with("No workspaces currently tracked in the registry.")
 
-    @patch('src.sprawl.commands.workspace.WorkspaceRegistry.deregister')
-    @patch('src.sprawl.commands.workspace.WorkspaceRegistry.get')
+    @patch('src.sprawl.commands.workspace.deregister_workspace')
+    @patch('src.sprawl.commands.workspace.get_workspace_info')
     @patch('src.sprawl.commands.workspace.shutil.rmtree')
     def test_cmd_ws_remove(self, mock_rmtree, mock_get, mock_deregister):
         from src.sprawl.commands.workspace import cmd_ws_remove
@@ -165,7 +165,7 @@ rules:
             mock_deregister.assert_called_with("existing_del")
             mock_rmtree.assert_called_with("/fake/path")
 
-    @patch('src.sprawl.commands.workspace.WorkspaceRegistry.get_all')
+    @patch('src.sprawl.commands.workspace.get_all_workspaces')
     @patch('src.sprawl.commands.sync_cmd.cmd_sync')
     @patch('src.sprawl.commands.workspace.os.path.exists', return_value=True)
     def test_cmd_ws_push(self, mock_exists, mock_sync, mock_get_all):
@@ -296,7 +296,7 @@ rules:
                 except Exception:
                     pass
 
-    @patch('src.sprawl.workspace.WorkspaceRegistry.update_sync_timestamp')
+    @patch('src.sprawl.workspace.update_workspace_sync_timestamp')
     @patch('src.sprawl.workspace.Workspace.update_sync_state')
     @patch('src.sprawl.sync._sync_app_directory_impl')
     @patch('src.sprawl.sync.parse_sprawl_manifest', return_value={})

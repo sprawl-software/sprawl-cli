@@ -9,6 +9,8 @@ from rich.prompt import Confirm
 from ..config import config
 from ..output import console, print_status, print_warning
 from ..exceptions import SprawlError
+from ..workspace import get_all_workspaces, deregister_workspace, WorkspaceError
+
 
 
 def cmd_wipe(target_dir: Optional[str] = None, force: bool = False, local_only: bool = False) -> None:
@@ -54,10 +56,9 @@ def cmd_wipe(target_dir: Optional[str] = None, force: bool = False, local_only: 
         # First, try to deregister it from the workspace registry if the global registry exists
         if has_global and not local_only:
             try:
-                from ..workspace import WorkspaceRegistry, WorkspaceError
                 workspace_name = os.path.basename(cwd)
                 try:
-                    WorkspaceRegistry.deregister(workspace_name)
+                    deregister_workspace(workspace_name)
                     print_status(f"Deregistered workspace '{workspace_name}' from global tracking.")
                 except WorkspaceError:
                     pass # Was not registered, ignore
@@ -73,9 +74,8 @@ def cmd_wipe(target_dir: Optional[str] = None, force: bool = False, local_only: 
     # Scan known workspaces in the registry and clean up editor rules files/symlinks
     if not local_only and has_global:
         try:
-            from ..workspace import WorkspaceRegistry
             from ..bind import ADAPTER_MAP
-            workspaces = WorkspaceRegistry.get_all()
+            workspaces = get_all_workspaces()
             for ws_name, ws_info in workspaces.items():
                 ws_path = ws_info.get("path")
                 if ws_path and os.path.exists(ws_path):

@@ -77,84 +77,81 @@ class Workspace:
             json.dump(current_state, f, indent=4)
 
 
-class WorkspaceRegistry:
-    """Manages the tracked workspaces in ~/.sprawl/workspaces.json."""
+def load_workspace_registry() -> Dict[str, Any]:
+    """Loads the registry from disk."""
+    path = config.workspace_registry_path
+    if not os.path.exists(path):
+        return {}
+    try:
+        with open(path, "r") as f:
+            return json.load(f)
+    except json.JSONDecodeError:
+        return {}
+
+
+def save_workspace_registry(data: Dict[str, Any]) -> None:
+    """Saves the registry to disk."""
+    path = config.workspace_registry_path
+    os.makedirs(os.path.dirname(path), exist_ok=True)
+    with open(path, "w") as f:
+        json.dump(data, f, indent=4)
+
+
+def register_workspace(name: str, path: str, dna_source: Optional[str] = None) -> None:
+    """Registers a new workspace or updates an existing one's tracking info."""
+    data = load_workspace_registry()
     
-    @classmethod
-    def load(cls) -> Dict[str, Any]:
-        """Loads the registry from disk."""
-        path = config.workspace_registry_path
-        if not os.path.exists(path):
-            return {}
-        try:
-            with open(path, "r") as f:
-                return json.load(f)
-        except json.JSONDecodeError:
-            return {}
+    # Ensure path is absolute
+    abs_path = os.path.abspath(os.path.expanduser(path))
+    
+    if name not in data:
+        data[name] = {
+            "path": abs_path,
+            "dna_source": dna_source,
+            "last_sync_timestamp": None
+        }
+    else:
+        data[name]["path"] = abs_path
+        data[name]["dna_source"] = dna_source
+    
+    save_workspace_registry(data)
 
-    @classmethod
-    def save(cls, data: Dict[str, Any]) -> None:
-        """Saves the registry to disk."""
-        path = config.workspace_registry_path
-        os.makedirs(os.path.dirname(path), exist_ok=True)
-        with open(path, "w") as f:
-            json.dump(data, f, indent=4)
 
-    @classmethod
-    def register(cls, name: str, path: str, dna_source: Optional[str] = None) -> None:
-        """Registers a new workspace or updates an existing one's tracking info."""
-        data = cls.load()
-        
-        # Ensure path is absolute
-        abs_path = os.path.abspath(os.path.expanduser(path))
-        
-        if name not in data:
-            data[name] = {
-                "path": abs_path,
-                "dna_source": dna_source,
-                "last_sync_timestamp": None
-            }
-        else:
-            data[name]["path"] = abs_path
-            data[name]["dna_source"] = dna_source
-        
-        cls.save(data)
+def deregister_workspace(name: str) -> None:
+    """Removes a workspace from the registry."""
+    data = load_workspace_registry()
+    if name in data:
+        del data[name]
+        save_workspace_registry(data)
+    else:
+        raise WorkspaceError(f"Workspace '{name}' is not registered.")
 
-    @classmethod
-    def deregister(cls, name: str) -> None:
-        """Removes a workspace from the registry."""
-        data = cls.load()
-        if name in data:
-            del data[name]
-            cls.save(data)
-        else:
+
+def get_workspace_info(name: str) -> Optional[Dict[str, Any]]:
+    """Gets a workspace's tracking info."""
+    data = load_workspace_registry()
+    return data.get(name)
+
+
+def get_all_workspaces() -> Dict[str, Any]:
+    """Returns all registered workspaces."""
+    return load_workspace_registry()
+
+
+def update_workspace_sync_timestamp(name: str) -> None:
+    """Updates the last sync timestamp for a given workspace by name or path."""
+    data = load_workspace_registry()
+    if name not in data:
+        # Fallback: search by path
+        found_name = None
+        for ws_name, ws_data in data.items():
+            if ws_data.get("path") == name:
+                found_name = ws_name
+                break
+        if not found_name:
             raise WorkspaceError(f"Workspace '{name}' is not registered.")
+        name = found_name
+    
+    data[name]["last_sync_timestamp"] = datetime.datetime.now(datetime.timezone.utc).isoformat()
+    save_workspace_registry(data)
 
-    @classmethod
-    def get(cls, name: str) -> Optional[Dict[str, Any]]:
-        """Gets a workspace's tracking info."""
-        data = cls.load()
-        return data.get(name)
-
-    @classmethod
-    def get_all(cls) -> Dict[str, Any]:
-        """Returns all registered workspaces."""
-        return cls.load()
-
-    @classmethod
-    def update_sync_timestamp(cls, name: str) -> None:
-        """Updates the last sync timestamp for a given workspace by name or path."""
-        data = cls.load()
-        if name not in data:
-            # Fallback: search by path
-            found_name = None
-            for ws_name, ws_data in data.items():
-                if ws_data.get("path") == name:
-                    found_name = ws_name
-                    break
-            if not found_name:
-                raise WorkspaceError(f"Workspace '{name}' is not registered.")
-            name = found_name
-        
-        data[name]["last_sync_timestamp"] = datetime.datetime.now(datetime.timezone.utc).isoformat()
-        cls.save(data)

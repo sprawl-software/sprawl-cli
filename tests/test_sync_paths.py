@@ -36,7 +36,7 @@ class TestSyncPathsAndRootPollution(unittest.TestCase):
         os.chdir(self.original_cwd)
         shutil.rmtree(self.temp_dir, ignore_errors=True)
 
-    @patch('sprawl.workspace.WorkspaceRegistry.register')
+    @patch('sprawl.workspace.register_workspace')
     def test_workspace_creation_paths(self, mock_register):
         """Verifies sprawl create scaffolds config files inside .agents/ and not in root."""
         cmd_create("MyWorkspace", path=self.temp_dir)
@@ -55,7 +55,7 @@ class TestSyncPathsAndRootPollution(unittest.TestCase):
             data = json.load(f)
             self.assertIn("allowed_mounts", data)
 
-    @patch('sprawl.workspace.WorkspaceRegistry.update_sync_timestamp')
+    @patch('sprawl.workspace.update_workspace_sync_timestamp')
     @patch('sprawl.workspace.Workspace.update_sync_state')
     def test_sync_paths_and_root_cleanup(self, mock_state, mock_timestamp):
         """Verifies sprawl sync generates root-level files and cleans up stray root directories."""

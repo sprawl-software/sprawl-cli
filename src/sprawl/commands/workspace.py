@@ -7,7 +7,10 @@ import shutil
 from ..config import config
 from ..output import print_status, print_warning, console
 from ..exceptions import SprawlError
-from ..workspace import WorkspaceRegistry
+from ..workspace import (
+    register_workspace, deregister_workspace, get_workspace_info,
+    get_all_workspaces, WorkspaceError
+)
 from rich.table import Table
 
 
@@ -65,7 +68,7 @@ bindings: []
         with open(config_path, "w") as f:
             f.write(default_config)
 
-        WorkspaceRegistry.register(workspace_name, workspace_dir)
+        register_workspace(workspace_name, workspace_dir)
         
     from rich.panel import Panel
     from ..output import console
@@ -185,7 +188,7 @@ def cmd_graft() -> None:
     elif not config.dry_run:
         with open(manifest_path, "w") as f:
             f.write(manifest_content)
-        WorkspaceRegistry.register(app_name, cwd)
+        register_workspace(app_name, cwd)
         print_status(
             f"Successfully grafted sprawl_manifest.yml into {local_agents_dir}.\n"
             "• You can now run [accent]sprawl bind[/accent] to select rules bindings for your active IDEs/agents.\n"
@@ -194,7 +197,7 @@ def cmd_graft() -> None:
 
 def cmd_ws_list() -> None:
     """Lists all tracked workspaces with their details."""
-    workspaces = WorkspaceRegistry.get_all()
+    workspaces = get_all_workspaces()
     if not workspaces:
         if config.json_logging:
             import json
@@ -252,13 +255,13 @@ def cmd_ws_remove(name: str, delete: bool = False) -> None:
         delete: Whether to also delete the directory.
     """
     try:
-        ws_info = WorkspaceRegistry.get(name)
+        ws_info = get_workspace_info(name)
         if not ws_info:
             print_warning(f"Workspace '{name}' is not currently tracked.")
             return
 
         path = ws_info.get("path")
-        WorkspaceRegistry.deregister(name)
+        deregister_workspace(name)
         print_status(f"Workspace '{name}' has been deregistered.")
         
         if delete and path and os.path.exists(path):
@@ -278,7 +281,7 @@ def cmd_ws_push(name: str = None) -> None:
         name: Optional name of a specific workspace to sync.
     """
     from .sync_cmd import cmd_sync
-    workspaces = WorkspaceRegistry.get_all()
+    workspaces = get_all_workspaces()
     
     if name:
         if name not in workspaces:

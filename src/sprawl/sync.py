@@ -88,8 +88,9 @@ def _sync_app_directory_impl(app_dir: str, local_agents_dir: str, manifest_path:
                 os.remove(old_design_path)
                 if config.verbose:
                     print_status("Pruned deprecated workspace-root file: design.md")
-            except Exception:
-                pass
+            except Exception as e:
+                if config.verbose:
+                    print_status(f"Error removing deprecated design.md: {e}")
 
     global_design = os.path.join(source_dna_dir, "DESIGN.md")
     local_design = os.path.join(app_dir, "DESIGN.md")
@@ -209,8 +210,9 @@ def _sync_app_directory_impl(app_dir: str, local_agents_dir: str, manifest_path:
                     os.remove(old_path)
                     if config.verbose:
                         print_status(f"Pruned deprecated workspace-root file: {old_file}")
-                except Exception:
-                    pass
+                except Exception as e:
+                    if config.verbose:
+                        print_status(f"Error removing deprecated workspace-root file {old_file}: {e}")
 
     agents_md_path = os.path.join(app_dir, "AGENTS.md")
     if config.verbose and config.dry_run:
@@ -236,8 +238,9 @@ def _sync_app_directory_impl(app_dir: str, local_agents_dir: str, manifest_path:
                 with open(config_path, "r", encoding="utf-8") as f:
                     cfg = json.load(f)
                     allowed_mounts = cfg.get("allowed_mounts", {})
-            except Exception:
-                pass
+            except Exception as e:
+                if config.verbose:
+                    print_status(f"Error loading sprawl-config.json: {e}")
 
         from .generators.agents_md import generate_agents_md
         generate_agents_md(agents_md_path, reqs, app_dir, persona_content, allowed_mounts=allowed_mounts)

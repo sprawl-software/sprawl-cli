@@ -82,6 +82,7 @@ def bind_adapters(target_dir: str = ".", force: bool = False, targets: list[str]
 
     # Deletion of excluded bindings
     excluded_targets = [k for k in ADAPTER_MAP.keys() if k not in targets]
+    from ..config import config
     for tkey in excluded_targets:
         adapter = ADAPTER_MAP[tkey]
         if adapter["type"] == "antigravity":
@@ -91,8 +92,9 @@ def bind_adapters(target_dir: str = ".", force: bool = False, targets: list[str]
                 try:
                     os.remove(ag_link)
                     console.print(f"  [info][-] Antigravity .agent Binding:[/info] Removed → .agent")
-                except Exception:
-                    pass
+                except Exception as e:
+                    if config.verbose:
+                        console.print(f"  [dim]Debug: Failed to remove {ag_link}: {e}[/dim]")
             # 2. Antigravity gemini.json manifest removal
             gemini_json_path = os.path.join(target_dir, ".gemini", "antigravity", "gemini.json")
             if os.path.exists(gemini_json_path):
@@ -100,8 +102,9 @@ def bind_adapters(target_dir: str = ".", force: bool = False, targets: list[str]
                     os.remove(gemini_json_path)
                     console.print(f"  [info][-] Antigravity gemini.json Binding:[/info] Removed → gemini.json")
                     _prune_empty_dirs(gemini_json_path)
-                except Exception:
-                    pass
+                except Exception as e:
+                    if config.verbose:
+                        console.print(f"  [dim]Debug: Failed to remove {gemini_json_path}: {e}[/dim]")
             # 3. Antigravity MCP tool schemas removal
             _remove_antigravity_schemas()
         elif adapter["type"] == "symlink":
@@ -111,8 +114,9 @@ def bind_adapters(target_dir: str = ".", force: bool = False, targets: list[str]
                     os.remove(rules_path)
                     console.print(f"  [info][-] {adapter['label']} Binding:[/info] Removed → {adapter['path']}")
                     _prune_empty_dirs(rules_path)
-                except Exception:
-                    pass
+                except Exception as e:
+                    if config.verbose:
+                        console.print(f"  [dim]Debug: Failed to remove {rules_path}: {e}[/dim]")
             if tkey == "copilot":
                 # Clean up prompts folder
                 prompts_dir = os.path.join(target_dir, ".github", "prompts")
@@ -121,8 +125,9 @@ def bind_adapters(target_dir: str = ".", force: bool = False, targets: list[str]
                         shutil.rmtree(prompts_dir)
                         console.print("  [info][-] GitHub Copilot Prompts:[/info] Removed prompts directory")
                         _prune_empty_dirs(os.path.join(prompts_dir, "dummy.txt"))
-                    except Exception:
-                        pass
+                    except Exception as e:
+                        if config.verbose:
+                            console.print(f"  [dim]Debug: Failed to remove prompts directory {prompts_dir}: {e}[/dim]")
 
     # Summary
     written = sum(1 for r in results if r)

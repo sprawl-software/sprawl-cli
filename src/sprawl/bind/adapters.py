@@ -181,5 +181,8 @@ def _prune_empty_dirs(path: str) -> None:
         if os.path.isdir(dir_name) and not os.listdir(dir_name):
             os.rmdir(dir_name)
             _prune_empty_dirs(dir_name)
-    except Exception:
-        pass
+    except Exception as e:
+        from ..config import config
+        if config.verbose:
+            console.print(f"  [dim]Debug: Failed to prune directory {dir_name}: {e}[/dim]")
+

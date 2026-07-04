@@ -112,6 +112,13 @@ def cmd_wipe(target_dir: Optional[str] = None, force: bool = False, local_only: 
 
     # Wiping global
     if not local_only and has_global:
+        # Clean up any provisioned Antigravity MCP schemas
+        try:
+            from ..bind import _remove_antigravity_schemas
+            _remove_antigravity_schemas()
+        except Exception:
+            pass
+
         global_dir = os.path.dirname(config.config_path)
         try:
             shutil.rmtree(global_dir)

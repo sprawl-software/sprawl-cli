@@ -6,6 +6,7 @@ dependency injection for testing and environment-driven path resolution.
 
 import os
 import json
+import hashlib
 from dataclasses import dataclass, field
 from typing import Any, Optional
 
@@ -59,10 +60,10 @@ class SprawlConfig:
 
     def get_workspace_mgt_dir(self, workspace_path: str) -> str:
         """Returns the hidden management directory for a given workspace path."""
-        import hashlib
         abs_path = os.path.abspath(os.path.expanduser(workspace_path))
         path_hash = hashlib.sha256(abs_path.encode()).hexdigest()
         return os.path.join(self.workspaces_dir, path_hash)
+
 
     def reinitialize(self) -> None:
         """Re-evaluates environment state and resolves paths accordingly."""

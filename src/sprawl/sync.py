@@ -3,11 +3,14 @@ import shutil
 import filecmp
 import subprocess
 import sys
+import json
 
 from .config import config
 from .output import print_status, print_warning, print_error
 from .utils import CATEGORIES
 from .exceptions import SprawlError
+from .generators.agents_md import generate_agents_md
+from .generators.mcp_config import generate_mcp_config
 
 def parse_sprawl_manifest(file_path: str) -> dict[str, list[str]]:
     """
@@ -234,7 +237,6 @@ def _sync_app_directory_impl(app_dir: str, local_agents_dir: str, manifest_path:
         config_path = os.path.join(local_agents_dir, "sprawl-config.json")
         if os.path.exists(config_path):
             try:
-                import json
                 with open(config_path, "r", encoding="utf-8") as f:
                     cfg = json.load(f)
                     allowed_mounts = cfg.get("allowed_mounts", {})
@@ -242,7 +244,6 @@ def _sync_app_directory_impl(app_dir: str, local_agents_dir: str, manifest_path:
                 if config.verbose:
                     print_status(f"Error loading sprawl-config.json: {e}")
 
-        from .generators.agents_md import generate_agents_md
         generate_agents_md(agents_md_path, reqs, app_dir, persona_content, allowed_mounts=allowed_mounts)
 
         if config.verbose:
@@ -253,7 +254,6 @@ def _sync_app_directory_impl(app_dir: str, local_agents_dir: str, manifest_path:
     if config.verbose and config.dry_run:
         print_status(f"DRY RUN: Would generate mcp_config.json registry.")
     elif not config.dry_run:
-        from .generators.mcp_config import generate_mcp_config
         generate_mcp_config(
             mcp_config_path, 
             reqs, 
@@ -264,7 +264,6 @@ def _sync_app_directory_impl(app_dir: str, local_agents_dir: str, manifest_path:
         )
         # Double-check JSON structure validity
         try:
-            import json
             with open(mcp_config_path, "r") as f:
                 json.loads(f.read())
         except Exception as e:
@@ -315,7 +314,6 @@ def sync_app_directory(app_dir: str) -> dict:
             with open(sprawl_config_path, "r") as f:
                 content = f.read().strip()
                 if content:
-                    import json
                     json.loads(content)
         except FileNotFoundError:
             pass

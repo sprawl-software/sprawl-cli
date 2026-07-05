@@ -30,6 +30,14 @@ jobs:
       - name: Install build dependencies
         run: python -m pip install --upgrade pip build
 
+      - name: Run unit tests
+        run: python -m unittest discover -s tests
+
+      - name: Run E2E QA Verification Suite
+        run: |
+          chmod +x tests/qa_run_verifier.py
+          ./tests/qa_run_verifier.py --ci
+
       - name: Build package
         run: python -m build
 

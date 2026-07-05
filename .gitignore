@@ -108,3 +108,11 @@ htmlcov/
 TEST_ADD_DUMMY/
 test-sandbox/
 
+# Local workspace rules, private bindings, and transient design drafts
+AGENTS.md
+mcp_config.json
+DESIGN.md
+.vscoderules
+.vscodiumrules
+docs/sprawl_cli_architecture_review.md
+

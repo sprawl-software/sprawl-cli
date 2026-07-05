@@ -234,14 +234,14 @@ def main():
         },
         {
             "name": "Add Skill Dependency",
-            "args": ["add", "sprawl-design-system"],
+            "args": ["add", "persona-demo_engineer"],
             "cwd": os.path.join(SANDBOX_DIR, "qa_workspace"),
-            "desc": "Incorporate sprawl-design-system dependency inside local manifest.",
+            "desc": "Incorporate persona-demo_engineer dependency inside local manifest.",
             "expect_zero": True
         },
         {
             "name": "Prune/Remove Dependency",
-            "args": ["rm", "sprawl-design-system"],
+            "args": ["rm", "persona-demo_engineer"],
             "cwd": os.path.join(SANDBOX_DIR, "qa_workspace"),
             "desc": "Safely strip dependencies and trigger workspace manifest cleanups.",
             "expect_zero": True

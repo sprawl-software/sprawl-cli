@@ -225,15 +225,9 @@ elif [ -n "${SPRAWL_VERSION}" ]; then
     log_success "Sprawl CLI ${SPRAWL_VERSION} installed from pinned release."
 
 else
-    # Latest from PyPI or GitHub
-    log_info "Attempting installation from PyPI (latest)..."
-    if pipx install sprawl-cli 2>/dev/null; then
-        log_success "Sprawl CLI installed from PyPI."
-    else
-        log_warn "PyPI release not found or failed. Falling back to GitHub main branch..."
-        pipx install "git+https://github.com/${SPRAWL_GITHUB_REPO}.git" --force
-        log_success "Sprawl CLI installed from GitHub main."
-    fi
+    log_info "Installing the latest version from GitHub main branch..."
+    pipx install "git+https://github.com/${SPRAWL_GITHUB_REPO}.git" --force
+    log_success "Sprawl CLI installed from GitHub main branch."
 fi
 
 # ------------------------------------

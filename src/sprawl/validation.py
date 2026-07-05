@@ -172,13 +172,27 @@ def validate_dna_directory(dna_dir: str) -> None:
                     if "atoms" in root:
                         allowed_fields = {f.name for f in fields(AtomSchema)}
                         filtered_data = {k: v for k, v in data.items() if k in allowed_fields}
-                        schema = AtomSchema(**filtered_data)
+                        
+                        name = filtered_data.get("name") if filtered_data.get("name") is not None else (data.get("title") or os.path.splitext(file)[0])
+                        desc = filtered_data.get("description") if filtered_data.get("description") is not None else ""
+                        atype = filtered_data.get("type") if filtered_data.get("type") is not None else "object"
+                        
+                        schema = AtomSchema(name=name, description=desc, type=atype)
                         schema.validate()
                     elif "molecules" in root:
-                        allowed_fields = {f.name for f in fields(MoleculeSchema)}
-                        filtered_data = {k: v for k, v in data.items() if k in allowed_fields}
-                        schema = MoleculeSchema(**filtered_data)
-                        schema.validate()
+                        if "mcpServers" in data and "atoms" not in data:
+                            # Skip MoleculeSchema validation for raw MCP configs
+                            pass
+                        else:
+                            allowed_fields = {f.name for f in fields(MoleculeSchema)}
+                            filtered_data = {k: v for k, v in data.items() if k in allowed_fields}
+                            
+                            name = filtered_data.get("name") if filtered_data.get("name") is not None else os.path.splitext(file)[0]
+                            version = filtered_data.get("version") if filtered_data.get("version") is not None else "1.0.0"
+                            atoms = filtered_data.get("atoms") if filtered_data.get("atoms") is not None else []
+                            
+                            schema = MoleculeSchema(name=name, version=version, atoms=atoms)
+                            schema.validate()
                 elif file.endswith((".yaml", ".yml")):
                     # Generic structure check — just verify it's parseable
                     with open(filepath, "r") as f:

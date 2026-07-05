@@ -229,6 +229,34 @@ class TestValidateDnaDirectory(unittest.TestCase):
                 }, f)
 
             validate_dna_directory(tmpdir)  # Should not raise type errors
+    def test_json_fallback_and_mcp_config(self) -> None:
+        """Validates that title/filename fallbacks and raw MCP molecule skips behave correctly."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            # 1. Atom with 'title' instead of 'name'
+            atoms_dir = os.path.join(tmpdir, "atoms")
+            os.makedirs(atoms_dir)
+            atom_file = os.path.join(atoms_dir, "user_profile.json")
+            with open(atom_file, "w") as f:
+                json.dump({
+                    "title": "UserProfile",
+                    "type": "object",
+                    "description": "A template description"
+                }, f)
+
+            # 2. Raw MCP config inside 'molecules'
+            molecules_dir = os.path.join(tmpdir, "molecules")
+            os.makedirs(molecules_dir)
+            molecule_file = os.path.join(molecules_dir, "local-filesystem-mcp.json")
+            with open(molecule_file, "w") as f:
+                json.dump({
+                    "mcpServers": {
+                        "filesystem": {
+                            "command": "npx"
+                        }
+                    }
+                }, f)
+
+            validate_dna_directory(tmpdir)  # Should pass without error
 
 
 if __name__ == "__main__":

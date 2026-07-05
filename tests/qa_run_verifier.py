@@ -14,7 +14,7 @@ import sys
 from typing import List, Dict, Any
 
 # Target paths
-REPO_ROOT = os.path.dirname(os.path.abspath(__file__))
+REPO_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 SANDBOX_DIR = os.path.join(REPO_ROOT, "qa_sandbox")
 VENV_DIR = os.path.join(SANDBOX_DIR, ".venv")
 SPRAWL_BIN = os.path.join(VENV_DIR, "bin", "sprawl")

@@ -86,8 +86,18 @@ class SprawlConfig:
         config_data = self.load()
         config_data.update(updates)
         os.makedirs(os.path.dirname(self.config_path), exist_ok=True)
-        with open(self.config_path, "w") as f:
-            json.dump(config_data, f, indent=4)
+        tmp_path = self.config_path + ".tmp"
+        try:
+            with open(tmp_path, "w") as f:
+                json.dump(config_data, f, indent=4)
+            os.replace(tmp_path, self.config_path)
+        except Exception as e:
+            if os.path.exists(tmp_path):
+                try:
+                    os.remove(tmp_path)
+                except Exception:
+                    pass
+            raise e
 
     @classmethod
     def from_env(cls) -> "SprawlConfig":

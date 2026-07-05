@@ -136,5 +136,21 @@ class TestBind(unittest.TestCase):
         mock_bind.assert_called_once_with(self.test_dir, force=False, targets=["cursor", "copilot"])
 
 
+    def test_bind_prevents_unsafe_symlink_targets(self):
+        """_write_symlink rejects target paths resolving outside the workspace root."""
+        from src.sprawl.bind.adapters import _write_symlink
+        
+        # Safe target: resolves inside test_dir (which has .agents/)
+        link_path = os.path.join(self.test_dir, ".myrules")
+        safe_target = "AGENTS.md"
+        self.assertTrue(_write_symlink("MyLabel", link_path, safe_target, force=True))
+        self.assertTrue(os.path.islink(link_path))
+        
+        # Unsafe target: resolves outside test_dir (e.g. points to parent directory sibling)
+        unsafe_target = "../../some_sibling"
+        link_path_2 = os.path.join(self.test_dir, ".myrules2")
+        self.assertFalse(_write_symlink("MyLabel", link_path_2, unsafe_target, force=True))
+        self.assertFalse(os.path.exists(link_path_2))
+
 if __name__ == "__main__":
     unittest.main()

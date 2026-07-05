@@ -74,7 +74,7 @@ def cmd_status(target_dir: Optional[str] = None) -> None:
         try:
             import subprocess
             result = subprocess.check_output(
-                [venv_python, "--version"], text=True, stderr=subprocess.STDOUT
+                [venv_python, "--version"], text=True, stderr=subprocess.STDOUT, timeout=5
             ).strip()
             venv_status = f"[success]● Healthy[/success] ({result})"
         except Exception:

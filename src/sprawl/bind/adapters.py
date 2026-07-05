@@ -1,6 +1,5 @@
-"""IDE adapters mappings and base file/symlink writing helpers."""
-
 import os
+from typing import Optional
 from ..output import console
 
 _RULES_CONTENT = """\
@@ -112,8 +111,36 @@ def _write_binding(
         return False
 
 
+def _find_workspace_root(path: str) -> Optional[str]:
+    """Finds the workspace root by searching upwards for a .agents directory."""
+    current = os.path.abspath(path)
+    while True:
+        if os.path.isdir(os.path.join(current, ".agents")):
+            return os.path.realpath(current)
+        parent = os.path.dirname(current)
+        if parent == current:
+            break
+        current = parent
+    return None
+
+
+def _is_safe_symlink_target(link_path: str, target: str) -> bool:
+    """Verifies if the symlink target resolves strictly inside the workspace containing link_path."""
+    workspace_root = _find_workspace_root(link_path)
+    if not workspace_root:
+        return True  # Allow outside-of-workspace symlinks if no .agents context exists (e.g. testing)
+
+    abs_target = os.path.realpath(os.path.join(os.path.dirname(link_path), target))
+    real_root = os.path.realpath(workspace_root)
+    return abs_target == real_root or abs_target.startswith(real_root + os.sep)
+
+
 def _write_symlink(label: str, link_path: str, target: str, force: bool) -> bool:
     """Creates a symlink binding."""
+    if not _is_safe_symlink_target(link_path, target):
+        console.print(f"  [error]✗ {label} Binding:[/error] Security Violation: Target '{target}' resolves outside workspace root.")
+        return False
+
     if os.path.exists(link_path) or os.path.islink(link_path):
         if not force:
             console.print(f"  [dim]○ {label} Binding:[/dim] already exists (use --force to overwrite)")
@@ -145,6 +172,10 @@ def _bind_rules_symlink(
     # Calculate target path of the symlink (relative to the directory of rules_path)
     rel_target = os.path.relpath(agents_md_path, os.path.dirname(rules_path))
     
+    if not _is_safe_symlink_target(rules_path, rel_target):
+        console.print(f"  [error]✗ {label} Binding:[/error] Security Violation: Target '{rel_target}' resolves outside workspace root.")
+        return False
+
     # Try to create symlink
     try:
         if os.path.exists(rules_path) or os.path.islink(rules_path):

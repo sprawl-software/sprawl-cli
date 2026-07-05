@@ -210,10 +210,13 @@ def print_help() -> None:
     t_workspace.add_row("sync", "Injects DNA locally and provisions sandboxes (.venv, npm, cargo).")
     t_workspace.add_row("bind", "Generates universal IDE/Agent bindings (Antigravity, Cursor, RooCode, Windsurf, Copilot).")
     t_workspace.add_row("shell [dir]", "Enters workspace-isolated subshell with activated .venv.")
+    t_workspace.add_row("mount add <PATH>", "Mounts a directory for sandboxed MCP server access.")
+    t_workspace.add_row("mount remove <ALIAS>", "Removes an active directory mount.")
+    t_workspace.add_row("mount list", "Lists all configured directory mounts.")
 
     t_artifact = create_category_table()
     t_artifact.add_row("ls", "Scans the active DNA registry and lists all available artifacts.")
-    t_artifact.add_row("scaffold <TYPE> <N>", "Generates boilerplate for personas, rules, and skills.")
+    t_artifact.add_row("scaffold <TYPE> <NAME>", "Generates boilerplate for personas, rules, and skills.")
     t_artifact.add_row("add <ITEMS...>", "Smart Injection: automatically infers and injects dependencies.")
     t_artifact.add_row("rm <ITEMS...>", "Symmetrical Removal: safely removes artifacts and triggers prune.")
 
@@ -226,6 +229,8 @@ def print_help() -> None:
     t_diag.add_row("doctor", "Runs full system diagnostics.")
     t_diag.add_row("wipe [dir]", "Nuclear removal of all Sprawl traces from system.")
     t_diag.add_row("man", "Prints the comprehensive AAF manual and setup guide directly.")
+    if os.environ.get("SPRAWL_DEV") == "1":
+        t_diag.add_row("test", "Runs the test suite (Dev only).")
     
     t_options = create_category_table()
     t_options.add_row("-v, --version", "Checks the active Sprawl engine version structure.")

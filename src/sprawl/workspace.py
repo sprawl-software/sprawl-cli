@@ -54,8 +54,18 @@ class Workspace:
     def bind_dna(self, alias: str) -> None:
         """Binds this workspace to a DNA alias in the management plane."""
         self.ensure_mgt_dir()
-        with open(self.dna_binding_path, "w") as f:
-            json.dump({"alias": alias, "bound_at": datetime.datetime.now(datetime.timezone.utc).isoformat()}, f, indent=4)
+        tmp_path = self.dna_binding_path + ".tmp"
+        try:
+            with open(tmp_path, "w") as f:
+                json.dump({"alias": alias, "bound_at": datetime.datetime.now(datetime.timezone.utc).isoformat()}, f, indent=4)
+            os.replace(tmp_path, self.dna_binding_path)
+        except Exception:
+            if os.path.exists(tmp_path):
+                try:
+                    os.remove(tmp_path)
+                except Exception:
+                    pass
+            raise
 
     def get_sync_state(self) -> Dict[str, Any]:
         """Returns the sync state for this workspace."""
@@ -73,8 +83,18 @@ class Workspace:
         current_state = self.get_sync_state()
         current_state.update(state)
         current_state["last_sync_timestamp"] = datetime.datetime.now(datetime.timezone.utc).isoformat()
-        with open(self.sync_state_path, "w") as f:
-            json.dump(current_state, f, indent=4)
+        tmp_path = self.sync_state_path + ".tmp"
+        try:
+            with open(tmp_path, "w") as f:
+                json.dump(current_state, f, indent=4)
+            os.replace(tmp_path, self.sync_state_path)
+        except Exception:
+            if os.path.exists(tmp_path):
+                try:
+                    os.remove(tmp_path)
+                except Exception:
+                    pass
+            raise
 
 
 def load_workspace_registry() -> Dict[str, Any]:
@@ -93,8 +113,18 @@ def save_workspace_registry(data: Dict[str, Any]) -> None:
     """Saves the registry to disk."""
     path = config.workspace_registry_path
     os.makedirs(os.path.dirname(path), exist_ok=True)
-    with open(path, "w") as f:
-        json.dump(data, f, indent=4)
+    tmp_path = path + ".tmp"
+    try:
+        with open(tmp_path, "w") as f:
+            json.dump(data, f, indent=4)
+        os.replace(tmp_path, path)
+    except Exception:
+        if os.path.exists(tmp_path):
+            try:
+                os.remove(tmp_path)
+            except Exception:
+                pass
+        raise
 
 
 def register_workspace(name: str, path: str, dna_source: Optional[str] = None) -> None:

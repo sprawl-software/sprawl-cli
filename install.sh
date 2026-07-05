@@ -27,6 +27,15 @@ log_warn()    { echo -e "${YELLOW}[!]${NC} $*"; }
 log_error()   { echo -e "${RED}[✗]${NC} $*" >&2; }
 log_fatal()   { log_error "$*"; exit 1; }
 
+# Temp folder cleanup trap
+TMPDIR=""
+cleanup() {
+    if [ -n "${TMPDIR}" ] && [ -d "${TMPDIR}" ]; then
+        rm -rf "${TMPDIR}"
+    fi
+}
+trap cleanup EXIT
+
 # ------------------------------------
 # Version Pins
 # ------------------------------------
@@ -105,20 +114,36 @@ log_success "Python ${PY_VERSION} OK."
 # ------------------------------------
 # 4. pipx Verification / Installation
 # ------------------------------------
+prompt_sudo() {
+    log_warn "Installing 'pipx' requires root privileges (sudo)."
+    if [ -t 0 ]; then
+        read -p "Allow installation via sudo? [y/N] " -n 1 -r
+        echo ""
+        if [[ ! $REPLY =~ ^[Yy]$ ]]; then
+            log_fatal "Root permission denied. Please install 'pipx' manually and rerun the installer."
+        fi
+    else
+        log_info "Piped install detected — executing sudo command..."
+    fi
+}
+
 if ! command -v pipx &>/dev/null; then
     log_warn "'pipx' not found. Attempting automatic installation..."
 
     if command -v apt-get &>/dev/null; then
         log_info "Detected Debian/Ubuntu — using apt-get..."
+        prompt_sudo
         sudo apt-get update -qq && sudo apt-get install -y pipx
     elif command -v brew &>/dev/null; then
         log_info "Detected macOS/Homebrew — using brew..."
         brew install pipx
     elif command -v dnf &>/dev/null; then
         log_info "Detected Fedora — using dnf..."
+        prompt_sudo
         sudo dnf install -y pipx
     elif command -v pacman &>/dev/null; then
         log_info "Detected Arch Linux — using pacman..."
+        prompt_sudo
         sudo pacman -S --noconfirm python-pipx
     else
         log_warn "No compatible package manager detected. Falling back to pip user install..."
@@ -143,13 +168,14 @@ verify_checksum() {
         return 0
     fi
 
+    local actual=""
     if command -v sha256sum &>/dev/null; then
         actual=$(sha256sum "${file}" | awk '{print $1}')
     elif command -v shasum &>/dev/null; then
         actual=$(shasum -a 256 "${file}" | awk '{print $1}')
     else
-        log_warn "No sha256sum or shasum tool found — skipping checksum verification."
-        return 0
+        log_error "No sha256sum or shasum tool found to verify checksum!"
+        log_fatal "Cannot guarantee archive integrity without verification tools. Please install sha256sum or shasum."
     fi
 
     if [ "${actual}" != "${expected_sha256}" ]; then
@@ -171,10 +197,17 @@ if [ -f "pyproject.toml" ]; then
     log_success "Sprawl CLI installed from local source."
 
 elif [ -n "${SPRAWL_VERSION}" ]; then
-    # Pinned version installation from GitHub
+    # Validate version format to prevent path/URL injection
+    if [[ ! "${SPRAWL_VERSION}" =~ ^v?[0-9]+\.[0-9]+\.[0-9]+(-[a-zA-Z0-9.]+)?$ ]]; then
+        log_fatal "Invalid version format: ${SPRAWL_VERSION}"
+    fi
+
     log_info "Installing pinned version: ${BOLD}${SPRAWL_VERSION}${NC}..."
     ARCHIVE_URL="https://github.com/${SPRAWL_GITHUB_REPO}/archive/refs/tags/${SPRAWL_VERSION}.tar.gz"
-    ARCHIVE_FILE="/tmp/sprawl-${SPRAWL_VERSION}.tar.gz"
+    
+    # Secure random temp directory creation (Symlink race prevention)
+    TMPDIR="$(mktemp -d)"
+    ARCHIVE_FILE="${TMPDIR}/sprawl-${SPRAWL_VERSION}.tar.gz"
 
     log_info "Downloading: ${ARCHIVE_URL}"
     if command -v curl &>/dev/null; then
@@ -189,7 +222,6 @@ elif [ -n "${SPRAWL_VERSION}" ]; then
     verify_checksum "${ARCHIVE_FILE}" "${SPRAWL_SHA256:-}"
 
     pipx install "${ARCHIVE_FILE}" --force
-    rm -f "${ARCHIVE_FILE}"
     log_success "Sprawl CLI ${SPRAWL_VERSION} installed from pinned release."
 
 else

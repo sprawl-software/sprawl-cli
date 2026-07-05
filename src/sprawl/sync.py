@@ -305,8 +305,12 @@ def sync_app_directory(app_dir: str) -> dict:
 
     backup_dir = None
     if os.path.exists(local_agents_dir) and not config.dry_run:
-        import tempfile
-        backup_dir = tempfile.mkdtemp(prefix="sprawl_sync_backup_")
+        mgt_dir = config.get_workspace_mgt_dir(app_dir)
+        os.makedirs(mgt_dir, exist_ok=True)
+        backup_dir = os.path.join(mgt_dir, "_sync_backup")
+        if os.path.exists(backup_dir):
+            shutil.rmtree(backup_dir)
+        os.makedirs(backup_dir, exist_ok=True)
         backup_agents_path = os.path.join(backup_dir, ".agents")
         shutil.copytree(local_agents_dir, backup_agents_path, symlinks=True)
 

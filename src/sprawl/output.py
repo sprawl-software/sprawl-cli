@@ -145,6 +145,3 @@ def print_error(msg: str, context: dict[str, Any] | None = None) -> None:
     """
     _emit("error", msg, context)
 
-
-from .tui.formatter import format_panel, format_checklist_item
-

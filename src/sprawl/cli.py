@@ -187,7 +187,7 @@ def print_help() -> None:
     console.print("\n[info]Usage:[/info] sprawl [accent]<command>[/accent] [args]\n")
 
     # Cognitive Journey Tables
-    def create_category_table() -> None:
+    def create_category_table() -> Table:
         table = Table(show_header=False, box=None, padding=(0, 2))
         table.add_column("Command", style="accent", width=22)
         table.add_column("Description", style="info")
@@ -263,17 +263,17 @@ def main() -> None:
     args, unknown = parser.parse_known_args()
 
     # Set configuration state globally across the package
-    if args.verbose or "--verbose" in sys.argv:
+    if args.verbose:
         config.verbose = True
         from rich.traceback import install as install_traceback
         install_traceback(show_locals=True, theme="monokai")
-    if args.dry_run or "--dry-run" in sys.argv:
+    if args.dry_run:
         config.dry_run = True
-    if args.json or "--json" in sys.argv:
+    if args.json:
         config.json_logging = True
     
     # We must explicitly check for testmode here to initialize the paths if running without wrapper
-    if args.testmode or "--testmode" in sys.argv:
+    if args.testmode:
         os.environ["SPRAWL_TEST_MODE"] = "1"
         config.reinitialize()
 

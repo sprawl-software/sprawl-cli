@@ -22,7 +22,7 @@ from .copilot import _export_copilot_prompts, _export_category_to_prompts
 
 
 
-def bind_adapters(target_dir: str = ".", force: bool = False, targets: list[str] = None) -> bool:
+def bind_adapters(target_dir: str = ".", force: bool = False, targets: list[str] | None = None) -> bool:
     """Generates selective or universal IDE/Agent bindings to the Sprawl .agents/ directory.
 
     Args:

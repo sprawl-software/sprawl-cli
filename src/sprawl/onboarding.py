@@ -1,7 +1,8 @@
 """Interactive first-run onboarding wizard for lead generation."""
 
 import sys
-from .output import print_status, print_warning, format_panel
+from .output import print_status, print_warning
+from .tui.formatter import format_panel
 from .config import config
 
 

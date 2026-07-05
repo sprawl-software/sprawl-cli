@@ -97,7 +97,7 @@ class SprawlConfig:
                     os.remove(tmp_path)
                 except Exception:
                     pass
-            raise e
+            raise
 
     @classmethod
     def from_env(cls) -> "SprawlConfig":

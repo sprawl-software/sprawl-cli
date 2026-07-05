@@ -99,3 +99,12 @@ web_modules/
 .cursorrules
 .windsurfrules
 
+# Test and Cache folders
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+coverage.xml
+htmlcov/
+TEST_ADD_DUMMY/
+test-sandbox/
+

@@ -8,7 +8,7 @@ External dependencies: NONE (pure stdlib).
 import os
 import json
 import re
-from dataclasses import dataclass
+from dataclasses import dataclass, fields
 from typing import Any
 
 from .output import print_warning, print_error, print_status
@@ -170,10 +170,14 @@ def validate_dna_directory(dna_dir: str) -> None:
                     with open(filepath, "r") as f:
                         data = json.load(f)
                     if "atoms" in root:
-                        schema = AtomSchema(**data)
+                        allowed_fields = {f.name for f in fields(AtomSchema)}
+                        filtered_data = {k: v for k, v in data.items() if k in allowed_fields}
+                        schema = AtomSchema(**filtered_data)
                         schema.validate()
                     elif "molecules" in root:
-                        schema = MoleculeSchema(**data)
+                        allowed_fields = {f.name for f in fields(MoleculeSchema)}
+                        filtered_data = {k: v for k, v in data.items() if k in allowed_fields}
+                        schema = MoleculeSchema(**filtered_data)
                         schema.validate()
                 elif file.endswith((".yaml", ".yml")):
                     # Generic structure check — just verify it's parseable

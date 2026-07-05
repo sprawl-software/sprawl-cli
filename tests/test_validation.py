@@ -202,6 +202,33 @@ class TestValidateDnaDirectory(unittest.TestCase):
                 f.write("{corrupted}")
 
             validate_dna_directory(tmpdir)  # Should not raise
+    def test_json_with_extra_keys_ignored(self) -> None:
+        """Valid JSON containing unexpected metadata keys passes validation by filtering keys."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            atoms_dir = os.path.join(tmpdir, "atoms")
+            os.makedirs(atoms_dir)
+            atom_file = os.path.join(atoms_dir, "test_atom.json")
+            with open(atom_file, "w") as f:
+                json.dump({
+                    "name": "test",
+                    "description": "A test",
+                    "type": "config",
+                    "title": "Extra Key",
+                    "custom_comment": "This should be ignored"
+                }, f)
+
+            molecules_dir = os.path.join(tmpdir, "molecules")
+            os.makedirs(molecules_dir)
+            molecule_file = os.path.join(molecules_dir, "test_molecule.json")
+            with open(molecule_file, "w") as f:
+                json.dump({
+                    "name": "test_mol",
+                    "version": "1.0.0",
+                    "atoms": ["test"],
+                    "mcpServers": {"server": "config"}
+                }, f)
+
+            validate_dna_directory(tmpdir)  # Should not raise type errors
 
 
 if __name__ == "__main__":

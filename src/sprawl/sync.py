@@ -192,7 +192,10 @@ def _sync_app_directory_impl(app_dir: str, local_agents_dir: str, manifest_path:
                     npm_path = shutil.which("npm")
                     if npm_path:
                         print_status(f"Installing Node dependencies in {os.path.relpath(root, app_dir)}...")
-                        subprocess.run([npm_path, "install", "--silent"], cwd=root, check=True)
+                        if "package-lock.json" in files or "npm-shrinkwrap.json" in files:
+                            subprocess.run([npm_path, "ci", "--silent"], cwd=root, check=True)
+                        else:
+                            subprocess.run([npm_path, "install", "--silent"], cwd=root, check=True)
                     else:
                         print_warning(f"npm not found. Skipping Node dependencies in {root}")
 

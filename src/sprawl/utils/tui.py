@@ -23,9 +23,13 @@ console = Console(theme=SDS_THEME)
 @contextlib.contextmanager
 def raw_terminal():
     """Context manager to enable raw terminal mode and safely restore settings on exit."""
-    fd = sys.stdin.fileno()
+    try:
+        fd = sys.stdin.fileno()
+    except Exception:
+        fd = None
+
     # Check if stdin is a TTY (running in terminal vs piped tests)
-    if not sys.stdin.isatty():
+    if fd is None or not sys.stdin.isatty():
         yield fd
         return
 

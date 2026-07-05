@@ -31,7 +31,10 @@ def cmd_shell(target_dir: Optional[str] = None) -> None:
     env = os.environ.copy()
     
     # Prepend venv bin to PATH
-    venv_bin = os.path.join(venv_dir, "bin")
+    if os.name == "nt":
+        venv_bin = os.path.join(venv_dir, "Scripts")
+    else:
+        venv_bin = os.path.join(venv_dir, "bin")
     env["PATH"] = f"{venv_bin}{os.pathsep}{env.get('PATH', '')}"
     
     # Set VIRTUAL_ENV (standard for venv activation)
@@ -44,7 +47,12 @@ def cmd_shell(target_dir: Optional[str] = None) -> None:
     env.pop("PYTHONHOME", None)
 
     # Determine shell
-    shell = env.get("SHELL", "/bin/bash")
+    shell = env.get("SHELL")
+    if not shell:
+        if os.name == "nt":
+            shell = env.get("COMSPEC", "cmd.exe")
+        else:
+            shell = "/bin/bash"
     
     # Launch subshell
     try:

@@ -1,5 +1,5 @@
 import unittest
-from unittest.mock import patch, MagicMock
+from unittest.mock import patch, MagicMock, ANY
 import os
 
 from src.sprawl.commands.dna import cmd_dna_update, cmd_dna_inspect
@@ -40,7 +40,7 @@ class TestDNACommands(unittest.TestCase):
     def test_cmd_dna_update_success(self, mock_update_registry, mock_run, mock_check_output, mock_exists, mock_get_registry):
         config.dry_run = False
         cmd_dna_update()
-        mock_run.assert_called_once_with(["git", "-C", config.agents_dir_global, "pull", "origin", "main"], check=True)
+        mock_run.assert_called_once_with(["git", "-C", config.agents_dir_global, "pull", "origin", "main"], check=True, env=ANY)
         mock_update_registry.assert_called_once_with("test-url")
 
     @patch('src.sprawl.commands.dna.get_dna_registry', return_value=None)

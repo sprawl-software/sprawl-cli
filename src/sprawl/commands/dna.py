@@ -9,7 +9,7 @@ from ..config import config
 from ..output import print_status, print_warning, print_error, console
 from ..exceptions import SprawlError
 from ..registry import get_dna_registry, update_dna_registry
-from ..utils import CATEGORIES
+from ..utils import CATEGORIES, get_git_env
 
 def cmd_dna_update() -> None:
     """Updates the globally registered DNA source."""
@@ -25,10 +25,17 @@ def cmd_dna_update() -> None:
     if not config.dry_run:
         with operation_spinner(f"Updating Global DNA at {dna_path}..."):
             try:
+                git_env = get_git_env()
                 current_branch = subprocess.check_output(
-                    ["git", "-C", dna_path, "rev-parse", "--abbrev-ref", "HEAD"], text=True
+                    ["git", "-C", dna_path, "rev-parse", "--abbrev-ref", "HEAD"],
+                    text=True,
+                    env=git_env
                 ).strip()
-                subprocess.run(["git", "-C", dna_path, "pull", "origin", current_branch], check=True)
+                subprocess.run(
+                    ["git", "-C", dna_path, "pull", "origin", current_branch],
+                    check=True,
+                    env=git_env
+                )
                 print_status("Global DNA updated successfully.")
                 # Update registry to bump the last_pulled timestamp
                 update_dna_registry(registry.get("url", ""))

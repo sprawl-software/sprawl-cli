@@ -10,6 +10,7 @@ from ..config import config
 from ..output import print_status, print_warning, print_error, console
 from ..exceptions import SprawlError
 from ._helpers import resolve_repo_root
+from ..utils import get_git_env
 
 
 def cmd_update() -> None:
@@ -20,10 +21,17 @@ def cmd_update() -> None:
         print_status(f"Updating Global DNA at {config.agents_dir_global}...")
         if not config.dry_run:
             try:
+                git_env = get_git_env()
                 current_branch = subprocess.check_output(
-                    ["git", "-C", config.agents_dir_global, "rev-parse", "--abbrev-ref", "HEAD"], text=True
+                    ["git", "-C", config.agents_dir_global, "rev-parse", "--abbrev-ref", "HEAD"],
+                    text=True,
+                    env=git_env
                 ).strip()
-                subprocess.run(["git", "-C", config.agents_dir_global, "pull", "origin", current_branch], check=True)
+                subprocess.run(
+                    ["git", "-C", config.agents_dir_global, "pull", "origin", current_branch],
+                    check=True,
+                    env=git_env
+                )
                 print_status("Global DNA updated successfully.")
             except subprocess.CalledProcessError as e:
                 print_warning(f"Failed to pull Global DNA: {e}")
@@ -43,11 +51,18 @@ def cmd_update() -> None:
         print_status(f"Updating Sprawl Engine CLI from source at {repo_root}...")
         if not config.dry_run:
             try:
+                git_env = get_git_env()
                 current_branch = subprocess.check_output(
-                    ["git", "-C", repo_root, "rev-parse", "--abbrev-ref", "HEAD"], text=True
+                    ["git", "-C", repo_root, "rev-parse", "--abbrev-ref", "HEAD"],
+                    text=True,
+                    env=git_env
                 ).strip()
                 try:
-                    subprocess.run(["git", "-C", repo_root, "pull", "origin", current_branch], check=True)
+                    subprocess.run(
+                        ["git", "-C", repo_root, "pull", "origin", current_branch],
+                        check=True,
+                        env=git_env
+                    )
                     print_status("Source updated from remote.")
                 except subprocess.CalledProcessError as e:
                     print_warning(f"Git pull failed (possibly a local branch or no network): {e}")

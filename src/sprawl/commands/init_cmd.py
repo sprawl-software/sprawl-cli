@@ -7,7 +7,7 @@ from typing import Optional
 
 from ..config import config
 from ..output import print_status, print_warning, print_error
-from ..utils import DNA_ALIASES
+from ..utils import DNA_ALIASES, get_git_env
 from ..exceptions import SprawlError
 from ._helpers import resolve_item_in_dna
 
@@ -71,7 +71,7 @@ def cmd_init(git_url: str, target_dir: str) -> None:
         print_status(f"Cloning Global DNA to {config.agents_dir_global}...")
         if not config.dry_run:
             try:
-                subprocess.run(["git", "clone", git_url, config.agents_dir_global], check=True)
+                subprocess.run(["git", "clone", git_url, config.agents_dir_global], check=True, env=get_git_env())
                 update_dna_registry(git_url)
             except subprocess.CalledProcessError as e:
                 print_warning(f"Failed to clone repository: {e}")
@@ -128,7 +128,7 @@ def cmd_fetch_dna(git_url: str, alias_name: Optional[str] = None) -> None:
         print_status(f"DNA context '{alias_name}' already exists at {dna_target_dir}. Attempting to pull latest changes...")
         if not config.dry_run:
             try:
-                subprocess.run(["git", "-C", dna_target_dir, "pull"], check=True)
+                subprocess.run(["git", "-C", dna_target_dir, "pull"], check=True, env=get_git_env())
             except subprocess.CalledProcessError as e:
                 print_warning(f"Failed to pull latest DNA context: {e}")
     else:
@@ -136,7 +136,7 @@ def cmd_fetch_dna(git_url: str, alias_name: Optional[str] = None) -> None:
         if not config.dry_run:
             os.makedirs(config.dna_registry_dir, exist_ok=True)
             try:
-                subprocess.run(["git", "clone", git_url, dna_target_dir], check=True)
+                subprocess.run(["git", "clone", git_url, dna_target_dir], check=True, env=get_git_env())
             except subprocess.CalledProcessError as e:
                 print_warning(f"Failed to clone repository: {e}")
                 raise SprawlError("Authentication failed during git clone.")

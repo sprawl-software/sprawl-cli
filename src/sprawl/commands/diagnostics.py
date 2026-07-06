@@ -78,10 +78,11 @@ def cmd_update() -> None:
         print_status("Production/release installation detected. Installing update from GitHub...")
         if not config.dry_run:
             try:
+                git_env = get_git_env()
                 print_status("Attempting installation via SSH: git+ssh://git@github.com/sprawl-software/sprawl-cli.git...")
                 result = subprocess.run(
                     ["pipx", "install", "git+ssh://git@github.com/sprawl-software/sprawl-cli.git", "--force"],
-                    capture_output=True, text=True
+                    capture_output=True, text=True, env=git_env
                 )
                 if result.returncode == 0:
                     print_status("Sprawl CLI updated successfully from GitHub via SSH.")
@@ -92,7 +93,7 @@ def cmd_update() -> None:
                     )
                     subprocess.run(
                         ["pipx", "install", "git+https://github.com/sprawl-software/sprawl-cli.git", "--force"],
-                        check=True
+                        check=True, env=git_env
                     )
                     print_status("Sprawl CLI updated successfully from GitHub via HTTPS.")
             except subprocess.CalledProcessError as e:

@@ -54,9 +54,8 @@ def get_active_dna_context(app_dir: Optional[str] = None) -> str:
 def get_git_env() -> dict[str, str]:
     """Returns a copy of the current environment with non-interactive git options set.
 
-    Prevents Git from hanging indefinitely on credential prompts or SSH passphrase requests.
+    Prevents Git from hanging indefinitely on credential prompts.
     """
     env = os.environ.copy()
     env["GIT_TERMINAL_PROMPT"] = "0"
-    env["GIT_SSH_COMMAND"] = "ssh -o BatchMode=yes"
     return env

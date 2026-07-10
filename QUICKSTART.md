@@ -7,7 +7,7 @@ This guide will take you from zero to a fully sandboxed, deterministic AI worksp
 Run the automated installation script. This provisions Sprawl via `pipx` to protect your system environment.
 
 ```bash
-curl -sL https://raw.githubusercontent.com/w3bwizart/sprawl-cli/main/install.sh | bash
+curl -sL https://raw.githubusercontent.com/sprawl-software/sprawl-cli/main/install.sh | bash
 ```
 
 ## 2. Initialize the Core DNA
@@ -15,7 +15,7 @@ curl -sL https://raw.githubusercontent.com/w3bwizart/sprawl-cli/main/install.sh 
 Initialize your global environment by cloning your chosen rules and skills (the "DNA") from a Git repository.
 
 ```bash
-sprawl init https://github.com/w3bwizart/atomic-agentic-fabric-demo-dna.git
+sprawl init https://github.com/sprawl-software/atomic-agentic-fabric-demo-dna.git
 ```
 
 *This creates your `~/.sprawl/core/` registry.*

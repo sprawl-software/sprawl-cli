@@ -41,7 +41,7 @@ trap cleanup EXIT
 # ------------------------------------
 SPRAWL_MIN_PYTHON_MAJOR=3
 SPRAWL_MIN_PYTHON_MINOR=10
-SPRAWL_GITHUB_REPO="w3bwizart/sprawl-cli"
+SPRAWL_GITHUB_REPO="sprawl-software/sprawl-cli"
 # Optional: pin to a specific tag (set to "" to always use latest)
 SPRAWL_VERSION="${SPRAWL_VERSION:-}"
 

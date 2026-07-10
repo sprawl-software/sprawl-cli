@@ -119,7 +119,7 @@ def main():
         },
         {
             "name": "Initialize Core DNA",
-            "args": ["init", "https://github.com/w3bwizart/atomic-agentic-fabric-demo-dna.git"],
+            "args": ["init", "https://github.com/sprawl-software/atomic-agentic-fabric-demo-dna.git"],
             "desc": "Clones the Sovereign DNA template repo into the isolated core directory (~/.sprawl_test/core).",
             "expect_zero": True
         },
@@ -127,7 +127,7 @@ def main():
         # Scenario 2: Alternative DNA & Registry Listings
         {
             "name": "Fetch Alternative DNA",
-            "args": ["fetch-dna", "https://github.com/w3bwizart/atomic-agentic-fabric-demo-dna.git", "alt_dna"],
+            "args": ["fetch-dna", "https://github.com/sprawl-software/atomic-agentic-fabric-demo-dna.git", "alt_dna"],
             "desc": "Clones an alternative DNA repository using a custom alias.",
             "expect_zero": True
         },

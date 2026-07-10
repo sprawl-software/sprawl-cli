@@ -14,9 +14,9 @@ from ..config import config
 CATEGORIES: list[str] = ["rules", "skills", "workflows"]
 
 DNA_ALIASES: dict[str, str] = {
-    "@python-fastapi": "https://github.com/w3bwizart/aaf-python-fastapi.git",
-    "@vanilla-js": "https://github.com/w3bwizart/aaf-vanilla-js.git",
-    "@default": "https://github.com/w3bwizart/Atomic_Agentic_Fabric.git",
+    "@python-fastapi": "https://github.com/sprawl-software/aaf-python-fastapi.git",
+    "@vanilla-js": "https://github.com/sprawl-software/aaf-vanilla-js.git",
+    "@default": "https://github.com/sprawl-software/Atomic_Agentic_Fabric.git",
 }
 
 # Backward-compatible re-exports from output.py

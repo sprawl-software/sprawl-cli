@@ -35,7 +35,7 @@ If you are deploying to a fresh machine or starting completely from scratch, fol
 Run the automated installation script. It handles dependency checks, sets up the Python environment, and dynamically links the executable:
 
 ```bash
-curl -sL https://raw.githubusercontent.com/w3bwizart/sprawl-cli/main/install.sh | bash
+curl -sL https://raw.githubusercontent.com/sprawl-software/sprawl-cli/main/install.sh | bash
 ```
 
 *Note: This script automatically leverages `pipx` to securely sandbox the engine without breaking system Python packages. If `pipx` isn't found, the installer automatically provisions it.*
@@ -54,7 +54,7 @@ Initialize your environment by cloning your **Primary Company DNA** (rules, skil
 
 ```bash
 # To test the system immediately, use the official Demo DNA:
-sprawl init https://github.com/w3bwizart/atomic-agentic-fabric-demo-dna.git
+sprawl init https://github.com/sprawl-software/atomic-agentic-fabric-demo-dna.git
 
 # Or initialize with your own private DNA:
 # sprawl init <YOUR_GIT_URL> [TARGET_DIR]

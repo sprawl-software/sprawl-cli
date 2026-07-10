@@ -404,7 +404,7 @@ rules:
         config.dry_run = False
         cmd_init("@python-fastapi", target_dir="/fake/dir")
         expected_target_dir = os.path.join(config.dna_registry_dir, "python-fastapi")
-        mock_run.assert_any_call(["git", "clone", "https://github.com/w3bwizart/aaf-python-fastapi.git", expected_target_dir], check=True, env=ANY)
+        mock_run.assert_any_call(["git", "clone", "https://github.com/sprawl-software/aaf-python-fastapi.git", expected_target_dir], check=True, env=ANY)
         mock_workspace.return_value.bind_dna.assert_called_with("python-fastapi")
 
     def test_cmd_init_unknown_alias(self):

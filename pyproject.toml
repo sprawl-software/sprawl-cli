@@ -24,8 +24,8 @@ keywords = ["sandbox", "agentic", "fabric", "mcp", "security", "governance"]
 
 [project.urls]
 Homepage = "https://sprawl.software"
-Repository = "https://github.com/w3bwizart/sprawl-cli"
-"Bug Tracker" = "https://github.com/w3bwizart/sprawl-cli/issues"
+Repository = "https://github.com/sprawl-software/sprawl-cli"
+"Bug Tracker" = "https://github.com/sprawl-software/sprawl-cli/issues"
 
 
 [project.scripts]

@@ -2,9 +2,9 @@
 
 * **Execution Date:** 2026-07-05 11:08:19 UTC
 * **Local Python Version:** 3.12.3
-* **Workspace Root:** `/home/w3bwizart/Development/sprawl-cli`
-* **Sandbox Directory:** `/home/w3bwizart/Development/sprawl-cli/qa_sandbox`
-* **Test Mode Home:** `/home/w3bwizart/.sprawl_test`
+* **Workspace Root:** `/home/developer/Development/sprawl-cli`
+* **Sandbox Directory:** `/home/developer/Development/sprawl-cli/qa_sandbox`
+* **Test Mode Home:** `/home/developer/.sprawl_test`
 
 ---
 
@@ -88,7 +88,7 @@ Run the automated installation script. It handles dependency checks, sets up the
 Python environment, and dynamically links the executable:                       
                                                                                 
 ```bash                                                                         
-curl -sL https://raw.githubusercontent.com/w3bwizart/sprawl-cli/main/install.sh 
+curl -sL https://raw.githubusercontent.com/developer/sprawl-cli/main/install.sh 
 | bash                                                                          
 ```                                                                             
                                                                                 
@@ -112,7 +112,7 @@ folder and `~/.sprawl_rc` config.
                                                                                 
 ```bash                                                                         
 # To test the system immediately, use the official Demo DNA:                    
-sprawl init https://github.com/w3bwizart/atomic-agentic-fabric-demo-dna.git     
+sprawl init https://github.com/developer/atomic-agentic-fabric-demo-dna.git     
                                                                                 
 # Or initialize with your own private DNA:                                      
 # sprawl init <YOUR_GIT_URL> [TARGET_DIR]                                       
@@ -470,23 +470,23 @@ python3 -m unittest discover -s tests
 ## Step 3: Initialize Core DNA
 
 * **Description:** Clones the Sovereign DNA template repo into the isolated core directory (~/.sprawl_test/core).
-* **Command:** `sprawl init https://github.com/w3bwizart/atomic-agentic-fabric-demo-dna.git` (cwd: `qa_sandbox`)
+* **Command:** `sprawl init https://github.com/developer/atomic-agentic-fabric-demo-dna.git` (cwd: `qa_sandbox`)
 * **Execution Time:** `822ms`
 * **Status:** **`PASS`** (Expected Code: `0`, Got: `0`)
 
 ### Standard Output (stdout):
 ```text
 [*] Initializing Sprawl Hub from 
-https://github.com/w3bwizart/atomic-agentic-fabric-demo-dna.git into 
-/home/w3bwizart/Documents/Sprawl_Test...
-[*] Cloning Global DNA to /home/w3bwizart/.sprawl_test/core...
-[*] Creating Workspace Hub at /home/w3bwizart/Documents/Sprawl_Test...
+https://github.com/developer/atomic-agentic-fabric-demo-dna.git into 
+/home/developer/Documents/Sprawl_Test...
+[*] Cloning Global DNA to /home/developer/.sprawl_test/core...
+[*] Creating Workspace Hub at /home/developer/Documents/Sprawl_Test...
 [*] Initialization complete. Ensure ~/.local/bin is in your PATH.
 ```
 
 ### Error Output (stderr):
 ```text
-Cloning into '/home/w3bwizart/.sprawl_test/core'...
+Cloning into '/home/developer/.sprawl_test/core'...
 ```
 
 ---
@@ -494,21 +494,21 @@ Cloning into '/home/w3bwizart/.sprawl_test/core'...
 ## Step 4: Fetch Alternative DNA
 
 * **Description:** Clones an alternative DNA repository using a custom alias.
-* **Command:** `sprawl fetch-dna https://github.com/w3bwizart/atomic-agentic-fabric-demo-dna.git alt_dna` (cwd: `qa_sandbox`)
+* **Command:** `sprawl fetch-dna https://github.com/developer/atomic-agentic-fabric-demo-dna.git alt_dna` (cwd: `qa_sandbox`)
 * **Execution Time:** `797ms`
 * **Status:** **`PASS`** (Expected Code: `0`, Got: `0`)
 
 ### Standard Output (stdout):
 ```text
 [*] Fetching DNA context 'alt_dna' to 
-/home/w3bwizart/.sprawl_test/dna/alt_dna...
+/home/developer/.sprawl_test/dna/alt_dna...
 [*] Running Zero-Trust validation on DNA...
 [*] DNA Validation passed.
 ```
 
 ### Error Output (stderr):
 ```text
-Cloning into '/home/w3bwizart/.sprawl_test/dna/alt_dna'...
+Cloning into '/home/developer/.sprawl_test/dna/alt_dna'...
 ```
 
 ---
@@ -526,8 +526,8 @@ Registered DNA Sources
 ┏━━━━━━━━┳━━━━━━━━━━┳━━━━━━━━━━━┳━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┓
 ┃ Status ┃ Alias    ┃ Type      ┃ Path                                     ┃
 ┡━━━━━━━━╇━━━━━━━━━━╇━━━━━━━━━━━╇━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┩
-│   ●    │ @global  │ Primary   │ /home/w3bwizart/.sprawl_test/core        │
-│   ●    │ @alt_dna │ Secondary │ /home/w3bwizart/.sprawl_test/dna/alt_dna │
+│   ●    │ @global  │ Primary   │ /home/developer/.sprawl_test/core        │
+│   ●    │ @alt_dna │ Secondary │ /home/developer/.sprawl_test/dna/alt_dna │
 └────────┴──────────┴───────────┴──────────────────────────────────────────┘
 ```
 
@@ -542,7 +542,7 @@ Registered DNA Sources
 
 ### Standard Output (stdout):
 ```text
-🧬 Global DNA Registry (/home/w3bwizart/.sprawl_test/core)
+🧬 Global DNA Registry (/home/developer/.sprawl_test/core)
 ┣━━ Rules
 ┃   ┣━━ demo_security.md
 ┃   ┗━━ python_stdlib_only.md
@@ -570,7 +570,7 @@ Already up-to-date.
 
 ### Error Output (stderr):
 ```text
-From https://github.com/w3bwizart/atomic-agentic-fabric-demo-dna
+From https://github.com/developer/atomic-agentic-fabric-demo-dna
  * branch            main       -> FETCH_HEAD
 ```
 
@@ -586,7 +586,7 @@ From https://github.com/w3bwizart/atomic-agentic-fabric-demo-dna
 ### Standard Output (stdout):
 ```text
 [*] Initiating Sprawl Update Sequence...
-[*] Updating Global DNA at /home/w3bwizart/.sprawl_test/core...
+[*] Updating Global DNA at /home/developer/.sprawl_test/core...
 Already up-to-date.
 [*] Global DNA updated successfully.
 [*] Production/release installation detected. Installing update from GitHub...
@@ -598,7 +598,7 @@ git+ssh://git@github.com/sprawl-software/sprawl-cli.git...
 
 ### Error Output (stderr):
 ```text
-From https://github.com/w3bwizart/atomic-agentic-fabric-demo-dna
+From https://github.com/developer/atomic-agentic-fabric-demo-dna
  * branch            main       -> FETCH_HEAD
 ```
 
@@ -616,7 +616,7 @@ From https://github.com/w3bwizart/atomic-agentic-fabric-demo-dna
 ╭────────────────────────── Workspace Initialization ──────────────────────────╮
 │ ✔ Workspace Created                                                          │
 │ • Name: qa_workspace                                                         │
-│ • Path: /home/w3bwizart/Development/sprawl-cli/qa_sandbox/qa_workspace       │
+│ • Path: /home/developer/Development/sprawl-cli/qa_sandbox/qa_workspace       │
 │ • DNA Binding: @core                                                         │
 │                                                                              │
 │ • Run sprawl bind inside to select rules bindings for your IDEs/agents.      │
@@ -639,7 +639,7 @@ Tracked Workspaces
 ┏━━━━━━━━┳━━━━━━━━━━━━━━┳━━━━━━━━━━━━━━━━━━━━━━━━━┳━━━━━━━━━━━━━━━━┳━━━━━━━━━━━┓
 ┃ Status ┃ Name         ┃ Path                    ┃ DNA Binding    ┃ Last Sync ┃
 ┡━━━━━━━━╇━━━━━━━━━━━━━━╇━━━━━━━━━━━━━━━━━━━━━━━━━╇━━━━━━━━━━━━━━━━╇━━━━━━━━━━━┩
-│   ●    │ qa_workspace │ /home/w3bwizart/Develo… │ Global/Default │ Never     │
+│   ●    │ qa_workspace │ /home/developer/Develo… │ Global/Default │ Never     │
 └────────┴──────────────┴─────────────────────────┴────────────────┴───────────┘
 ```
 
@@ -654,9 +654,9 @@ Tracked Workspaces
 
 ### Standard Output (stdout):
 ```text
-[*] Syncing /home/w3bwizart/Development/sprawl-cli/qa_sandbox/qa_workspace...
+[*] Syncing /home/developer/Development/sprawl-cli/qa_sandbox/qa_workspace...
 [*] Provisioning sandboxed virtual environment at 
-/home/w3bwizart/Development/sprawl-cli/qa_sandbox/qa_workspace/.agents/.venv...
+/home/developer/Development/sprawl-cli/qa_sandbox/qa_workspace/.agents/.venv...
 [*] Generating IDE & Agent bindings (standard mode)...
   [-] Antigravity MCP Schemas: Removed → sprawl-workspace-fs
   [-] Antigravity MCP Schemas: Removed → sprawl-vault
@@ -685,7 +685,7 @@ Bindings are present, to configure you bindings run sprawl bind.
 ```text
 ╭───────────────────────────── Workspace Identity ─────────────────────────────╮
 │  Workspace             qa_workspace                                          │
-│  Path                  /home/w3bwizart/Development/sprawl-cli/qa_sandbox/q…  │
+│  Path                  /home/developer/Development/sprawl-cli/qa_sandbox/q…  │
 │  DNA Binding           @global/core (default)                                │
 │  Active Model          Not set                                               │
 │  Venv                  ● Healthy (Python 3.12.3)                             │
@@ -747,7 +747,7 @@ Bindings are present, to configure you bindings run sprawl bind.
 ```text
 [*] Added workspace mount: test_tmp → /tmp
 [*] Synchronizing workspace configurations...
-[*] Syncing /home/w3bwizart/Development/sprawl-cli/qa_sandbox/qa_workspace...
+[*] Syncing /home/developer/Development/sprawl-cli/qa_sandbox/qa_workspace...
 [*] Generating IDE & Agent bindings (standard mode)...
   ○ Claude Code Binding: already exists (use --force to overwrite)
   ○ RooCode/Cline Binding: already exists (use --force to overwrite)
@@ -808,7 +808,7 @@ Bindings are present, to configure you bindings run sprawl bind.
 ```text
 [*] Removed workspace mount: test_tmp (was mapping to /tmp)
 [*] Synchronizing workspace configurations...
-[*] Syncing /home/w3bwizart/Development/sprawl-cli/qa_sandbox/qa_workspace...
+[*] Syncing /home/developer/Development/sprawl-cli/qa_sandbox/qa_workspace...
 [*] Generating IDE & Agent bindings (standard mode)...
   ○ Claude Code Binding: already exists (use --force to overwrite)
   ○ RooCode/Cline Binding: already exists (use --force to overwrite)
@@ -855,10 +855,10 @@ Bindings are present, to configure you bindings run sprawl bind.
 │   • @global (Default Sprawl Hub DNA)                                         │
 │   • @alt_dna                                                                 │
 │                                                                              │
-│ Active Context: /home/w3bwizart/.sprawl_test/core                            │
+│ Active Context: /home/developer/.sprawl_test/core                            │
 ╰──────────────────────────────────────────────────────────────────────────────╯
 
-🧬 Active DNA Artifacts (/home/w3bwizart/.sprawl_test/core)
+🧬 Active DNA Artifacts (/home/developer/.sprawl_test/core)
 ┣━━ Personas
 ┃   ┣━━ persona-demo_engineer
 ┃   ┗━━ persona-senior_python_architect
@@ -882,7 +882,7 @@ Bindings are present, to configure you bindings run sprawl bind.
 ```text
 [*] Persona Scaffolded successfully: 'persona-verification-squad'
 [*] Generated boilerplate at 
-/home/w3bwizart/.sprawl_test/core/skills/persona-verification-squad/SKILL.md
+/home/developer/.sprawl_test/core/skills/persona-verification-squad/SKILL.md
 ```
 
 ---
@@ -899,7 +899,7 @@ Bindings are present, to configure you bindings run sprawl bind.
 [*] Resolving dependency: 'persona-demo_engineer' into 
 [*] Modifying sprawl_manifest.yml...
 [*] Injecting DNA...
-[*] Syncing /home/w3bwizart/Development/sprawl-cli/qa_sandbox/qa_workspace...
+[*] Syncing /home/developer/Development/sprawl-cli/qa_sandbox/qa_workspace...
 [*] Generating IDE & Agent bindings (standard mode)...
   ○ Claude Code Binding: already exists (use --force to overwrite)
   ○ RooCode/Cline Binding: already exists (use --force to overwrite)
@@ -944,7 +944,7 @@ Bindings are present, to configure you bindings run sprawl bind.
 ```text
 [*] Removing dependency: 'persona-demo_engineer'
 [*] Manifest updated. Triggering synchronization cleanup...
-[*] Syncing /home/w3bwizart/Development/sprawl-cli/qa_sandbox/qa_workspace...
+[*] Syncing /home/developer/Development/sprawl-cli/qa_sandbox/qa_workspace...
 [*] [Pruned] persona-demo_engineer removed from local skills/
 [*] Generating IDE & Agent bindings (standard mode)...
   ○ Claude Code Binding: already exists (use --force to overwrite)
@@ -1003,9 +1003,9 @@ Diagnostic Summary
 │ Git             │ ✔ PASS │ Installed (/usr/bin/git)                          │
 │ Node/NPM        │ ⚠ WARN │ Not Found (Optional for TS/JS skills)             │
 │ Rust/Cargo      │ ⚠ WARN │ Not Found (Optional for Rust skills)              │
-│ Global DNA      │ ✔ PASS │ Initialized at /home/w3bwizart/.sprawl_test/core  │
+│ Global DNA      │ ✔ PASS │ Initialized at /home/developer/.sprawl_test/core  │
 │ Local Workspace │ ✔ PASS │ Active at                                         │
-│                 │        │ /home/w3bwizart/Development/sprawl-cli/qa_sandbo… │
+│                 │        │ /home/developer/Development/sprawl-cli/qa_sandbo… │
 └─────────────────┴────────┴───────────────────────────────────────────────────┘
 
 ╭──────────────────────────────────────────────────────────────────────────────╮
@@ -1047,16 +1047,16 @@ Comparing local DNA drift against @core...
 [*] Starting Demo: Cross-Team Scaffolding
 [*] Ensuring clean test environment...
 [*] Nuking all testmode artifacts...
-[*] [-] Deleted /home/w3bwizart/.sprawl_test/core
-[*] [-] Deleted /home/w3bwizart/Documents/Sprawl_Test
-[*] [-] Deleted /home/w3bwizart/.sprawl_test/config.json
+[*] [-] Deleted /home/developer/.sprawl_test/core
+[*] [-] Deleted /home/developer/Documents/Sprawl_Test
+[*] [-] Deleted /home/developer/.sprawl_test/config.json
 [*] Testmode environment cleanly destroyed.
 [*] Generating Transient Dummy DNA...
 [*] Initializing Central Hub...
 [*] Initializing Sprawl Hub from file:///tmp/sprawl_dummy_dna_sgxt_t8g into 
-/home/w3bwizart/Documents/Sprawl_Test...
-[*] Cloning Global DNA to /home/w3bwizart/.sprawl_test/core...
-[*] Creating Workspace Hub at /home/w3bwizart/Documents/Sprawl_Test...
+/home/developer/Documents/Sprawl_Test...
+[*] Cloning Global DNA to /home/developer/.sprawl_test/core...
+[*] Creating Workspace Hub at /home/developer/Documents/Sprawl_Test...
 [*] Initialization complete. Ensure ~/.local/bin is in your PATH.
 [*] Isolating demo workspaces in /tmp/sprawl_demo_osil2rsx...
 
@@ -1238,7 +1238,7 @@ Demo artifacts are automatically cleaned up on exit.
 
 ### Error Output (stderr):
 ```text
-Cloning into '/home/w3bwizart/.sprawl_test/core'...
+Cloning into '/home/developer/.sprawl_test/core'...
 ```
 
 ---
@@ -1253,12 +1253,12 @@ Cloning into '/home/w3bwizart/.sprawl_test/core'...
 ### Standard Output (stdout):
 ```text
 [!] WARNING: No sprawl_demo directory found at 
-/home/w3bwizart/Development/sprawl-cli/qa_sandbox/sprawl_demo.
+/home/developer/Development/sprawl-cli/qa_sandbox/sprawl_demo.
 [*] Triggering testmode artifact cleanup...
 [*] Nuking all testmode artifacts...
-[*] [-] Deleted /home/w3bwizart/.sprawl_test/core
-[*] [-] Deleted /home/w3bwizart/Documents/Sprawl_Test
-[*] [-] Deleted /home/w3bwizart/.sprawl_test/config.json
+[*] [-] Deleted /home/developer/.sprawl_test/core
+[*] [-] Deleted /home/developer/Documents/Sprawl_Test
+[*] [-] Deleted /home/developer/.sprawl_test/config.json
 [*] Testmode environment cleanly destroyed.
 ```
 
@@ -1290,15 +1290,15 @@ Cloning into '/home/w3bwizart/.sprawl_test/core'...
 ```text
 !!! NUCLEAR WIPE INITIATED !!!
 Will destroy local workspace: 
-/home/w3bwizart/Development/sprawl-cli/qa_sandbox/qa_workspace/.agents
-Will destroy global DNA registry & configuration: /home/w3bwizart/.sprawl_test
+/home/developer/Development/sprawl-cli/qa_sandbox/qa_workspace/.agents
+Will destroy global DNA registry & configuration: /home/developer/.sprawl_test
 Note: To completely uninstall the CLI tool itself, run: pipx uninstall 
 sprawl-cli
 [*] Deregistered workspace 'qa_workspace' from global tracking.
 [*] Destroyed local workspace: 
-/home/w3bwizart/Development/sprawl-cli/qa_sandbox/qa_workspace/.agents
+/home/developer/Development/sprawl-cli/qa_sandbox/qa_workspace/.agents
 [*] Destroyed global DNA registry and configuration: 
-/home/w3bwizart/.sprawl_test
+/home/developer/.sprawl_test
 
 ✔ Sprawl traces have been wiped.
 ```

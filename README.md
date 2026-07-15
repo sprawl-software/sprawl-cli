@@ -1,6 +1,6 @@
 <div align="center">
 
-<img src="https://sprawl.software/assets/Sprawl.software-logo.png" alt="Sprawl CLI" width="280">
+<img src="https://sprawl.software/assets/sprawl-logo-emerald (2).svg" alt="Sprawl.software" width="480"> 
 
 **Developer infrastructure for <>/br
 AI agent containment, telemetry, and workspace governance.**</br>

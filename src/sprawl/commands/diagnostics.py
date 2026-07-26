@@ -82,7 +82,7 @@ def cmd_update() -> None:
                 print_status("Attempting installation via SSH: git+ssh://git@github.com/sprawl-software/sprawl-cli.git...")
                 result = subprocess.run(
                     ["pipx", "install", "git+ssh://git@github.com/sprawl-software/sprawl-cli.git", "--force"],
-                    capture_output=True, text=True, env=git_env
+                    env=git_env
                 )
                 if result.returncode == 0:
                     print_status("Sprawl CLI updated successfully from GitHub via SSH.")

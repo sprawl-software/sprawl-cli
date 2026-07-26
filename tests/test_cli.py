@@ -249,7 +249,7 @@ rules:
         cmd_update()
         mock_run.assert_any_call(
             ["pipx", "install", "git+ssh://git@github.com/sprawl-software/sprawl-cli.git", "--force"],
-            capture_output=True, text=True, env=ANY
+            env=ANY
         )
         
         # 2. Test fallback to HTTPS path

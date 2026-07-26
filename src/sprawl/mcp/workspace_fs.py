@@ -32,7 +32,7 @@ class WorkspaceFS:
                 with open(config_path, "r", encoding="utf-8") as f:
                     cfg = json.load(f)
                 self.allowed_mounts = cfg.get("allowed_mounts", {})
-            except Exception:
+            except (json.JSONDecodeError, OSError):
                 pass
         if not isinstance(self.allowed_mounts, dict):
             self.allowed_mounts = {}

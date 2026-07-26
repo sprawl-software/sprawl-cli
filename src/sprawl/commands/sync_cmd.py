@@ -160,7 +160,7 @@ def cmd_bind(
                     manifest_bindings = [str(b).strip().lower() for b in val if str(b).strip() and str(b).strip() != "[]"]
                 else:
                     manifest_bindings = [str(val).strip().lower()]
-        except Exception:
+        except (OSError, ValueError, TypeError):
             pass
 
     targets = None

@@ -62,7 +62,7 @@ def cmd_wipe(target_dir: Optional[str] = None, force: bool = False, local_only: 
                     print_status(f"Deregistered workspace '{workspace_name}' from global tracking.")
                 except WorkspaceError:
                     pass # Was not registered, ignore
-            except Exception:
+            except Exception:  # nosec B110
                 pass # Ignore registry errors during a nuclear wipe
                 
         try:
@@ -84,7 +84,7 @@ def cmd_wipe(target_dir: Optional[str] = None, force: bool = False, local_only: 
                     if os.path.islink(ag_symlink) or os.path.exists(ag_symlink):
                         try:
                             os.remove(ag_symlink)
-                        except Exception:
+                        except OSError:
                             pass
                     
                     # Remove all standard rules files
@@ -94,10 +94,10 @@ def cmd_wipe(target_dir: Optional[str] = None, force: bool = False, local_only: 
                             if os.path.exists(rule_path):
                                 try:
                                     os.remove(rule_path)
-                                except Exception:
+                                except OSError:
                                     pass
                     print_status(f"Cleaned up editor bindings in workspace: {ws_path}")
-        except Exception:
+        except Exception:  # nosec B110
             pass
 
     # Delete global configuration overrides (~/.sprawl_rc) if present
@@ -116,7 +116,7 @@ def cmd_wipe(target_dir: Optional[str] = None, force: bool = False, local_only: 
         try:
             from ..bind import _remove_antigravity_schemas
             _remove_antigravity_schemas()
-        except Exception:
+        except Exception:  # nosec B110
             pass
 
         global_dir = os.path.dirname(config.config_path)

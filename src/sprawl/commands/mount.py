@@ -43,7 +43,7 @@ def _load_config(config_path: str) -> dict[str, Any]:
                 data = json.load(f)
                 if isinstance(data, dict):
                     return data
-        except Exception:
+        except (json.JSONDecodeError, OSError):
             pass
     return {"allowed_mounts": {}}
 

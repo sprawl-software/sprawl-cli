@@ -85,7 +85,7 @@ class VaultManager:
                                     "path": rel_path,
                                     "preview": content[:200] + "..." if len(content) > 200 else content
                                 })
-                    except Exception:
+                    except OSError:
                         continue
         return results
 

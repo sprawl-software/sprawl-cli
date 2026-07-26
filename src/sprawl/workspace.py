@@ -63,7 +63,7 @@ class Workspace:
             if os.path.exists(tmp_path):
                 try:
                     os.remove(tmp_path)
-                except Exception:
+                except OSError:
                     pass
             raise
 
@@ -92,7 +92,7 @@ class Workspace:
             if os.path.exists(tmp_path):
                 try:
                     os.remove(tmp_path)
-                except Exception:
+                except OSError:
                     pass
             raise
 
@@ -122,7 +122,7 @@ def save_workspace_registry(data: Dict[str, Any]) -> None:
         if os.path.exists(tmp_path):
             try:
                 os.remove(tmp_path)
-            except Exception:
+            except OSError:
                 pass
         raise
 

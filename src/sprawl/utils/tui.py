@@ -56,7 +56,7 @@ def read_key() -> str:
     fd = sys.stdin.fileno()
     try:
         char = os.read(fd, 1).decode("utf-8", errors="ignore")
-    except Exception:
+    except OSError:
         return ""
 
     if char == "\x1b":
@@ -66,7 +66,7 @@ def read_key() -> str:
             try:
                 next_chars = os.read(fd, 2).decode("utf-8", errors="ignore")
                 return char + next_chars
-            except Exception:
+            except OSError:
                 pass
         return char
     return char
@@ -463,7 +463,7 @@ def show_directory_picker(start_dir: str) -> Optional[List[str]]:
                         "is_parent": False,
                         "is_dir": True
                     })
-        except Exception:
+        except OSError:
             pass
 
         if active_idx < 0:

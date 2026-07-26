@@ -15,7 +15,7 @@ def cmd_man() -> None:
     # 1. Attempt loading packaged resource (Python 3.9+)
     try:
         content = pkg_resources.files(sprawl).joinpath("README.md").read_text(encoding="utf-8")
-    except Exception:
+    except Exception:  # nosec B110
         pass
 
     # 2. Fallback to local dev repository path
@@ -26,7 +26,7 @@ def cmd_man() -> None:
             try:
                 with open(readme_path, "r", encoding="utf-8") as f:
                     content = f.read()
-            except Exception:
+            except OSError:
                 pass
 
     if content is not None:

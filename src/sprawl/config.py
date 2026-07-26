@@ -95,7 +95,7 @@ class SprawlConfig:
             if os.path.exists(tmp_path):
                 try:
                     os.remove(tmp_path)
-                except Exception:
+                except OSError:
                     pass
             raise
 

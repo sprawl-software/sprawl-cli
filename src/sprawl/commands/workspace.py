@@ -238,7 +238,7 @@ def cmd_ws_list() -> None:
                     sync_colored = f"[warning]{last_sync}[/warning]"
                 else:
                     sync_colored = f"[success]{last_sync}[/success]"
-            except Exception:
+            except ValueError:
                 pass
         else:
             sync_colored = "[error]Never[/error]"

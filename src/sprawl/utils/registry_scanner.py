@@ -43,7 +43,7 @@ class RegistryScanner:
 
             try:
                 entries = os.listdir(category_dir)
-            except Exception:
+            except OSError:
                 continue
 
             # Sort entries alphabetically, excluding hidden files

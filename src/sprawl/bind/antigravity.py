@@ -50,5 +50,5 @@ def _remove_antigravity_schemas() -> None:
             if os.path.exists(server_dir):
                 shutil.rmtree(server_dir)
                 console.print(f"  [info][-] Antigravity MCP Schemas:[/info] Removed → {server}")
-    except Exception:
+    except OSError:
         pass

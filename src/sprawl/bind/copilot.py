@@ -55,7 +55,7 @@ def _export_copilot_prompts(target_dir: str) -> None:
             if f.endswith(".prompt.md"):
                 try:
                     os.remove(os.path.join(prompts_dir, f))
-                except Exception:
+                except OSError:
                     pass
 
     # Export skills (with SKILL.md subdir support) and workflows

@@ -79,23 +79,23 @@ def cmd_update() -> None:
         if not config.dry_run:
             try:
                 git_env = get_git_env()
-                print_status("Attempting installation via SSH: git+ssh://git@github.com/sprawl-software/sprawl-cli.git...")
+                print_status("Attempting installation via HTTPS: git+https://github.com/sprawl-software/sprawl-cli.git...")
                 result = subprocess.run(
-                    ["pipx", "install", "git+ssh://git@github.com/sprawl-software/sprawl-cli.git", "--force"],
+                    ["pipx", "install", "git+https://github.com/sprawl-software/sprawl-cli.git", "--force"],
                     env=git_env
                 )
                 if result.returncode == 0:
-                    print_status("Sprawl CLI updated successfully from GitHub via SSH.")
+                    print_status("Sprawl CLI updated successfully from GitHub via HTTPS.")
                 else:
                     print_warning(
-                        "SSH installation failed (likely due to missing SSH keys or auth configuration).\n"
-                        "Attempting fallback to HTTPS: git+https://github.com/sprawl-software/sprawl-cli.git..."
+                        "HTTPS installation failed.\n"
+                        "Attempting fallback to SSH: git+ssh://git@github.com/sprawl-software/sprawl-cli.git..."
                     )
                     subprocess.run(
-                        ["pipx", "install", "git+https://github.com/sprawl-software/sprawl-cli.git", "--force"],
+                        ["pipx", "install", "git+ssh://git@github.com/sprawl-software/sprawl-cli.git", "--force"],
                         check=True, env=git_env
                     )
-                    print_status("Sprawl CLI updated successfully from GitHub via HTTPS.")
+                    print_status("Sprawl CLI updated successfully from GitHub via SSH.")
             except subprocess.CalledProcessError as e:
                 print_error(f"Failed to update via pipx: {e}")
                 print_warning("Ensure pipx is available and you have active network connectivity.")

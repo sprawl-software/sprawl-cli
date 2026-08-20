@@ -50,7 +50,7 @@ Sprawl CLI is the local-first, zero-dependency engine that locks this down at th
 curl -sL https://raw.githubusercontent.com/sprawl-software/sprawl-cli/main/install.sh | bash
 
 # Or: direct pipx install
-pipx install git+ssh://git@github.com/sprawl-software/sprawl-cli.git
+pipx install git+https://github.com/sprawl-software/sprawl-cli.git
 # Import your team's global DNA registry
 sprawl init https://github.com/your-org/your-dna-repo.git
 

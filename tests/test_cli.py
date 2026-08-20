@@ -241,27 +241,27 @@ rules:
     @patch('src.sprawl.commands.diagnostics.subprocess.run')
     @patch('src.sprawl.commands.diagnostics.os.path.exists', return_value=False)
     def test_cmd_update_production_github(self, mock_exists, mock_run, mock_resolve):
-        """cmd_update in production runs pipx install from github via SSH, then HTTPS on fallback."""
+        """cmd_update in production runs pipx install from github via HTTPS, then SSH on fallback."""
         config.dry_run = False
         
-        # 1. Test successful SSH path
+        # 1. Test successful HTTPS path
         mock_run.return_value = MagicMock(returncode=0)
         cmd_update()
         mock_run.assert_any_call(
-            ["pipx", "install", "git+ssh://git@github.com/sprawl-software/sprawl-cli.git", "--force"],
+            ["pipx", "install", "git+https://github.com/sprawl-software/sprawl-cli.git", "--force"],
             env=ANY
         )
         
-        # 2. Test fallback to HTTPS path
+        # 2. Test fallback to SSH path
         mock_run.reset_mock()
-        # Return code 1 for SSH, then success (0) for HTTPS
+        # Return code 1 for HTTPS, then success (0) for SSH
         mock_run.side_effect = [
             MagicMock(returncode=1),
             MagicMock(returncode=0)
         ]
         cmd_update()
         mock_run.assert_any_call(
-            ["pipx", "install", "git+https://github.com/sprawl-software/sprawl-cli.git", "--force"],
+            ["pipx", "install", "git+ssh://git@github.com/sprawl-software/sprawl-cli.git", "--force"],
             check=True, env=ANY
         )
 

@@ -81,7 +81,7 @@ def cmd_update() -> None:
                 git_env = get_git_env()
                 print_status("Attempting installation via HTTPS: git+https://github.com/sprawl-software/sprawl-cli.git...")
                 result = subprocess.run(
-                    ["pipx", "install", "git+https://github.com/sprawl-software/sprawl-cli.git", "--force"],
+                    ["pipx", "install", "git+https://github.com/sprawl-software/sprawl-cli.git", "--force", "--pip-args=--no-cache-dir"],
                     env=git_env
                 )
                 if result.returncode == 0:
@@ -92,7 +92,7 @@ def cmd_update() -> None:
                         "Attempting fallback to SSH: git+ssh://git@github.com/sprawl-software/sprawl-cli.git..."
                     )
                     subprocess.run(
-                        ["pipx", "install", "git+ssh://git@github.com/sprawl-software/sprawl-cli.git", "--force"],
+                        ["pipx", "install", "git+ssh://git@github.com/sprawl-software/sprawl-cli.git", "--force", "--pip-args=--no-cache-dir"],
                         check=True, env=git_env
                     )
                     print_status("Sprawl CLI updated successfully from GitHub via SSH.")

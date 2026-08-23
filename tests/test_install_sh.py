@@ -56,6 +56,18 @@ class TestInstallScript(unittest.TestCase):
             content = f.read()
         self.assertIn("--force", content)
 
+    def test_install_sh_disables_pip_cache(self):
+        """install.sh uses --pip-args='--no-cache-dir' when cloning from git."""
+        with open(INSTALL_SH, "r") as f:
+            content = f.read()
+        self.assertIn("--no-cache-dir", content)
+
+    def test_install_sh_verifies_sprawl_package_name_locally(self):
+        """install.sh verifies package name is sprawl-cli before installing local directory."""
+        with open(INSTALL_SH, "r") as f:
+            content = f.read()
+        self.assertIn('name = "sprawl-cli"', content)
+
     def test_install_sh_references_sprawl_version_env(self):
         """install.sh supports SPRAWL_VERSION environment variable for version pinning."""
         with open(INSTALL_SH, "r") as f:

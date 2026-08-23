@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "sprawl-cli"
-version = "2.0.2"
+version = "2.0.3"
 description = "Sprawl CLI Orchestrator - A single-pane Zero-Trust Agentic Fabric execution utility"
 authors = [
     { name = "Younes Baghor", email = "younes@brainblendai.com" }

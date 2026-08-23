@@ -190,7 +190,7 @@ verify_checksum() {
 # ------------------------------------
 log_info "Starting Sprawl CLI installation..."
 
-if [ -f "pyproject.toml" ]; then
+if [ -f "pyproject.toml" ] && grep -q 'name = "sprawl-cli"' pyproject.toml 2>/dev/null; then
     # Local development installation (repo cloned)
     log_info "Local repository detected — installing from source..."
     pipx install . --force
@@ -226,7 +226,7 @@ elif [ -n "${SPRAWL_VERSION}" ]; then
 
 else
     log_info "Installing the latest version from GitHub main branch..."
-    pipx install "git+https://github.com/${SPRAWL_GITHUB_REPO}.git" --force
+    pipx install "git+https://github.com/${SPRAWL_GITHUB_REPO}.git" --force --pip-args="--no-cache-dir"
     log_success "Sprawl CLI installed from GitHub main branch."
 fi
 

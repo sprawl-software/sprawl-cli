@@ -248,7 +248,7 @@ rules:
         mock_run.return_value = MagicMock(returncode=0)
         cmd_update()
         mock_run.assert_any_call(
-            ["pipx", "install", "git+https://github.com/sprawl-software/sprawl-cli.git", "--force"],
+            ["pipx", "install", "git+https://github.com/sprawl-software/sprawl-cli.git", "--force", "--pip-args=--no-cache-dir"],
             env=ANY
         )
         
@@ -261,7 +261,7 @@ rules:
         ]
         cmd_update()
         mock_run.assert_any_call(
-            ["pipx", "install", "git+ssh://git@github.com/sprawl-software/sprawl-cli.git", "--force"],
+            ["pipx", "install", "git+ssh://git@github.com/sprawl-software/sprawl-cli.git", "--force", "--pip-args=--no-cache-dir"],
             check=True, env=ANY
         )
 

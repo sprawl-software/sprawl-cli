@@ -39,7 +39,7 @@ def get_parser() -> argparse.ArgumentParser:
     
     # init
     init_parser = subparsers.add_parser("init", help="Clones your Sovereign DNA globally (~/.sprawl/core) and links the CLI.")
-    init_parser.add_argument("git_url", help="Target Git remote URL")
+    init_parser.add_argument("git_url", nargs="?", default="@default", help="Target Git remote URL or alias (default: @default - Sprawl Demo DNA)")
     init_parser.add_argument("target_dir", nargs="?", default=config.sprawl_dir, help="Target directory to initialize the Hub")
     init_parser.add_argument("--non-interactive", action="store_true", help="Bypasses the onboarding flow.")
     init_parser.add_argument("--yes", "-y", action="store_true", help="Bypasses the onboarding flow.")

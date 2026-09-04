@@ -14,9 +14,10 @@ from ..config import config
 CATEGORIES: list[str] = ["rules", "skills", "workflows"]
 
 DNA_ALIASES: dict[str, str] = {
+    "@default": "https://github.com/sprawl-software/sprawl-demo-dna.git",
+    "@demo": "https://github.com/sprawl-software/sprawl-demo-dna.git",
     "@python-fastapi": "https://github.com/sprawl-software/aaf-python-fastapi.git",
     "@vanilla-js": "https://github.com/sprawl-software/aaf-vanilla-js.git",
-    "@default": "https://github.com/sprawl-software/Atomic_Agentic_Fabric.git",
 }
 
 # Backward-compatible re-exports from output.py

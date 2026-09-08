@@ -20,9 +20,11 @@ SANDBOX_DIR = os.path.join(REPO_ROOT, "qa_sandbox")
 VENV_DIR = os.path.join(SANDBOX_DIR, ".venv")
 if sys.platform == "win32":
     SPRAWL_BIN = os.path.join(VENV_DIR, "Scripts", "sprawl.exe")
+    PYTHON_BIN = os.path.join(VENV_DIR, "Scripts", "python.exe")
     PIP_BIN = os.path.join(VENV_DIR, "Scripts", "pip.exe")
 else:
     SPRAWL_BIN = os.path.join(VENV_DIR, "bin", "sprawl")
+    PYTHON_BIN = os.path.join(VENV_DIR, "bin", "python3")
     PIP_BIN = os.path.join(VENV_DIR, "bin", "pip")
 LOG_OUTPUT_PATH = os.path.join(REPO_ROOT, "docs", "QA_EXECUTION_LOG.md")
 
@@ -67,11 +69,11 @@ def setup_sandbox_venv():
     subprocess.run([sys.executable, "-m", "venv", VENV_DIR], check=True)
     
     log_info("Upgrading pip inside sandbox venv...")
-    subprocess.run([PIP_BIN, "install", "--upgrade", "pip"], check=True)
+    subprocess.run([PYTHON_BIN, "-m", "pip", "install", "--upgrade", "pip"], check=True)
     
     log_info("Installing sprawl-cli from local source into sandbox venv...")
     # Install package locally
-    subprocess.run([PIP_BIN, "install", "."], cwd=REPO_ROOT, check=True)
+    subprocess.run([PYTHON_BIN, "-m", "pip", "install", "."], cwd=REPO_ROOT, check=True)
     log_success("Sprawl CLI installed successfully inside sandbox!")
 
 def run_sprawl_cmd(args: List[str], cwd: str = SANDBOX_DIR) -> Dict[str, Any]:

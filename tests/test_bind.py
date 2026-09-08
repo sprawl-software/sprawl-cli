@@ -40,7 +40,7 @@ class TestBind(unittest.TestCase):
         bind_adapters(self.test_dir)
         copilot = os.path.join(self.test_dir, ".github", "copilot-instructions.md")
         self.assertTrue(os.path.islink(copilot))
-        self.assertEqual(os.readlink(copilot), "../AGENTS.md")
+        self.assertEqual(os.readlink(copilot).replace("\\", "/"), "../AGENTS.md")
 
     def test_bind_creates_antigravity_gemini_json(self):
         """bind_adapters creates .gemini/antigravity/gemini.json."""

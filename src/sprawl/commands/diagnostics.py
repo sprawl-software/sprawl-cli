@@ -149,12 +149,14 @@ def cmd_clean_demo() -> None:
             raise SprawlError(f"Security Violation: '{demo_dir}' is a symbolic link. Refusing to delete to prevent path traversal.")
 
         # SECURITY HARDENING: Ensure exact path match
-        if os.path.realpath(demo_dir) != demo_dir:
+        real_demo = os.path.realpath(demo_dir)
+        real_expected = os.path.realpath(os.path.join(os.getcwd(), "sprawl_demo"))
+        if os.path.normcase(real_demo) != os.path.normcase(real_expected):
             raise SprawlError(f"Security Violation: '{demo_dir}' resolves to a different real path. Refusing to delete.")
 
         try:
-            shutil.rmtree(demo_dir)
-            print_status(f"[-] Securely deleted demo workspace container: {demo_dir}")
+            shutil.rmtree(real_demo)
+            print_status(f"[-] Securely deleted demo workspace container: {real_demo}")
         except Exception as e:
             raise SprawlError(f"Failed to delete demo workspace container: {e}")
     else:

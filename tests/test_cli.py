@@ -612,11 +612,14 @@ rules:
                 
                 # Test symlink prevention
                 os.makedirs("actual_target")
-                os.symlink("actual_target", "sprawl_demo")
-                with self.assertRaises(SprawlError) as cm:
-                    cmd_clean_demo()
-                self.assertIn("symbolic link", str(cm.exception))
-                os.unlink("sprawl_demo")
+                try:
+                    os.symlink("actual_target", "sprawl_demo")
+                    with self.assertRaises(SprawlError) as cm:
+                        cmd_clean_demo()
+                    self.assertIn("symbolic link", str(cm.exception))
+                    os.unlink("sprawl_demo")
+                except OSError:
+                    pass  # Skip if system privilege does not permit creating symlinks
                 
             finally:
                 os.chdir(original_cwd)

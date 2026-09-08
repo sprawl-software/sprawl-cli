@@ -38,7 +38,7 @@ def _enable_windows_vt() -> None:
             mode = ctypes.c_ulong()
             if kernel32.GetConsoleMode(handle, ctypes.byref(mode)):
                 kernel32.SetConsoleMode(handle, mode.value | 0x0004)  # ENABLE_VIRTUAL_TERMINAL_PROCESSING
-        except Exception:
+        except (AttributeError, OSError):  # nosec B110
             pass
 
 

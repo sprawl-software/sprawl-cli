@@ -91,7 +91,7 @@ rules:
                 self.assertIn("workflows:", content)
                 self.assertIn("- python.md", content)
                 
-                mock_register.assert_called_with(app_name, temp_dir)
+                mock_register.assert_called_with(app_name, os.path.realpath(temp_dir))
                 
                 with self.assertRaises(SprawlError):
                     cmd_graft()
@@ -600,7 +600,7 @@ rules:
                 # Test normal safe deletion
                 os.makedirs(demo_dir)
                 cmd_clean_demo()
-                mock_rmtree.assert_called_with(os.path.abspath(demo_dir))
+                mock_rmtree.assert_called_with(os.path.realpath(demo_dir))
                 # Verify the cleanup function is now called directly (not via subprocess)
                 mock_clean_test.assert_called_once()
                 

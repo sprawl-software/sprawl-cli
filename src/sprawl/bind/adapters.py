@@ -165,7 +165,7 @@ def _write_symlink(label: str, link_path: str, target: str, force: bool) -> bool
                 _winapi.CreateJunction(abs_target, os.path.abspath(link_path))
                 console.print(f"  [success]✔ {label} Binding:[/success] Created junction (fallback) → {target}")
                 return True
-            except Exception:
+            except (AttributeError, OSError):  # nosec B110
                 pass
 
         try:

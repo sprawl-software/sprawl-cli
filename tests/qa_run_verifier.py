@@ -11,6 +11,7 @@ import shutil
 import subprocess
 import time
 import sys
+import tempfile
 from typing import List, Dict, Any
 
 # Target paths
@@ -70,7 +71,7 @@ def setup_sandbox_venv():
     
     log_info("Installing sprawl-cli from local source into sandbox venv...")
     # Install package locally
-    subprocess.run([pip_bin, "install", "."], cwd=REPO_ROOT, check=True)
+    subprocess.run([PIP_BIN, "install", "."], cwd=REPO_ROOT, check=True)
     log_success("Sprawl CLI installed successfully inside sandbox!")
 
 def run_sprawl_cmd(args: List[str], cwd: str = SANDBOX_DIR) -> Dict[str, Any]:
@@ -201,7 +202,7 @@ def main():
         # Scenario 5: Sandboxed Directory Mounts
         {
             "name": "Add Directory Mount",
-            "args": ["mount", "add", "/tmp", "--alias", "test_tmp"],
+            "args": ["mount", "add", tempfile.gettempdir(), "--alias", "test_tmp"],
             "cwd": os.path.join(SANDBOX_DIR, "qa_workspace"),
             "desc": "Mount an external folder for agent workspace access.",
             "expect_zero": True

@@ -11,6 +11,7 @@ The workspace sandbox and context governance engine.
 
 [![License: BSL-1.1](https://img.shields.io/badge/License-BSL--1.1-00FFCC.svg)](LICENSE)
 [![Python 3.10+](https://img.shields.io/badge/Python-3.10%2B-00FFCC.svg)](https://python.org)
+[![Platform: Linux | macOS | Windows](https://img.shields.io/badge/Platform-Linux%20%7C%20macOS%20%7C%20Windows-00FFCC.svg)](#quickstart)
 [![MCP Native](https://img.shields.io/badge/MCP-Native-D946EF.svg)](https://modelcontextprotocol.io)
 
 [Website](https://sprawl.software) · [Docs](https://sprawl.software/docs/) · [Quickstart](#quickstart)
@@ -45,12 +46,26 @@ Sprawl CLI is the local-first, zero-dependency engine that locks this down at th
 
 ### Install
 
+**Linux & macOS:**
 ```bash
-# Recommended: automated bootstrap with pipx isolation
+# Automated bootstrap with pipx isolation
 curl -sL https://raw.githubusercontent.com/sprawl-software/sprawl-cli/main/install.sh | bash
+```
 
-# Or: direct pipx install
+**Windows (PowerShell 5.1+ / 7+):**
+```powershell
+# Native PowerShell bootstrap with pipx isolation
+irm https://raw.githubusercontent.com/sprawl-software/sprawl-cli/main/install.ps1 | iex
+```
+
+**Cross-Platform (direct pipx):**
+```bash
 pipx install git+https://github.com/sprawl-software/sprawl-cli.git
+```
+
+### Initialize & Govern
+
+```bash
 # Import your team's global DNA registry
 sprawl init https://github.com/your-org/your-dna-repo.git
 
@@ -63,28 +78,25 @@ sprawl sync
 
 # Connect to your active editors
 sprawl bind
-
 ```
 
 ## Core Commands
 
-| Command         | Usage                                         
-| --------------- | ---------------------------------------------
-| sprawl create   | Scaffold a new governance-compliant workspace      
-|                 |                                                     
-| sprawl create	|   Scaffold a new governance-compliant workspace
-| sprawl graft	   |   Onboard an existing project without losing custom configs
-| sprawl sync	   |   Pull DNA updates, provision venv, compile IDE bindings
-| sprawl bind	   |   Generate native config files for all active editors
-| sprawl add	   |   Inject rules, skills, or workflows from the registry
-| sprawl mount	   |   Grant agents secure access to external directories
-| sprawl status	|   Inspect workspace identity, DNA health, and telemetry
-| sprawl diff	   |   Detect configuration drift against the central registry
-| sprawl doctor	|   Run system-wide diagnostics
-| sprawl ws	      |   Manage all tracked workspaces from a single registry
-| sprawl demo	   |   Interactive sandbox demonstration
-| sprawl man	   |   Offline terminal documentation
-| sprawl wipe	   |   Clean uninstall — zero configuration trail| 
+| Command | Usage |
+| :--- | :--- |
+| `sprawl create` | Scaffold a new governance-compliant workspace |
+| `sprawl graft` | Onboard an existing project without losing custom configs |
+| `sprawl sync` | Pull DNA updates, provision venv, compile IDE bindings |
+| `sprawl bind` | Generate native config files for all active editors |
+| `sprawl add` | Inject rules, skills, or workflows from the registry |
+| `sprawl mount` | Grant agents secure access to external directories |
+| `sprawl status` | Inspect workspace identity, DNA health, and telemetry |
+| `sprawl diff` | Detect configuration drift against the central registry |
+| `sprawl doctor` | Run system-wide diagnostics |
+| `sprawl ws` | Manage all tracked workspaces from a single registry |
+| `sprawl demo` | Interactive sandbox demonstration |
+| `sprawl man` | Offline terminal documentation |
+| `sprawl wipe` | Clean uninstall — zero configuration trail |
 
 ## Architecture
 ```
@@ -110,22 +122,23 @@ sprawl bind
 
 ## Supported Editors & Agents
 
-- Cursor	.cursorrules
-- VS Code / Copilot
-- Visual Studio
-- Claude Code
-- Gemini / Antigravity
-- IntelliJ / JetBrains
-- Windsurfu
-- RooCode / Cline
+- **Cursor** (`.cursorrules`)
+- **VS Code / GitHub Copilot** (`.github/copilot-instructions.md`, `.vscode/settings.json`)
+- **Visual Studio**
+- **Claude Code** (`CLAUDE.md`, MCP config)
+- **Gemini / Google Antigravity** (`gemini.json`, `.agent/`)
+- **IntelliJ / JetBrains**
+- **Windsurf** (`.windsurfrules`)
+- **RooCode / Cline** (`.clinerules`)
 
 ## Design Principles
 
-- 100% Local, Runs on your machine. No cloud. No accounts. No telemetry.
-- Stealth Injection, Agents operate under constraints they cannot see or modify
-- Agnostic Outputs, One manifest → all editors. Switch tools without reconfiguring.
-- Zero Heavy Dependencies, Pure Python standard library. Sub-100ms boot.
-- Standard Library,  Only	No supply chain risk. Auditable in 48 hours.
+- **100% Local**: Runs entirely on your machine. No cloud, no accounts, zero telemetry.
+- **Cross-Platform**: First-class support across Linux, macOS, and Windows 10/11.
+- **Stealth Injection**: Agents operate under containment constraints they cannot see or modify.
+- **Agnostic Outputs**: One manifest compiles to all editors. Switch tools without reconfiguring.
+- **Zero Heavy Dependencies**: Pure Python standard library + Rich. Sub-100ms boot.
+- **Standard Library Only**: No dependency bloat. Auditable in 48 hours.
 
 ### Contributing
 

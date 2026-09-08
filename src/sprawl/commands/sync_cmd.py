@@ -74,7 +74,7 @@ def update_manifest_bindings(target_dir: str, targets: list[str]) -> None:
     if not os.path.exists(manifest_path):
         return
         
-    with open(manifest_path, "r") as f:
+    with open(manifest_path, "r", encoding="utf-8") as f:
         content = f.read()
         
     from ..validation import parse_yaml_frontmatter
@@ -117,7 +117,7 @@ def update_manifest_bindings(target_dir: str, targets: list[str]) -> None:
             new_manifest.append("")
             
     manifest_text = "\n".join(new_manifest)
-    with open(manifest_path, "w") as f:
+    with open(manifest_path, "w", encoding="utf-8") as f:
         f.write(manifest_text)
 
 
@@ -149,7 +149,7 @@ def cmd_bind(
     if os.path.exists(manifest_path):
         try:
             from ..validation import parse_yaml_frontmatter
-            with open(manifest_path, "r") as f:
+            with open(manifest_path, "r", encoding="utf-8") as f:
                 content = f.read()
             manifest_data = parse_yaml_frontmatter(f"---\n{content}\n---")
             if "bindings" in manifest_data:

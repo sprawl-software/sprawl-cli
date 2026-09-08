@@ -56,5 +56,5 @@ def generate_mcp_config(
     provision_schemas(mcp_base_dir)
 
 
-    with open(output_path, "w") as f:
+    with open(output_path, "w", encoding="utf-8") as f:
         json.dump(mcp_config, f, indent=4)

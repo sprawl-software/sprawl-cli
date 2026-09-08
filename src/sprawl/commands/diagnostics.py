@@ -1,6 +1,7 @@
 """Diagnostics commands — update, cleanup, manual, and demo engine."""
 
 import os
+import sys
 import json
 import shutil
 import subprocess
@@ -69,7 +70,16 @@ def cmd_update() -> None:
                     print_status("Continuing with local source code...")
 
                 print_status("Re-installing globally via pipx...")
-                subprocess.run(["pipx", "install", ".", "--force"], cwd=repo_root, check=True)
+                if sys.platform == "win32":
+                    runpip_res = subprocess.run(
+                        ["pipx", "runpip", "sprawl-cli", "install", "--upgrade", "--no-cache-dir", "."],
+                        cwd=repo_root,
+                        env=git_env
+                    )
+                    if runpip_res.returncode != 0:
+                        subprocess.run(["pipx", "install", ".", "--force"], cwd=repo_root, check=True, env=git_env)
+                else:
+                    subprocess.run(["pipx", "install", ".", "--force"], cwd=repo_root, check=True, env=git_env)
 
                 print_status("Sprawl Engine updated and installed globally successfully.")
             except subprocess.CalledProcessError as e:
@@ -79,23 +89,49 @@ def cmd_update() -> None:
         if not config.dry_run:
             try:
                 git_env = get_git_env()
-                print_status("Attempting installation via HTTPS: git+https://github.com/sprawl-software/sprawl-cli.git...")
-                result = subprocess.run(
-                    ["pipx", "install", "git+https://github.com/sprawl-software/sprawl-cli.git", "--force", "--pip-args=--no-cache-dir"],
-                    env=git_env
-                )
-                if result.returncode == 0:
-                    print_status("Sprawl CLI updated successfully from GitHub via HTTPS.")
+                if sys.platform == "win32":
+                    print_status("Attempting upgrade via pipx...")
+                    result = subprocess.run(
+                        ["pipx", "upgrade", "sprawl-cli", "--pip-args=--no-cache-dir"],
+                        env=git_env
+                    )
+                    if result.returncode == 0:
+                        print_status("Sprawl CLI updated successfully via pipx upgrade.")
+                    else:
+                        print_status("Attempting in-place installation via pipx runpip...")
+                        runpip_result = subprocess.run(
+                            ["pipx", "runpip", "sprawl-cli", "install", "--upgrade", "--no-cache-dir", "git+https://github.com/sprawl-software/sprawl-cli.git"],
+                            env=git_env
+                        )
+                        if runpip_result.returncode == 0:
+                            print_status("Sprawl CLI updated successfully from GitHub via HTTPS.")
+                        else:
+                            # If sprawl-cli is not installed in pipx yet, install it via pipx install --force
+                            print_status("Attempting installation via pipx install --force...")
+                            subprocess.run(
+                                ["pipx", "install", "git+https://github.com/sprawl-software/sprawl-cli.git", "--force", "--pip-args=--no-cache-dir"],
+                                check=True,
+                                env=git_env
+                            )
+                            print_status("Sprawl CLI installed successfully from GitHub via HTTPS.")
                 else:
-                    print_warning(
-                        "HTTPS installation failed.\n"
-                        "Attempting fallback to SSH: git+ssh://git@github.com/sprawl-software/sprawl-cli.git..."
+                    print_status("Attempting installation via HTTPS: git+https://github.com/sprawl-software/sprawl-cli.git...")
+                    result = subprocess.run(
+                        ["pipx", "install", "git+https://github.com/sprawl-software/sprawl-cli.git", "--force", "--pip-args=--no-cache-dir"],
+                        env=git_env
                     )
-                    subprocess.run(
-                        ["pipx", "install", "git+ssh://git@github.com/sprawl-software/sprawl-cli.git", "--force", "--pip-args=--no-cache-dir"],
-                        check=True, env=git_env
-                    )
-                    print_status("Sprawl CLI updated successfully from GitHub via SSH.")
+                    if result.returncode == 0:
+                        print_status("Sprawl CLI updated successfully from GitHub via HTTPS.")
+                    else:
+                        print_warning(
+                            "HTTPS installation failed.\n"
+                            "Attempting fallback to SSH: git+ssh://git@github.com/sprawl-software/sprawl-cli.git..."
+                        )
+                        subprocess.run(
+                            ["pipx", "install", "git+ssh://git@github.com/sprawl-software/sprawl-cli.git", "--force", "--pip-args=--no-cache-dir"],
+                            check=True, env=git_env
+                        )
+                        print_status("Sprawl CLI updated successfully from GitHub via SSH.")
             except subprocess.CalledProcessError as e:
                 print_error(f"Failed to update via pipx: {e}")
                 print_warning("Ensure pipx is available and you have active network connectivity.")
@@ -110,12 +146,13 @@ def cmd_clean_test() -> None:
 
     print_status("Nuking all testmode artifacts...")
     try:
+        from ..utils import rmtree_safe
         if os.path.exists(config.agents_dir_global):
-            shutil.rmtree(config.agents_dir_global)
+            rmtree_safe(config.agents_dir_global)
             print_status(f"[-] Deleted {config.agents_dir_global}")
 
         if os.path.exists(config.sprawl_dir):
-            shutil.rmtree(config.sprawl_dir)
+            rmtree_safe(config.sprawl_dir)
             print_status(f"[-] Deleted {config.sprawl_dir}")
 
         if os.path.exists(config.config_path):
@@ -149,12 +186,14 @@ def cmd_clean_demo() -> None:
             raise SprawlError(f"Security Violation: '{demo_dir}' is a symbolic link. Refusing to delete to prevent path traversal.")
 
         # SECURITY HARDENING: Ensure exact path match
-        if os.path.realpath(demo_dir) != demo_dir:
+        real_demo = os.path.realpath(demo_dir)
+        real_expected = os.path.realpath(os.path.join(os.getcwd(), "sprawl_demo"))
+        if os.path.normcase(real_demo) != os.path.normcase(real_expected):
             raise SprawlError(f"Security Violation: '{demo_dir}' resolves to a different real path. Refusing to delete.")
 
         try:
-            shutil.rmtree(demo_dir)
-            print_status(f"[-] Securely deleted demo workspace container: {demo_dir}")
+            shutil.rmtree(real_demo)
+            print_status(f"[-] Securely deleted demo workspace container: {real_demo}")
         except Exception as e:
             raise SprawlError(f"Failed to delete demo workspace container: {e}")
     else:

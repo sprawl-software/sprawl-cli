@@ -21,8 +21,8 @@ class TestSprawlConfig(unittest.TestCase):
         self.assertFalse(cfg.verbose)
         self.assertFalse(cfg.json_logging)
         self.assertFalse(cfg.test_mode)
-        self.assertIn(".sprawl/core", cfg.agents_dir_global)
-        self.assertIn(".sprawl/dna", cfg.dna_registry_dir)
+        self.assertIn(os.path.join(".sprawl", "core"), cfg.agents_dir_global)
+        self.assertIn(os.path.join(".sprawl", "dna"), cfg.dna_registry_dir)
 
     def test_test_mode_paths(self) -> None:
         """Test mode resolves to isolated paths."""
@@ -35,7 +35,7 @@ class TestSprawlConfig(unittest.TestCase):
     def test_production_paths(self) -> None:
         """Production mode resolves to standard paths."""
         cfg = SprawlConfig(test_mode=False)
-        self.assertIn(".sprawl/core", cfg.agents_dir_global)
+        self.assertIn(os.path.join(".sprawl", "core"), cfg.agents_dir_global)
         self.assertNotIn("test", cfg.agents_dir_global.lower())
 
     def test_reinitialize_switches_modes(self) -> None:

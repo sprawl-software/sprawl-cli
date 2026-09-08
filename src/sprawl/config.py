@@ -76,7 +76,7 @@ class SprawlConfig:
         if not os.path.exists(self.config_path):
             return {}
         try:
-            with open(self.config_path, "r") as f:
+            with open(self.config_path, "r", encoding="utf-8") as f:
                 return json.load(f)
         except json.JSONDecodeError:
             return {}
@@ -88,7 +88,7 @@ class SprawlConfig:
         os.makedirs(os.path.dirname(self.config_path), exist_ok=True)
         tmp_path = self.config_path + ".tmp"
         try:
-            with open(tmp_path, "w") as f:
+            with open(tmp_path, "w", encoding="utf-8") as f:
                 json.dump(config_data, f, indent=4)
             os.replace(tmp_path, self.config_path)
         except Exception as e:

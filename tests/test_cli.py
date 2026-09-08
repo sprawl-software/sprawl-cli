@@ -91,7 +91,8 @@ rules:
                 self.assertIn("workflows:", content)
                 self.assertIn("- python.md", content)
                 
-                mock_register.assert_called_with(app_name, temp_dir)
+                self.assertEqual(mock_register.call_args[0][0], app_name)
+                self.assertTrue(os.path.samefile(mock_register.call_args[0][1], temp_dir))
                 
                 with self.assertRaises(SprawlError):
                     cmd_graft()
@@ -240,6 +241,7 @@ rules:
     @patch('src.sprawl.commands.diagnostics.resolve_repo_root', return_value=None)
     @patch('src.sprawl.commands.diagnostics.subprocess.run')
     @patch('src.sprawl.commands.diagnostics.os.path.exists', return_value=False)
+    @patch('sys.platform', 'linux')
     def test_cmd_update_production_github(self, mock_exists, mock_run, mock_resolve):
         """cmd_update in production runs pipx install from github via HTTPS, then SSH on fallback."""
         config.dry_run = False
@@ -350,9 +352,10 @@ rules:
         config.dry_run = False
         
         from src.sprawl.sync import sync_app_directory
-        sync_app_directory('/fake/app')
+        fake_app = os.path.abspath('/fake/app')
+        sync_app_directory(fake_app)
         
-        mock_timestamp.assert_called_once_with('/fake/app')
+        mock_timestamp.assert_called_once_with(fake_app)
         mock_state.assert_called_once_with({"last_manifest_sync": True})
 
     @patch('src.sprawl.sync.subprocess.run')
@@ -480,7 +483,7 @@ rules:
         cmd_add(['web_scraper', 'seo_rules'])
 
         # Verify we attempt to open sprawl_manifest.yml to read and then to write
-        mock_open.assert_called_with(os.path.join(os.getcwd(), ".agents", "sprawl_manifest.yml"), "w")
+        mock_open.assert_called_with(os.path.join(os.getcwd(), ".agents", "sprawl_manifest.yml"), "w", encoding="utf-8")
         
         # Verify sync is called
         mock_sync.assert_called_once()
@@ -509,7 +512,7 @@ rules:
         config.dry_run = False
         cmd_add(['*'])
 
-        mock_open.assert_called_with(os.path.join(os.getcwd(), ".agents", "sprawl_manifest.yml"), "w")
+        mock_open.assert_called_with(os.path.join(os.getcwd(), ".agents", "sprawl_manifest.yml"), "w", encoding="utf-8")
         mock_sync.assert_called_once()
         
         written_content = "".join(call.args[0] for call in mock_open().write.call_args_list)
@@ -544,7 +547,7 @@ rules:
         
         expected_dir = os.path.join("/fake/dna", "skills", "persona-gtm_specialist")
         mock_makedirs.assert_called_with(expected_dir)
-        mock_open.assert_called_with(os.path.join(expected_dir, "SKILL.md"), "w")
+        mock_open.assert_called_with(os.path.join(expected_dir, "SKILL.md"), "w", encoding="utf-8")
 
     @patch('src.sprawl.commands.artifacts.get_active_dna_context')
     @patch('src.sprawl.commands.artifacts.os.path.exists')
@@ -600,7 +603,7 @@ rules:
                 # Test normal safe deletion
                 os.makedirs(demo_dir)
                 cmd_clean_demo()
-                mock_rmtree.assert_called_with(os.path.abspath(demo_dir))
+                mock_rmtree.assert_called_with(os.path.realpath(demo_dir))
                 # Verify the cleanup function is now called directly (not via subprocess)
                 mock_clean_test.assert_called_once()
                 
@@ -610,11 +613,14 @@ rules:
                 
                 # Test symlink prevention
                 os.makedirs("actual_target")
-                os.symlink("actual_target", "sprawl_demo")
-                with self.assertRaises(SprawlError) as cm:
-                    cmd_clean_demo()
-                self.assertIn("symbolic link", str(cm.exception))
-                os.unlink("sprawl_demo")
+                try:
+                    os.symlink("actual_target", "sprawl_demo")
+                    with self.assertRaises(SprawlError) as cm:
+                        cmd_clean_demo()
+                    self.assertIn("symbolic link", str(cm.exception))
+                    os.unlink("sprawl_demo")
+                except OSError:
+                    pass  # Skip if system privilege does not permit creating symlinks
                 
             finally:
                 os.chdir(original_cwd)

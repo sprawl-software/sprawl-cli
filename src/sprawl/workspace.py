@@ -30,7 +30,7 @@ class Workspace:
         # 1. Check management plane (New way)
         if os.path.exists(self.dna_binding_path):
             try:
-                with open(self.dna_binding_path, "r") as f:
+                with open(self.dna_binding_path, "r", encoding="utf-8") as f:
                     data = json.load(f)
                     return data.get("alias")
             except (json.JSONDecodeError, IOError):
@@ -40,7 +40,7 @@ class Workspace:
         old_dna_path = os.path.join(self.path, ".sprawl_dna")
         if os.path.exists(old_dna_path):
             try:
-                with open(old_dna_path, "r") as f:
+                with open(old_dna_path, "r", encoding="utf-8") as f:
                     alias = f.read().strip()
                 if alias:
                     self.bind_dna(alias)
@@ -56,7 +56,7 @@ class Workspace:
         self.ensure_mgt_dir()
         tmp_path = self.dna_binding_path + ".tmp"
         try:
-            with open(tmp_path, "w") as f:
+            with open(tmp_path, "w", encoding="utf-8") as f:
                 json.dump({"alias": alias, "bound_at": datetime.datetime.now(datetime.timezone.utc).isoformat()}, f, indent=4)
             os.replace(tmp_path, self.dna_binding_path)
         except Exception:
@@ -72,7 +72,7 @@ class Workspace:
         if not os.path.exists(self.sync_state_path):
             return {}
         try:
-            with open(self.sync_state_path, "r") as f:
+            with open(self.sync_state_path, "r", encoding="utf-8") as f:
                 return json.load(f)
         except (json.JSONDecodeError, IOError):
             return {}
@@ -85,7 +85,7 @@ class Workspace:
         current_state["last_sync_timestamp"] = datetime.datetime.now(datetime.timezone.utc).isoformat()
         tmp_path = self.sync_state_path + ".tmp"
         try:
-            with open(tmp_path, "w") as f:
+            with open(tmp_path, "w", encoding="utf-8") as f:
                 json.dump(current_state, f, indent=4)
             os.replace(tmp_path, self.sync_state_path)
         except Exception:
@@ -103,7 +103,7 @@ def load_workspace_registry() -> Dict[str, Any]:
     if not os.path.exists(path):
         return {}
     try:
-        with open(path, "r") as f:
+        with open(path, "r", encoding="utf-8") as f:
             return json.load(f)
     except json.JSONDecodeError:
         return {}
@@ -115,7 +115,7 @@ def save_workspace_registry(data: Dict[str, Any]) -> None:
     os.makedirs(os.path.dirname(path), exist_ok=True)
     tmp_path = path + ".tmp"
     try:
-        with open(tmp_path, "w") as f:
+        with open(tmp_path, "w", encoding="utf-8") as f:
             json.dump(data, f, indent=4)
         os.replace(tmp_path, path)
     except Exception:
@@ -174,10 +174,14 @@ def update_workspace_sync_timestamp(name: str) -> None:
     if name not in data:
         # Fallback: search by path
         found_name = None
+        norm_name = os.path.normcase(os.path.realpath(os.path.abspath(name)))
         for ws_name, ws_data in data.items():
-            if ws_data.get("path") == name:
-                found_name = ws_name
-                break
+            p = ws_data.get("path")
+            if p:
+                norm_p = os.path.normcase(os.path.realpath(os.path.abspath(p)))
+                if p == name or norm_p == norm_name:
+                    found_name = ws_name
+                    break
         if not found_name:
             raise WorkspaceError(f"Workspace '{name}' is not registered.")
         name = found_name

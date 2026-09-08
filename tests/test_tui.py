@@ -11,11 +11,13 @@ from src.sprawl.utils.tui import raw_terminal, read_key, show_checkbox_menu
 
 class TestTUI(unittest.TestCase):
 
+    @unittest.skipIf(sys.platform == "win32", "POSIX-specific terminal test")
     def test_raw_terminal_non_tty(self):
         """Verify raw_terminal context manager handles non-TTY gracefully."""
-        with patch("sys.stdin.isatty", return_value=False):
+        with patch("sys.stdin.isatty", return_value=False), \
+             patch("sys.stdin.fileno", return_value=0):
             with raw_terminal() as fd:
-                self.assertEqual(fd, sys.stdin.fileno())
+                self.assertEqual(fd, 0)
 
     @patch("sys.stdin.isatty", return_value=False)
     @patch("sys.stdin.read")
@@ -24,21 +26,25 @@ class TestTUI(unittest.TestCase):
         mock_read.return_value = "a"
         self.assertEqual(read_key(), "a")
 
+    @unittest.skipIf(sys.platform == "win32", "POSIX-specific terminal test")
+    @patch("sys.stdin.fileno", return_value=0)
     @patch("sys.stdin.isatty", return_value=True)
     @patch("os.read")
-    def test_read_key_tty_char(self, mock_os_read, mock_isatty):
+    def test_read_key_tty_char(self, mock_os_read, mock_isatty, mock_fileno):
         """Verify read_key reads single characters on TTY."""
         mock_os_read.return_value = b"x"
         self.assertEqual(read_key(), "x")
 
+    @unittest.skipIf(sys.platform == "win32", "POSIX-specific terminal test")
+    @patch("sys.stdin.fileno", return_value=0)
     @patch("sys.stdin.isatty", return_value=True)
     @patch("select.select")
     @patch("os.read")
-    def test_read_key_tty_arrow(self, mock_os_read, mock_select, mock_isatty):
+    def test_read_key_tty_arrow(self, mock_os_read, mock_select, mock_isatty, mock_fileno):
         """Verify read_key parses escape sequences for arrow keys correctly."""
         # os.read yields escape char, then the rest of the arrow sequence
         mock_os_read.side_effect = [b"\x1b", b"[B"]
-        mock_select.return_value = ([sys.stdin.fileno()], [], [])
+        mock_select.return_value = ([0], [], [])
 
         self.assertEqual(read_key(), "\x1b[B")
 

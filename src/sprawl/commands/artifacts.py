@@ -105,7 +105,7 @@ def cmd_add(items: list[str], target_dir: Optional[str] = None) -> None:
             return
 
         # Read existing manifest to preserve non-category values
-        with open(manifest_path, "r") as f:
+        with open(manifest_path, "r", encoding="utf-8") as f:
             content = f.read()
 
         manifest_data = parse_yaml_frontmatter(f"---\n{content}\n---")
@@ -138,7 +138,7 @@ def cmd_add(items: list[str], target_dir: Optional[str] = None) -> None:
 
         print_status("Modifying sprawl_manifest.yml...")
         if not config.dry_run:
-            with open(manifest_path, "w") as f:
+            with open(manifest_path, "w", encoding="utf-8") as f:
                 f.write(manifest_text)
 
         print_status("Injecting DNA...")
@@ -165,7 +165,7 @@ def cmd_add(items: list[str], target_dir: Optional[str] = None) -> None:
             else:
                 raise SprawlError(f"Item '{item}' not found in any category within the active DNA context.")
 
-    with open(manifest_path, "r") as f:
+    with open(manifest_path, "r", encoding="utf-8") as f:
         content = f.read()
 
     for category, new_items in additions.items():
@@ -184,7 +184,7 @@ def cmd_add(items: list[str], target_dir: Optional[str] = None) -> None:
             content = content[:insert_pos] + insert_str + content[insert_pos:]
 
     if not config.dry_run:
-        with open(manifest_path, "w") as f:
+        with open(manifest_path, "w", encoding="utf-8") as f:
             f.write(content)
 
     print_status("Modifying sprawl_manifest.yml...")
@@ -197,7 +197,6 @@ def cmd_add(items: list[str], target_dir: Optional[str] = None) -> None:
         for item in new_items:
             cat_name = category[:-1].capitalize() if category.endswith("s") else category.capitalize()
             print_status(f"[+] {cat_name} '{item}' successfully sandboxed.")
-
 
 
 def cmd_scaffold(type_str: str, name: str) -> None:
@@ -242,7 +241,7 @@ description: Lens override for the {name} persona.
 # Evaluation Protocol
 [Insert rules for evaluating outputs through this lens]
 """
-        with open(skill_file, "w") as f:
+        with open(skill_file, "w", encoding="utf-8") as f:
             f.write(template)
 
         print_status(f"Persona Scaffolded successfully: '{folder_name}'")
@@ -273,7 +272,7 @@ def cmd_remove(items: list[str]) -> None:
             print_warning(f"Item '{item}' not found in active DNA context. Proceeding to blindly attempt removal from manifest.")
             removals.append(item)
 
-    with open(manifest_path, "r") as f:
+    with open(manifest_path, "r", encoding="utf-8") as f:
         content = f.read()
     lines = content.splitlines()
     new_lines: list[str] = []
@@ -295,7 +294,7 @@ def cmd_remove(items: list[str]) -> None:
         print_warning("No matching items found in sprawl_manifest.yml to remove.")
         return
 
-    with open(manifest_path, "w") as f:
+    with open(manifest_path, "w", encoding="utf-8") as f:
         f.write("\n".join(new_lines) + "\n")
 
     print_status("Manifest updated. Triggering synchronization cleanup...")

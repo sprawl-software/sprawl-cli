@@ -10,7 +10,7 @@ from rich.table import Table
 from ..config import config
 from ..output import console, print_warning
 from ..exceptions import SprawlError
-from ..utils import CATEGORIES
+from ..utils import CATEGORIES, get_venv_executable
 from ..sync import parse_sprawl_manifest
 from ..workspace import Workspace
 
@@ -69,7 +69,9 @@ def cmd_status(target_dir: Optional[str] = None) -> None:
 
     # --- Venv health ---
     venv_dir = os.path.join(local_agents_dir, ".venv")
-    venv_python = os.path.join(venv_dir, "bin", "python3")
+    venv_python = get_venv_executable(venv_dir, "python3")
+    if not os.path.exists(venv_python):
+        venv_python = get_venv_executable(venv_dir, "python")
     if os.path.exists(venv_python):
         try:
             import subprocess

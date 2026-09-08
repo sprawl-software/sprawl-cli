@@ -66,7 +66,8 @@ def cmd_wipe(target_dir: Optional[str] = None, force: bool = False, local_only: 
                 pass # Ignore registry errors during a nuclear wipe
                 
         try:
-            shutil.rmtree(local_agents_dir)
+            from ..utils import rmtree_safe
+            rmtree_safe(local_agents_dir)
             print_status(f"Destroyed local workspace: {local_agents_dir}")
         except Exception as e:
             raise SprawlError(f"Failed to wipe local workspace: {e}")
@@ -121,7 +122,8 @@ def cmd_wipe(target_dir: Optional[str] = None, force: bool = False, local_only: 
 
         global_dir = os.path.dirname(config.config_path)
         try:
-            shutil.rmtree(global_dir)
+            from ..utils import rmtree_safe
+            rmtree_safe(global_dir)
             print_status(f"Destroyed global DNA registry and configuration: {global_dir}")
         except Exception as e:
             raise SprawlError(f"Failed to wipe global registry: {e}")

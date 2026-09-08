@@ -56,7 +56,7 @@ workflows:
 
 bindings: []
 """
-        with open(manifest_path, "w") as f:
+        with open(manifest_path, "w", encoding="utf-8") as f:
             f.write(default_content)
         
         # Scaffold clean sprawl-config.json
@@ -65,7 +65,7 @@ bindings: []
   "allowed_mounts": {}
 }
 """
-        with open(config_path, "w") as f:
+        with open(config_path, "w", encoding="utf-8") as f:
             f.write(default_config)
 
         register_workspace(workspace_name, workspace_dir)
@@ -186,7 +186,7 @@ def cmd_graft() -> None:
         print_status(f"DRY RUN: Would surgically graft sprawl_manifest.yml into {local_agents_dir}")
         print_status("Generated manifest:\n" + manifest_content)
     elif not config.dry_run:
-        with open(manifest_path, "w") as f:
+        with open(manifest_path, "w", encoding="utf-8") as f:
             f.write(manifest_content)
         register_workspace(app_name, cwd)
         print_status(

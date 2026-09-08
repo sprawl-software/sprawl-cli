@@ -6,11 +6,19 @@ Restores terminal cleanly on exit or abrupt failure.
 
 import os
 import sys
-import tty
-import select
-import termios
 import contextlib
 from typing import Any, Dict, List, Optional, Tuple
+
+if sys.platform != "win32":
+    import tty
+    import select
+    import termios
+    msvcrt = None
+else:
+    try:
+        import msvcrt
+    except ImportError:
+        msvcrt = None  # type: ignore
 
 from rich.console import Console
 from rich.panel import Panel
@@ -20,9 +28,34 @@ from ..theme import SDS_THEME
 console = Console(theme=SDS_THEME)
 
 
+def _enable_windows_vt() -> None:
+    """Enables Virtual Terminal Processing on Windows console for ANSI escape sequences."""
+    if sys.platform == "win32":
+        try:
+            import ctypes
+            kernel32 = ctypes.windll.kernel32
+            handle = kernel32.GetStdHandle(-11)  # STD_OUTPUT_HANDLE = -11
+            mode = ctypes.c_ulong()
+            if kernel32.GetConsoleMode(handle, ctypes.byref(mode)):
+                kernel32.SetConsoleMode(handle, mode.value | 0x0004)  # ENABLE_VIRTUAL_TERMINAL_PROCESSING
+        except (AttributeError, OSError):  # nosec B110
+            pass
+
+
 @contextlib.contextmanager
 def raw_terminal():
     """Context manager to enable raw terminal mode and safely restore settings on exit."""
+    if sys.platform == "win32":
+        _enable_windows_vt()
+        try:
+            sys.stdout.write("\033[?25l")
+            sys.stdout.flush()
+            yield None
+        finally:
+            sys.stdout.write("\033[?25h")
+            sys.stdout.flush()
+        return
+
     try:
         fd = sys.stdin.fileno()
     except Exception:
@@ -49,6 +82,41 @@ def raw_terminal():
 
 def read_key() -> str:
     """Reads a single keypress or ANSI escape sequence from stdin in raw mode."""
+    if sys.platform == "win32":
+        if not sys.stdin.isatty() or msvcrt is None:
+            return sys.stdin.read(1)
+        try:
+            ch = msvcrt.getch()
+        except Exception:
+            return ""
+        # Check for special / arrow keys (prefixed with 0x00 or 0xe0)
+        if ch in (b"\x00", b"\xe0"):
+            try:
+                ch2 = msvcrt.getch()
+            except Exception:
+                return ""
+            if ch2 == b"H":  # Arrow Up
+                return "\x1b[A"
+            elif ch2 == b"P":  # Arrow Down
+                return "\x1b[B"
+            elif ch2 == b"K":  # Arrow Left
+                return "\x1b[D"
+            elif ch2 == b"M":  # Arrow Right
+                return "\x1b[C"
+            return ""
+        elif ch == b"\r":
+            return "\r"
+        elif ch == b"\n":
+            return "\n"
+        elif ch == b"\x1b":
+            return "\x1b"
+        elif ch == b" ":
+            return " "
+        try:
+            return ch.decode("utf-8", errors="ignore")
+        except Exception:
+            return ""
+
     if not sys.stdin.isatty():
         # Fallback for non-interactive test environments
         return sys.stdin.read(1)
@@ -399,16 +467,19 @@ def _add_new_mounts(workspace_root: str, mounts: dict, checked_states: dict) -> 
             sys.stdout.write("\033[?25h")
             sys.stdout.flush()
             
-            fd = sys.stdin.fileno()
-            old_settings = termios.tcgetattr(fd)
-            try:
-                termios.tcsetattr(fd, termios.TCSADRAIN, old_settings)
+            if sys.platform == "win32":
                 alias_input = sys.stdin.readline().strip()
-            finally:
-                tty.setcbreak(fd)
-                termios.tcflush(fd, termios.TCIFLUSH)
-                sys.stdout.write("\033[?25l")
-                sys.stdout.flush()
+            else:
+                fd = sys.stdin.fileno()
+                old_settings = termios.tcgetattr(fd)
+                try:
+                    termios.tcsetattr(fd, termios.TCSADRAIN, old_settings)
+                    alias_input = sys.stdin.readline().strip()
+                finally:
+                    tty.setcbreak(fd)
+                    termios.tcflush(fd, termios.TCIFLUSH)
+                    sys.stdout.write("\033[?25l")
+                    sys.stdout.flush()
 
             alias = slugify(alias_input) if alias_input else default_alias
             if not alias:

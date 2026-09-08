@@ -10,7 +10,8 @@ class TestCommandShell(unittest.TestCase):
         self.test_dir = tempfile.mkdtemp()
         self.agents_dir = os.path.join(self.test_dir, ".agents")
         self.venv_dir = os.path.join(self.agents_dir, ".venv")
-        os.makedirs(os.path.join(self.venv_dir, "bin"))
+        self.venv_bin = os.path.join(self.venv_dir, "Scripts" if os.name == "nt" else "bin")
+        os.makedirs(self.venv_bin, exist_ok=True)
 
     def tearDown(self):
         shutil.rmtree(self.test_dir)
@@ -30,7 +31,7 @@ class TestCommandShell(unittest.TestCase):
             self.assertEqual(env.get("SHELL"), "/bin/zsh")
             self.assertEqual(env.get("VIRTUAL_ENV"), self.venv_dir)
             self.assertEqual(env.get("SPRAWL_WORKSPACE"), os.path.abspath(self.test_dir))
-            self.assertTrue(env.get("PATH").startswith(os.path.join(self.venv_dir, "bin")))
+            self.assertTrue(env.get("PATH").startswith(self.venv_bin))
 
     @patch('subprocess.run')
     def test_cmd_shell_missing_venv(self, mock_run):

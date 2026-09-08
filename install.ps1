@@ -25,6 +25,7 @@ $MinPythonMajor = 3
 $MinPythonMinor = 10
 $SprawlGithubRepo = "sprawl-software/sprawl-cli"
 $SprawlVersion = $env:SPRAWL_VERSION
+$SprawlBranch = if ($env:SPRAWL_BRANCH) { $env:SPRAWL_BRANCH } else { "feat/TASK-022-01-windows-port" }
 
 # ------------------------------------
 # Banner
@@ -111,6 +112,10 @@ if ((Test-Path "pyproject.toml") -and (Get-Content "pyproject.toml" | Select-Str
     pipx install $TempZip --force
     Remove-Item $TempZip -Force -ErrorAction SilentlyContinue
     Write-Success "Sprawl CLI $SprawlVersion installed from pinned release."
+} elseif ($SprawlBranch) {
+    Write-Cyan "Installing from branch: $SprawlBranch..."
+    pipx install "git+https://github.com/$SprawlGithubRepo.git@$SprawlBranch" --force --pip-args="--no-cache-dir"
+    Write-Success "Sprawl CLI installed from branch $SprawlBranch."
 } else {
     Write-Cyan "Installing latest version from GitHub main branch..."
     pipx install "git+https://github.com/$SprawlGithubRepo.git" --force --pip-args="--no-cache-dir"

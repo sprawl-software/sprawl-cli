@@ -7,10 +7,14 @@ import tempfile
 import unittest
 from unittest.mock import patch, MagicMock, ANY
 
+# Ensure the local src is available
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '../src')))
+
 from src.sprawl.utils import get_venv_executable
 from src.sprawl.utils import tui
 from src.sprawl.bind.adapters import _write_symlink
 from src.sprawl.mcp.workspace_fs import WorkspaceFS, MCPError
+import src.sprawl.commands.diagnostics
 
 
 class TestWindowsCompatibility(unittest.TestCase):

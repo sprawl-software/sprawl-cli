@@ -241,6 +241,7 @@ rules:
     @patch('src.sprawl.commands.diagnostics.resolve_repo_root', return_value=None)
     @patch('src.sprawl.commands.diagnostics.subprocess.run')
     @patch('src.sprawl.commands.diagnostics.os.path.exists', return_value=False)
+    @patch('sys.platform', 'linux')
     def test_cmd_update_production_github(self, mock_exists, mock_run, mock_resolve):
         """cmd_update in production runs pipx install from github via HTTPS, then SSH on fallback."""
         config.dry_run = False

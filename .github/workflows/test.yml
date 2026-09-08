@@ -32,9 +32,14 @@ jobs:
     - name: Run unit tests
       env:
         SPRAWL_TEST_MODE: "1"
+        PYTHONIOENCODING: "utf-8"
+        PYTHONUTF8: "1"
       run: |
         python -m unittest discover -s tests
 
     - name: Run E2E QA Verification Suite
+      env:
+        PYTHONIOENCODING: "utf-8"
+        PYTHONUTF8: "1"
       run: |
         python tests/qa_run_verifier.py --ci

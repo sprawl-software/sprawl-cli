@@ -7,6 +7,7 @@ Single dependency: rich>=13.0.0.
 
 import json
 import contextlib
+import sys
 from typing import Any
 
 from rich.console import Console
@@ -15,7 +16,16 @@ from rich.panel import Panel
 from .config import config
 from .theme import SDS_THEME
 
-console = Console(theme=SDS_THEME)
+if sys.platform == "win32":
+    try:
+        if hasattr(sys.stdout, "reconfigure"):
+            sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+        if hasattr(sys.stderr, "reconfigure"):
+            sys.stderr.reconfigure(encoding="utf-8", errors="replace")
+    except (AttributeError, OSError):
+        pass
+
+console = Console(theme=SDS_THEME, legacy_windows=False if sys.platform == "win32" else None)
 
 
 # ---------------------------------------------------------------------------

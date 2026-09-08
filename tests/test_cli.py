@@ -91,7 +91,8 @@ rules:
                 self.assertIn("workflows:", content)
                 self.assertIn("- python.md", content)
                 
-                mock_register.assert_called_with(app_name, os.path.realpath(temp_dir))
+                self.assertEqual(mock_register.call_args[0][0], app_name)
+                self.assertTrue(os.path.samefile(mock_register.call_args[0][1], temp_dir))
                 
                 with self.assertRaises(SprawlError):
                     cmd_graft()
@@ -350,9 +351,10 @@ rules:
         config.dry_run = False
         
         from src.sprawl.sync import sync_app_directory
-        sync_app_directory('/fake/app')
+        fake_app = os.path.abspath('/fake/app')
+        sync_app_directory(fake_app)
         
-        mock_timestamp.assert_called_once_with('/fake/app')
+        mock_timestamp.assert_called_once_with(fake_app)
         mock_state.assert_called_once_with({"last_manifest_sync": True})
 
     @patch('src.sprawl.sync.subprocess.run')

@@ -3,6 +3,7 @@
 import unittest
 import subprocess
 import os
+import sys
 
 
 INSTALL_SH = os.path.abspath(
@@ -16,6 +17,7 @@ class TestInstallScript(unittest.TestCase):
         """install.sh exists in the project root."""
         self.assertTrue(os.path.exists(INSTALL_SH), f"install.sh not found at {INSTALL_SH}")
 
+    @unittest.skipIf(sys.platform == "win32", "bash -n is POSIX only")
     def test_install_sh_bash_syntax(self):
         """install.sh passes bash syntax check (bash -n)."""
         result = subprocess.run(

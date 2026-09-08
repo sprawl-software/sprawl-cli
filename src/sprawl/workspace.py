@@ -174,10 +174,14 @@ def update_workspace_sync_timestamp(name: str) -> None:
     if name not in data:
         # Fallback: search by path
         found_name = None
+        norm_name = os.path.normcase(os.path.realpath(os.path.abspath(name)))
         for ws_name, ws_data in data.items():
-            if ws_data.get("path") == name:
-                found_name = ws_name
-                break
+            p = ws_data.get("path")
+            if p:
+                norm_p = os.path.normcase(os.path.realpath(os.path.abspath(p)))
+                if p == name or norm_p == norm_name:
+                    found_name = ws_name
+                    break
         if not found_name:
             raise WorkspaceError(f"Workspace '{name}' is not registered.")
         name = found_name

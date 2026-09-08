@@ -70,3 +70,26 @@ def get_git_env() -> dict[str, str]:
     env["GIT_SSH_COMMAND"] = "ssh -o ConnectTimeout=10"
     env.pop("GIT_TERMINAL_PROMPT", None)
     return env
+
+
+def get_venv_executable(venv_dir: str, name: str) -> str:
+    """Resolves the executable path inside a virtual environment across platforms.
+
+    Args:
+        venv_dir: Absolute path to the virtual environment root directory.
+        name: Name of the binary (e.g., "python", "python3", "pip").
+
+    Returns:
+        Absolute path to the executable.
+    """
+    import sys
+    if sys.platform == "win32":
+        bin_dir = os.path.join(venv_dir, "Scripts")
+        if name in ("python", "python3"):
+            return os.path.join(bin_dir, "python.exe")
+        elif name.endswith(".exe"):
+            return os.path.join(bin_dir, name)
+        return os.path.join(bin_dir, f"{name}.exe")
+    else:
+        bin_dir = os.path.join(venv_dir, "bin")
+        return os.path.join(bin_dir, name)

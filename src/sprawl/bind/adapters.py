@@ -1,4 +1,6 @@
 import os
+import sys
+import shutil
 from typing import Optional
 from ..output import console
 
@@ -136,7 +138,7 @@ def _is_safe_symlink_target(link_path: str, target: str) -> bool:
 
 
 def _write_symlink(label: str, link_path: str, target: str, force: bool) -> bool:
-    """Creates a symlink binding."""
+    """Creates a symlink binding, falling back to junction or copy on Windows/restricted filesystems."""
     if not _is_safe_symlink_target(link_path, target):
         console.print(f"  [error]✗ {label} Binding:[/error] Security Violation: Target '{target}' resolves outside workspace root.")
         return False
@@ -145,14 +147,41 @@ def _write_symlink(label: str, link_path: str, target: str, force: bool) -> bool
         if not force:
             console.print(f"  [dim]○ {label} Binding:[/dim] already exists (use --force to overwrite)")
             return False
-        os.remove(link_path)
+        if os.path.isdir(link_path) and not os.path.islink(link_path):
+            shutil.rmtree(link_path)
+        else:
+            os.remove(link_path)
 
     try:
         os.symlink(target, link_path)
         console.print(f"  [success]✔ {label} Binding:[/success] Created symlink → {target}")
         return True
-    except Exception as e:
-        console.print(f"  [error]✗ {label} Binding:[/error] Failed: {e}")
+    except OSError:
+        # Fallback on Windows or restricted filesystems
+        abs_target = os.path.abspath(os.path.join(os.path.dirname(link_path), target))
+        if sys.platform == "win32" and os.path.isdir(abs_target):
+            try:
+                import _winapi
+                _winapi.CreateJunction(abs_target, os.path.abspath(link_path))
+                console.print(f"  [success]✔ {label} Binding:[/success] Created junction (fallback) → {target}")
+                return True
+            except Exception:
+                pass
+
+        try:
+            if os.path.isdir(abs_target):
+                shutil.copytree(abs_target, link_path)
+                console.print(f"  [success]✔ {label} Binding:[/success] Created directory copy (fallback) → {target}")
+                return True
+            elif os.path.isfile(abs_target):
+                shutil.copy2(abs_target, link_path)
+                console.print(f"  [success]✔ {label} Binding:[/success] Created file copy (fallback) → {target}")
+                return True
+        except Exception as e:
+            console.print(f"  [error]✗ {label} Binding:[/error] Failed: {e}")
+            return False
+
+        console.print(f"  [error]✗ {label} Binding:[/error] Target '{target}' not found for fallback.")
         return False
 
 

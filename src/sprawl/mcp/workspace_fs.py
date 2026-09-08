@@ -39,8 +39,10 @@ class WorkspaceFS:
 
     def _get_safe_path(self, rel_path: str) -> str:
         """Resolves relative path and ensures it stays within root or allowed mounts."""
-        if rel_path.startswith("@"):
-            parts = rel_path.split("/", 1)
+        # Normalize alias backslashes for cross-platform compatibility
+        normalized_rel = rel_path.replace("\\", "/") if rel_path.startswith("@") else rel_path
+        if normalized_rel.startswith("@"):
+            parts = normalized_rel.split("/", 1)
             alias = parts[0][1:]
             
             if alias in self.allowed_mounts:
@@ -57,7 +59,10 @@ class WorkspaceFS:
                 
                 # Enforce strict directory boundary — prevent sibling-directory prefix escapes
                 # e.g. /home/user/mount vs /home/user/mount-secrets
-                if real_path != real_mount_root and not real_path.startswith(real_mount_root + os.sep):
+                # Use os.path.normcase to ensure drive-letter case-insensitivity on Windows
+                norm_real_path = os.path.normcase(real_path)
+                norm_real_mount_root = os.path.normcase(real_mount_root)
+                if norm_real_path != norm_real_mount_root and not norm_real_path.startswith(norm_real_mount_root + os.sep):
                     raise MCPError(-32602, f"Security Violation: Path '{rel_path}' resolves outside mount root '{alias}'.")
                 return real_path
             else:
@@ -72,7 +77,9 @@ class WorkspaceFS:
         real_root = os.path.realpath(self.root)
         
         # Enforce strict directory boundary — prevent sibling-directory prefix escapes
-        if real_path != real_root and not real_path.startswith(real_root + os.sep):
+        norm_real_path = os.path.normcase(real_path)
+        norm_real_root = os.path.normcase(real_root)
+        if norm_real_path != norm_real_root and not norm_real_path.startswith(norm_real_root + os.sep):
             raise MCPError(-32602, f"Security Violation: Path '{rel_path}' resolves outside workspace root.")
         return real_path
 

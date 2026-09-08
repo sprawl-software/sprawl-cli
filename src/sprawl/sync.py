@@ -7,7 +7,7 @@ import json
 
 from .config import config
 from .output import print_status, print_warning, print_error
-from .utils import CATEGORIES
+from .utils import CATEGORIES, get_venv_executable
 from .exceptions import SprawlError
 from .generators.agents_md import generate_agents_md
 from .generators.mcp_config import generate_mcp_config
@@ -167,8 +167,8 @@ def _sync_app_directory_impl(app_dir: str, local_agents_dir: str, manifest_path:
                             print_error(f"Failed to prune {existing_item}: {e}")
     
     venv_dir = os.path.join(local_agents_dir, ".venv")
-    venv_pip = os.path.join(venv_dir, "bin", "pip")
-    venv_python = os.path.join(venv_dir, "bin", "python3")
+    venv_pip = get_venv_executable(venv_dir, "pip")
+    venv_python = get_venv_executable(venv_dir, "python3")
     
     provisioned_venv = False
     if not config.dry_run:

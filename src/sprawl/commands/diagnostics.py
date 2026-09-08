@@ -1,6 +1,7 @@
 """Diagnostics commands — update, cleanup, manual, and demo engine."""
 
 import os
+import sys
 import json
 import shutil
 import subprocess
@@ -69,7 +70,16 @@ def cmd_update() -> None:
                     print_status("Continuing with local source code...")
 
                 print_status("Re-installing globally via pipx...")
-                subprocess.run(["pipx", "install", ".", "--force"], cwd=repo_root, check=True)
+                if sys.platform == "win32":
+                    runpip_res = subprocess.run(
+                        ["pipx", "runpip", "sprawl-cli", "install", "--upgrade", "--no-cache-dir", "."],
+                        cwd=repo_root,
+                        env=git_env
+                    )
+                    if runpip_res.returncode != 0:
+                        subprocess.run(["pipx", "install", ".", "--force"], cwd=repo_root, check=True, env=git_env)
+                else:
+                    subprocess.run(["pipx", "install", ".", "--force"], cwd=repo_root, check=True, env=git_env)
 
                 print_status("Sprawl Engine updated and installed globally successfully.")
             except subprocess.CalledProcessError as e:
@@ -79,23 +89,42 @@ def cmd_update() -> None:
         if not config.dry_run:
             try:
                 git_env = get_git_env()
-                print_status("Attempting installation via HTTPS: git+https://github.com/sprawl-software/sprawl-cli.git...")
-                result = subprocess.run(
-                    ["pipx", "install", "git+https://github.com/sprawl-software/sprawl-cli.git", "--force", "--pip-args=--no-cache-dir"],
-                    env=git_env
-                )
-                if result.returncode == 0:
-                    print_status("Sprawl CLI updated successfully from GitHub via HTTPS.")
+                if sys.platform == "win32":
+                    print_status("Attempting upgrade via pipx...")
+                    result = subprocess.run(
+                        ["pipx", "upgrade", "sprawl-cli", "--pip-args=--no-cache-dir"],
+                        env=git_env
+                    )
+                    if result.returncode == 0:
+                        print_status("Sprawl CLI updated successfully via pipx upgrade.")
+                    else:
+                        print_status("Attempting in-place installation via pipx runpip...")
+                        runpip_result = subprocess.run(
+                            ["pipx", "runpip", "sprawl-cli", "install", "--upgrade", "--no-cache-dir", "git+https://github.com/sprawl-software/sprawl-cli.git"],
+                            env=git_env
+                        )
+                        if runpip_result.returncode == 0:
+                            print_status("Sprawl CLI updated successfully from GitHub via HTTPS.")
+                        else:
+                            raise SprawlError("Failed to update Sprawl CLI via pipx upgrade and runpip.")
                 else:
-                    print_warning(
-                        "HTTPS installation failed.\n"
-                        "Attempting fallback to SSH: git+ssh://git@github.com/sprawl-software/sprawl-cli.git..."
+                    print_status("Attempting installation via HTTPS: git+https://github.com/sprawl-software/sprawl-cli.git...")
+                    result = subprocess.run(
+                        ["pipx", "install", "git+https://github.com/sprawl-software/sprawl-cli.git", "--force", "--pip-args=--no-cache-dir"],
+                        env=git_env
                     )
-                    subprocess.run(
-                        ["pipx", "install", "git+ssh://git@github.com/sprawl-software/sprawl-cli.git", "--force", "--pip-args=--no-cache-dir"],
-                        check=True, env=git_env
-                    )
-                    print_status("Sprawl CLI updated successfully from GitHub via SSH.")
+                    if result.returncode == 0:
+                        print_status("Sprawl CLI updated successfully from GitHub via HTTPS.")
+                    else:
+                        print_warning(
+                            "HTTPS installation failed.\n"
+                            "Attempting fallback to SSH: git+ssh://git@github.com/sprawl-software/sprawl-cli.git..."
+                        )
+                        subprocess.run(
+                            ["pipx", "install", "git+ssh://git@github.com/sprawl-software/sprawl-cli.git", "--force", "--pip-args=--no-cache-dir"],
+                            check=True, env=git_env
+                        )
+                        print_status("Sprawl CLI updated successfully from GitHub via SSH.")
             except subprocess.CalledProcessError as e:
                 print_error(f"Failed to update via pipx: {e}")
                 print_warning("Ensure pipx is available and you have active network connectivity.")

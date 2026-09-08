@@ -5,7 +5,7 @@ import sys
 import shutil
 import tempfile
 import unittest
-from unittest.mock import patch, MagicMock
+from unittest.mock import patch, MagicMock, ANY
 
 from src.sprawl.utils import get_venv_executable
 from src.sprawl.utils import tui
@@ -178,6 +178,41 @@ class TestWindowsCompatibility(unittest.TestCase):
             validate_dna_directory(temp_dir)
         finally:
             shutil.rmtree(temp_dir)
+
+    @patch("src.sprawl.commands.diagnostics.resolve_repo_root", return_value=None)
+    @patch("src.sprawl.commands.diagnostics.subprocess.run")
+    @patch("src.sprawl.commands.diagnostics.os.path.exists", return_value=False)
+    @patch("sys.platform", "win32")
+    def test_cmd_update_windows_uses_pipx_upgrade(self, mock_exists, mock_run, mock_resolve):
+        """cmd_update on Windows must use pipx upgrade to avoid python.exe file-locking PermissionError."""
+        from src.sprawl.commands.diagnostics import cmd_update
+        from src.sprawl.config import config
+        config.dry_run = False
+        mock_run.return_value = MagicMock(returncode=0)
+        cmd_update()
+        mock_run.assert_called_with(
+            ["pipx", "upgrade", "sprawl-cli", "--pip-args=--no-cache-dir"],
+            env=ANY
+        )
+
+    @patch("src.sprawl.commands.diagnostics.resolve_repo_root", return_value=None)
+    @patch("src.sprawl.commands.diagnostics.subprocess.run")
+    @patch("src.sprawl.commands.diagnostics.os.path.exists", return_value=False)
+    @patch("sys.platform", "win32")
+    def test_cmd_update_windows_falls_back_to_runpip(self, mock_exists, mock_run, mock_resolve):
+        """cmd_update on Windows falls back to pipx runpip if pipx upgrade fails."""
+        from src.sprawl.commands.diagnostics import cmd_update
+        from src.sprawl.config import config
+        config.dry_run = False
+        mock_run.side_effect = [
+            MagicMock(returncode=1),
+            MagicMock(returncode=0)
+        ]
+        cmd_update()
+        mock_run.assert_any_call(
+            ["pipx", "runpip", "sprawl-cli", "install", "--upgrade", "--no-cache-dir", "git+https://github.com/sprawl-software/sprawl-cli.git"],
+            env=ANY
+        )
 
 
 if __name__ == "__main__":

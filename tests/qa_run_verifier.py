@@ -335,8 +335,10 @@ def main():
         if not is_success:
             has_failures = True
             log_error(f"Command failed: sprawl {' '.join(args)}")
+            if stdout:
+                print(f"{YELLOW}STDOUT:{NC}\n{stdout}")
             if stderr:
-                print(f"{RED}{stderr}{NC}")
+                print(f"{RED}STDERR:{NC}\n{stderr}")
         
         # Format Markdown Log Entry
         markdown_log.append(f"## Step {idx}: {name}")

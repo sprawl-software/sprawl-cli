@@ -93,3 +93,34 @@ def get_venv_executable(venv_dir: str, name: str) -> str:
     else:
         bin_dir = os.path.join(venv_dir, "bin")
         return os.path.join(bin_dir, name)
+
+
+def rmtree_safe(path: str, ignore_errors: bool = False) -> None:
+    """Safely removes a directory tree, handling Windows read-only files (e.g. .git objects)."""
+    import stat
+    import shutil
+    import sys
+
+    if not os.path.exists(path):
+        return
+
+    def _remove_readonly(func, p, exc_info):
+        try:
+            os.chmod(p, stat.S_IWRITE)
+            func(p)
+        except OSError:
+            if not ignore_errors:
+                raise
+
+    if sys.version_info >= (3, 12):
+        def _onexc(func, p, exc):
+            try:
+                os.chmod(p, stat.S_IWRITE)
+                func(p)
+            except OSError:
+                if not ignore_errors:
+                    raise
+        shutil.rmtree(path, onexc=_onexc, ignore_errors=ignore_errors)
+    else:
+        shutil.rmtree(path, onerror=_remove_readonly, ignore_errors=ignore_errors)
+

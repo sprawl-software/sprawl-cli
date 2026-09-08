@@ -110,12 +110,13 @@ def cmd_clean_test() -> None:
 
     print_status("Nuking all testmode artifacts...")
     try:
+        from ..utils import rmtree_safe
         if os.path.exists(config.agents_dir_global):
-            shutil.rmtree(config.agents_dir_global)
+            rmtree_safe(config.agents_dir_global)
             print_status(f"[-] Deleted {config.agents_dir_global}")
 
         if os.path.exists(config.sprawl_dir):
-            shutil.rmtree(config.sprawl_dir)
+            rmtree_safe(config.sprawl_dir)
             print_status(f"[-] Deleted {config.sprawl_dir}")
 
         if os.path.exists(config.config_path):

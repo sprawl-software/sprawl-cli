@@ -73,5 +73,5 @@ def generate_agents_md(
                 lines.append(f"- {item}")
         lines.append("")
 
-    with open(output_path, "w") as f:
+    with open(output_path, "w", encoding="utf-8") as f:
         f.write("\n".join(lines))

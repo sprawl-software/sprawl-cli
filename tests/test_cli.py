@@ -482,7 +482,7 @@ rules:
         cmd_add(['web_scraper', 'seo_rules'])
 
         # Verify we attempt to open sprawl_manifest.yml to read and then to write
-        mock_open.assert_called_with(os.path.join(os.getcwd(), ".agents", "sprawl_manifest.yml"), "w")
+        mock_open.assert_called_with(os.path.join(os.getcwd(), ".agents", "sprawl_manifest.yml"), "w", encoding="utf-8")
         
         # Verify sync is called
         mock_sync.assert_called_once()
@@ -511,7 +511,7 @@ rules:
         config.dry_run = False
         cmd_add(['*'])
 
-        mock_open.assert_called_with(os.path.join(os.getcwd(), ".agents", "sprawl_manifest.yml"), "w")
+        mock_open.assert_called_with(os.path.join(os.getcwd(), ".agents", "sprawl_manifest.yml"), "w", encoding="utf-8")
         mock_sync.assert_called_once()
         
         written_content = "".join(call.args[0] for call in mock_open().write.call_args_list)
@@ -546,7 +546,7 @@ rules:
         
         expected_dir = os.path.join("/fake/dna", "skills", "persona-gtm_specialist")
         mock_makedirs.assert_called_with(expected_dir)
-        mock_open.assert_called_with(os.path.join(expected_dir, "SKILL.md"), "w")
+        mock_open.assert_called_with(os.path.join(expected_dir, "SKILL.md"), "w", encoding="utf-8")
 
     @patch('src.sprawl.commands.artifacts.get_active_dna_context')
     @patch('src.sprawl.commands.artifacts.os.path.exists')

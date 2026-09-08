@@ -167,7 +167,7 @@ def validate_dna_directory(dna_dir: str) -> None:
             filepath = os.path.join(root, file)
             try:
                 if file.endswith(".json"):
-                    with open(filepath, "r") as f:
+                    with open(filepath, "r", encoding="utf-8") as f:
                         data = json.load(f)
                     if "atoms" in root:
                         allowed_fields = {f.name for f in fields(AtomSchema)}
@@ -195,11 +195,11 @@ def validate_dna_directory(dna_dir: str) -> None:
                             schema.validate()
                 elif file.endswith((".yaml", ".yml")):
                     # Generic structure check — just verify it's parseable
-                    with open(filepath, "r") as f:
+                    with open(filepath, "r", encoding="utf-8") as f:
                         content = f.read()
                     parse_yaml_frontmatter(f"---\n{content}\n---")
                 elif file.endswith(".md"):
-                    with open(filepath, "r") as f:
+                    with open(filepath, "r", encoding="utf-8") as f:
                         content = f.read()
                     frontmatter = parse_yaml_frontmatter(content)
                     if "skills" in root and file == "SKILL.md":

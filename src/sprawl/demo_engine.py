@@ -87,7 +87,7 @@ def generate_dummy_dna() -> str:
                     cat = "skills"
 
                 filepath = os.path.join(dummy_path, cat, item)
-                with open(filepath, "w") as f:
+                with open(filepath, "w", encoding="utf-8") as f:
                     f.write("# Dummy Content\n")
 
     # Initialize git

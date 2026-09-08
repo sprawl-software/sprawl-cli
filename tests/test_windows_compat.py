@@ -142,6 +142,43 @@ class TestWindowsCompatibility(unittest.TestCase):
         finally:
             shutil.rmtree(temp_dir)
 
+    def test_validate_dna_directory_utf8_encoding(self):
+        """validate_dna_directory must decode UTF-8 characters without charmap decoding errors."""
+        from src.sprawl.validation import validate_dna_directory
+        temp_dir = tempfile.mkdtemp()
+        try:
+            skills_dir = os.path.join(temp_dir, "skills", "test-skill")
+            rules_dir = os.path.join(temp_dir, "rules")
+            os.makedirs(skills_dir)
+            os.makedirs(rules_dir)
+
+            # Markdown with non-ASCII UTF-8 characters (emojis, em-dash, smart quotes)
+            skill_content = (
+                "---\n"
+                "name: test-skill\n"
+                "description: “Smart quotes and emojis 🚀 — dash”\n"
+                "---\n"
+                "# Test Skill 💡\n"
+                "UTF-8 content: €100, bullet •, em-dash —\n"
+            )
+            with open(os.path.join(skills_dir, "SKILL.md"), "w", encoding="utf-8") as f:
+                f.write(skill_content)
+
+            rule_content = (
+                "---\n"
+                "description: “Rule description”\n"
+                "---\n"
+                "# Demo Security 🛡️\n"
+                "Zero-trust check: ✓ passed\n"
+            )
+            with open(os.path.join(rules_dir, "demo_security.md"), "w", encoding="utf-8") as f:
+                f.write(rule_content)
+
+            # Should not raise any decoding error
+            validate_dna_directory(temp_dir)
+        finally:
+            shutil.rmtree(temp_dir)
+
 
 if __name__ == "__main__":
     unittest.main()

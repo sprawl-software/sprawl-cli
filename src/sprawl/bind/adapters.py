@@ -103,7 +103,7 @@ def _write_binding(
         return False
     try:
         os.makedirs(os.path.dirname(target_path), exist_ok=True)
-        with open(target_path, "w") as f:
+        with open(target_path, "w", encoding="utf-8") as f:
             f.write(content)
         action = "Overwritten" if os.path.exists(target_path) and force else "Created"
         console.print(f"  [success]✔ {label} Binding:[/success] {action} → {os.path.basename(target_path)}")

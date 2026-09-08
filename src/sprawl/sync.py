@@ -23,7 +23,7 @@ def parse_sprawl_manifest(file_path: str) -> dict[str, list[str]]:
     if not os.path.exists(file_path):
         return required_files
 
-    with open(file_path, "r") as f:
+    with open(file_path, "r", encoding="utf-8") as f:
         content = f.read()
 
     from .validation import parse_yaml_frontmatter
@@ -230,7 +230,7 @@ def _sync_app_directory_impl(app_dir: str, local_agents_dir: str, manifest_path:
                 persona_path = os.path.join(source_dna_dir, "skills", skill, "SKILL.md")
                 if os.path.exists(persona_path):
                     try:
-                        with open(persona_path, "r") as pf:
+                        with open(persona_path, "r", encoding="utf-8") as pf:
                             persona_content = pf.read()
                         break
                     except Exception as e:
@@ -267,7 +267,7 @@ def _sync_app_directory_impl(app_dir: str, local_agents_dir: str, manifest_path:
         )
         # Double-check JSON structure validity
         try:
-            with open(mcp_config_path, "r") as f:
+            with open(mcp_config_path, "r", encoding="utf-8") as f:
                 json.loads(f.read())
         except Exception as e:
             raise SprawlError(f"Generated mcp_config.json is not valid JSON: {e}")
@@ -318,7 +318,7 @@ def sync_app_directory(app_dir: str) -> dict:
         # Verify sprawl-config.json JSON validity if it exists
         sprawl_config_path = os.path.join(local_agents_dir, "sprawl-config.json")
         try:
-            with open(sprawl_config_path, "r") as f:
+            with open(sprawl_config_path, "r", encoding="utf-8") as f:
                 content = f.read().strip()
                 if content:
                     json.loads(content)

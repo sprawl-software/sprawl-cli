@@ -2,21 +2,27 @@ name: Test Suite
 
 on:
   push:
-    branches: [ "main" ]
+    branches: [ "main", "feat/*", "feature/*" ]
   pull_request:
     branches: [ "main" ]
 
 jobs:
   test:
-    runs-on: ubuntu-latest
+    name: Test (${{ matrix.os }} / Python ${{ matrix.python-version }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+        python-version: ['3.10', '3.11', '3.12']
 
     steps:
     - uses: actions/checkout@v4
     
-    - name: Set up Python
+    - name: Set up Python ${{ matrix.python-version }}
       uses: actions/setup-python@v5
       with:
-        python-version: '3.12'
+        python-version: ${{ matrix.python-version }}
         
     - name: Install dependencies
       run: |
@@ -24,10 +30,11 @@ jobs:
         pip install -e .
         
     - name: Run unit tests
+      env:
+        SPRAWL_TEST_MODE: "1"
       run: |
         python -m unittest discover -s tests
 
     - name: Run E2E QA Verification Suite
       run: |
-        chmod +x tests/qa_run_verifier.py
-        ./tests/qa_run_verifier.py --ci
+        python tests/qa_run_verifier.py --ci

@@ -17,7 +17,12 @@ from typing import List, Dict, Any
 REPO_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 SANDBOX_DIR = os.path.join(REPO_ROOT, "qa_sandbox")
 VENV_DIR = os.path.join(SANDBOX_DIR, ".venv")
-SPRAWL_BIN = os.path.join(VENV_DIR, "bin", "sprawl")
+if sys.platform == "win32":
+    SPRAWL_BIN = os.path.join(VENV_DIR, "Scripts", "sprawl.exe")
+    PIP_BIN = os.path.join(VENV_DIR, "Scripts", "pip.exe")
+else:
+    SPRAWL_BIN = os.path.join(VENV_DIR, "bin", "sprawl")
+    PIP_BIN = os.path.join(VENV_DIR, "bin", "pip")
 LOG_OUTPUT_PATH = os.path.join(REPO_ROOT, "docs", "QA_EXECUTION_LOG.md")
 
 # Clean test environment targets
@@ -61,8 +66,7 @@ def setup_sandbox_venv():
     subprocess.run([sys.executable, "-m", "venv", VENV_DIR], check=True)
     
     log_info("Upgrading pip inside sandbox venv...")
-    pip_bin = os.path.join(VENV_DIR, "bin", "pip")
-    subprocess.run([pip_bin, "install", "--upgrade", "pip"], check=True)
+    subprocess.run([PIP_BIN, "install", "--upgrade", "pip"], check=True)
     
     log_info("Installing sprawl-cli from local source into sandbox venv...")
     # Install package locally

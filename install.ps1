@@ -77,7 +77,16 @@ if ($PyMajor -lt $MinPythonMajor -or ($PyMajor -eq $MinPythonMajor -and $PyMinor
 Write-Success "Python $PyVersionOutput meets the minimum requirements (>= $MinPythonMajor.$MinPythonMinor)."
 
 # ------------------------------------
-# 3. Pipx Bootstrap & Verification
+# 3. Git Detection & Verification
+# ------------------------------------
+Write-Cyan "Checking Git installation..."
+if (-not (Get-Command git -ErrorAction SilentlyContinue)) {
+    Write-Fatal "Git is not installed or not in PATH. Please install Git via 'winget install Git.Git' or from https://git-scm.com"
+}
+Write-Success "Git is installed."
+
+# ------------------------------------
+# 4. Pipx Bootstrap & Verification
 # ------------------------------------
 Write-Cyan "Checking pipx..."
 
@@ -96,7 +105,7 @@ if (-not (Get-Command pipx -ErrorAction SilentlyContinue)) {
 }
 
 # ------------------------------------
-# 4. Install Sprawl CLI
+# 5. Install Sprawl CLI
 # ------------------------------------
 Write-Cyan "Starting Sprawl CLI installation..."
 
@@ -123,7 +132,7 @@ if ((Test-Path "pyproject.toml") -and (Get-Content "pyproject.toml" | Select-Str
 }
 
 # ------------------------------------
-# 5. Post-Installation Report
+# 6. Post-Installation Report
 # ------------------------------------
 Write-Host ""
 Write-Success "Installation Complete! ✨"

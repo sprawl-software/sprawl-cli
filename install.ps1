@@ -25,7 +25,7 @@ $MinPythonMajor = 3
 $MinPythonMinor = 10
 $SprawlGithubRepo = "sprawl-software/sprawl-cli"
 $SprawlVersion = $env:SPRAWL_VERSION
-$SprawlBranch = if ($env:SPRAWL_BRANCH) { $env:SPRAWL_BRANCH } else { "feat/TASK-022-01-windows-port" }
+$SprawlBranch = if ($env:SPRAWL_BRANCH) { $env:SPRAWL_BRANCH } else { "main" }
 
 # ------------------------------------
 # Banner

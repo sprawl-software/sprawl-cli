@@ -106,7 +106,14 @@ def cmd_update() -> None:
                         if runpip_result.returncode == 0:
                             print_status("Sprawl CLI updated successfully from GitHub via HTTPS.")
                         else:
-                            raise SprawlError("Failed to update Sprawl CLI via pipx upgrade and runpip.")
+                            # If sprawl-cli is not installed in pipx yet, install it via pipx install --force
+                            print_status("Attempting installation via pipx install --force...")
+                            subprocess.run(
+                                ["pipx", "install", "git+https://github.com/sprawl-software/sprawl-cli.git", "--force", "--pip-args=--no-cache-dir"],
+                                check=True,
+                                env=git_env
+                            )
+                            print_status("Sprawl CLI installed successfully from GitHub via HTTPS.")
                 else:
                     print_status("Attempting installation via HTTPS: git+https://github.com/sprawl-software/sprawl-cli.git...")
                     result = subprocess.run(

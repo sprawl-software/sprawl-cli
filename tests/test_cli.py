@@ -279,6 +279,31 @@ rules:
         with self.assertRaises(SprawlError):
             cmd_init('git@github.com:test/repo.git', target_dir="/fake/dir")
 
+    def test_get_git_env_allows_interactive_prompts(self):
+        """get_git_env does not force BatchMode=yes or GIT_TERMINAL_PROMPT=0 so SSH passphrases can be entered."""
+        from src.sprawl.utils import get_git_env
+        env = get_git_env()
+        self.assertNotIn("GIT_TERMINAL_PROMPT", env)
+        self.assertNotIn("BatchMode=yes", env.get("GIT_SSH_COMMAND", ""))
+        self.assertIn("ConnectTimeout", env.get("GIT_SSH_COMMAND", ""))
+
+    @patch('src.sprawl.utils.os.path.exists')
+    @patch('src.sprawl.workspace.Workspace.get_dna_alias', return_value=None)
+    def test_active_dna_context_fallback_to_registry_default(self, mock_alias, mock_exists):
+        """get_active_dna_context falls back to registry default if core hub does not exist."""
+        from src.sprawl.utils import get_active_dna_context
+        # Simulate core hub missing, but registry default existing
+        def exists_side_effect(path):
+            if path == config.agents_dir_global:
+                return False
+            if path == os.path.join(config.dna_registry_dir, "default"):
+                return True
+            return False
+        mock_exists.side_effect = exists_side_effect
+
+        result = get_active_dna_context("/fake/dir")
+        self.assertEqual(result, os.path.join(config.dna_registry_dir, "default"))
+
     @patch('src.sprawl.sync.shutil.copy2')
     @patch('src.sprawl.sync.filecmp.cmp')
     @patch('src.sprawl.sync.os.path.exists')

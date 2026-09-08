@@ -33,6 +33,15 @@ def cmd_init(git_url: str, target_dir: str) -> None:
             aliases_list = ", ".join(DNA_ALIASES.keys())
             raise SprawlError(f"Unknown DNA alias: '{git_url}'. Available aliases: {aliases_list}")
 
+        # If global core hub does not exist yet, populate it from this fetched DNA context
+        if not os.path.exists(config.agents_dir_global):
+            fetched_dir = os.path.join(config.dna_registry_dir, alias_name)
+            if os.path.exists(fetched_dir):
+                import shutil
+                print_status(f"Populating Global DNA hub at {config.agents_dir_global}...")
+                if not config.dry_run:
+                    shutil.copytree(fetched_dir, config.agents_dir_global)
+
         target_abs = os.path.abspath(target_dir)
         print_status(f"Creating Workspace Hub at {target_abs}...")
         if not config.dry_run:

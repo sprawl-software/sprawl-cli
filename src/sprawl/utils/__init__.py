@@ -29,7 +29,7 @@ def get_active_dna_context(app_dir: Optional[str] = None) -> str:
     """Deterministically resolves the active DNA context directory.
 
     Checks the management plane for bound DNA, falling back to the global
-    `~/.sprawl/core` hub.
+    `~/.sprawl/core` hub or the registry default DNA.
 
     Args:
         app_dir: Optional directory to check for DNA binding. Defaults to cwd.
@@ -43,21 +43,30 @@ def get_active_dna_context(app_dir: Optional[str] = None) -> str:
     from ..workspace import Workspace
     workspace = Workspace(app_dir)
     alias_name = workspace.get_dna_alias()
-    
-    source_dna_dir = config.agents_dir_global
 
     if alias_name:
-        source_dna_dir = os.path.join(config.dna_registry_dir, alias_name)
+        alias_path = os.path.join(config.dna_registry_dir, alias_name)
+        if os.path.exists(alias_path):
+            return alias_path
 
-    return source_dna_dir
+    # Primary fallback to global hub (~/.sprawl/core)
+    if os.path.exists(config.agents_dir_global):
+        return config.agents_dir_global
+
+    # Secondary fallback to registry default (~/.sprawl/registry/default)
+    default_registry_path = os.path.join(config.dna_registry_dir, "default")
+    if os.path.exists(default_registry_path):
+        return default_registry_path
+
+    return config.agents_dir_global
 
 
 def get_git_env() -> dict[str, str]:
-    """Returns a copy of the current environment with non-interactive git options set.
+    """Returns a copy of the current environment with safe SSH options.
 
-    Prevents Git from hanging on credential prompts or connection timeouts.
+    Allows interactive terminal prompts for SSH key passphrases and Git credentials.
     """
     env = os.environ.copy()
-    env["GIT_TERMINAL_PROMPT"] = "0"
-    env["GIT_SSH_COMMAND"] = "ssh -o ConnectTimeout=5 -o BatchMode=yes"
+    env["GIT_SSH_COMMAND"] = "ssh -o ConnectTimeout=10"
+    env.pop("GIT_TERMINAL_PROMPT", None)
     return env

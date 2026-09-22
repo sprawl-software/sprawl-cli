@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Sprawl CLI — Production Installer
+# Sprawl CLI - Production Installer
 # ============================================================
 # Features:
 #   - Architecture detection (x86_64, ARM64/aarch64)
@@ -80,7 +80,7 @@ case "${ARCH}" in
         ARCH_LABEL="armhf"
         ;;
     *)
-        log_warn "Unknown architecture: ${ARCH}. Proceeding with generic install — report issues at https://github.com/${SPRAWL_GITHUB_REPO}/issues"
+        log_warn "Unknown architecture: ${ARCH}. Proceeding with generic install - report issues at https://github.com/${SPRAWL_GITHUB_REPO}/issues"
         ARCH_LABEL="unknown"
         ;;
 esac
@@ -123,7 +123,7 @@ prompt_sudo() {
             log_fatal "Root permission denied. Please install 'pipx' manually and rerun the installer."
         fi
     else
-        log_info "Piped install detected — executing sudo command..."
+        log_info "Piped install detected - executing sudo command..."
     fi
 }
 
@@ -131,18 +131,18 @@ if ! command -v pipx &>/dev/null; then
     log_warn "'pipx' not found. Attempting automatic installation..."
 
     if command -v apt-get &>/dev/null; then
-        log_info "Detected Debian/Ubuntu — using apt-get..."
+        log_info "Detected Debian/Ubuntu - using apt-get..."
         prompt_sudo
         sudo apt-get update -qq && sudo apt-get install -y pipx
     elif command -v brew &>/dev/null; then
-        log_info "Detected macOS/Homebrew — using brew..."
+        log_info "Detected macOS/Homebrew - using brew..."
         brew install pipx
     elif command -v dnf &>/dev/null; then
-        log_info "Detected Fedora — using dnf..."
+        log_info "Detected Fedora - using dnf..."
         prompt_sudo
         sudo dnf install -y pipx
     elif command -v pacman &>/dev/null; then
-        log_info "Detected Arch Linux — using pacman..."
+        log_info "Detected Arch Linux - using pacman..."
         prompt_sudo
         sudo pacman -S --noconfirm python-pipx
     else
@@ -164,7 +164,7 @@ verify_checksum() {
     local expected_sha256="$2"
 
     if [ -z "${expected_sha256}" ]; then
-        log_warn "No checksum provided for ${file} — skipping verification."
+        log_warn "No checksum provided for ${file} - skipping verification."
         return 0
     fi
 
@@ -192,7 +192,7 @@ log_info "Starting Sprawl CLI installation..."
 
 if [ -f "pyproject.toml" ] && grep -q 'name = "sprawl-cli"' pyproject.toml 2>/dev/null; then
     # Local development installation (repo cloned)
-    log_info "Local repository detected — installing from source..."
+    log_info "Local repository detected - installing from source..."
     pipx install . --force
     log_success "Sprawl CLI installed from local source."
 
@@ -249,7 +249,9 @@ else
     echo -e "    Engine:       ${BOLD}v2.0.3${NC}"
 fi
 echo ""
-echo "    Then boot the engine with:"
-echo "       sprawl --help"
-echo "       sprawl doctor     # Validates environment health"
+echo "    Quickstart:"
+echo "       sprawl init <dna-repo-url>   # Initialize with your team's DNA repository"
+echo "       sprawl init                  # Leave blank to initialize with built-in Demo DNA"
+echo "       sprawl bind                  # Select IDE & agent integrations"
+echo "       sprawl doctor                # Validates environment health"
 echo ""

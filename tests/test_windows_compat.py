@@ -7,7 +7,8 @@ import tempfile
 import unittest
 from unittest.mock import patch, MagicMock, ANY
 
-# Ensure the local src is available
+# Ensure both repo root and local src are available
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '../src')))
 
 from src.sprawl.utils import get_venv_executable
@@ -87,6 +88,15 @@ class TestWindowsCompatibility(unittest.TestCase):
             with tui.raw_terminal():
                 pass
             mock_enable_vt.assert_called_once()
+
+    def test_tui_missing_termios_safe_fallback(self):
+        """tui must safely handle environments where termios is None."""
+        with patch("sys.platform", "linux"), \
+             patch("src.sprawl.utils.tui.termios", None), \
+             patch("src.sprawl.utils.tui.tty", None):
+            self.assertFalse(tui.is_tui_supported())
+            with tui.raw_terminal() as fd:
+                pass  # Must not raise AttributeError or TypeError
 
     def test_workspace_fs_mount_backslash_normalization(self):
         """workspace_fs must normalize Windows backslashes in @mount aliases."""

@@ -3,10 +3,17 @@ from unittest.mock import patch, MagicMock
 import sys
 import os
 
-# Ensure the local src is available
+# Ensure both repo root and local src are available
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '../src')))
 
-from src.sprawl.utils.tui import raw_terminal, read_key, show_checkbox_menu
+from src.sprawl.utils.tui import (
+    raw_terminal,
+    read_key,
+    show_checkbox_menu,
+    is_tui_supported,
+    prompt_numbered_selection,
+)
 
 
 class TestTUI(unittest.TestCase):
@@ -84,6 +91,92 @@ class TestTUI(unittest.TestCase):
         self.assertIsNotNone(res)
         self.assertEqual(res["atoms"], ["atom1"])
         self.assertEqual(res["skills"], [])
+
+    @patch("sys.stdin.readline", return_value="\n")
+    def test_prompt_numbered_selection_enter_default(self, mock_readline):
+        """Pressing Enter in numbered prompt accepts current default checked items."""
+        categories = {
+            "integrations": [("cursor", True), ("vscode", False), ("windsurf", True)],
+        }
+        res = prompt_numbered_selection("Select Integrations", categories)
+        self.assertIsNotNone(res)
+        self.assertEqual(res["integrations"], ["cursor", "windsurf"])
+
+    @patch("sys.stdin.readline", return_value="1, 2\n")
+    def test_prompt_numbered_selection_numbers(self, mock_readline):
+        """Entering comma-separated numbers selects precisely those items."""
+        categories = {
+            "integrations": [("cursor", True), ("vscode", False), ("windsurf", True)],
+        }
+        res = prompt_numbered_selection("Select Integrations", categories)
+        self.assertIsNotNone(res)
+        self.assertEqual(res["integrations"], ["cursor", "vscode"])
+
+    @patch("sys.stdin.readline", return_value="vscode, windsurf\n")
+    def test_prompt_numbered_selection_names(self, mock_readline):
+        """Entering item names case-insensitively selects those items."""
+        categories = {
+            "integrations": [("cursor", True), ("vscode", False), ("windsurf", False)],
+        }
+        res = prompt_numbered_selection("Select Integrations", categories)
+        self.assertIsNotNone(res)
+        self.assertEqual(res["integrations"], ["vscode", "windsurf"])
+
+    @patch("sys.stdin.readline", return_value="all\n")
+    def test_prompt_numbered_selection_all(self, mock_readline):
+        """Entering 'all' selects every item across categories."""
+        categories = {
+            "integrations": [("cursor", False), ("vscode", False)],
+        }
+        res = prompt_numbered_selection("Select Integrations", categories)
+        self.assertIsNotNone(res)
+        self.assertEqual(res["integrations"], ["cursor", "vscode"])
+
+    @patch("sys.stdin.readline", return_value="none\n")
+    def test_prompt_numbered_selection_none(self, mock_readline):
+        """Entering 'none' clears all items."""
+        categories = {
+            "integrations": [("cursor", True), ("vscode", True)],
+        }
+        res = prompt_numbered_selection("Select Integrations", categories)
+        self.assertIsNotNone(res)
+        self.assertEqual(res["integrations"], [])
+
+    @patch("sys.stdin.readline", return_value="q\n")
+    def test_prompt_numbered_selection_cancel(self, mock_readline):
+        """Entering 'q' cancels selection and returns None."""
+        categories = {
+            "integrations": [("cursor", True)],
+        }
+        res = prompt_numbered_selection("Select Integrations", categories)
+        self.assertIsNone(res)
+
+    def test_is_tui_supported_non_tty(self):
+        """is_tui_supported returns False when stdin is not a tty."""
+        with patch("sys.stdin.isatty", return_value=False):
+            self.assertFalse(is_tui_supported())
+
+    def test_is_tui_supported_windows(self):
+        """is_tui_supported checks msvcrt on win32."""
+        with patch("sys.platform", "win32"), \
+             patch("sys.stdin.isatty", return_value=True), \
+             patch("sys.stdout.isatty", return_value=True):
+            with patch("src.sprawl.utils.tui.msvcrt", MagicMock()):
+                self.assertTrue(is_tui_supported())
+            with patch("src.sprawl.utils.tui.msvcrt", None):
+                self.assertFalse(is_tui_supported())
+
+    def test_is_tui_supported_posix(self):
+        """is_tui_supported checks termios, tty, and select on POSIX."""
+        with patch("sys.platform", "linux"), \
+             patch("sys.stdin.isatty", return_value=True), \
+             patch("sys.stdout.isatty", return_value=True):
+            with patch("src.sprawl.utils.tui.termios", MagicMock()), \
+                 patch("src.sprawl.utils.tui.tty", MagicMock()), \
+                 patch("src.sprawl.utils.tui.select", MagicMock()):
+                self.assertTrue(is_tui_supported())
+            with patch("src.sprawl.utils.tui.termios", None):
+                self.assertFalse(is_tui_supported())
 
 
 if __name__ == "__main__":

@@ -1,4 +1,4 @@
-# Sprawl CLI — Windows PowerShell Production Installer
+# Sprawl CLI - Windows PowerShell Production Installer
 # ============================================================
 # Features:
 #   - Architecture detection (AMD64, ARM64, x86)
@@ -110,7 +110,7 @@ if (-not (Get-Command pipx -ErrorAction SilentlyContinue)) {
 Write-Cyan "Starting Sprawl CLI installation..."
 
 if ((Test-Path "pyproject.toml") -and (Get-Content "pyproject.toml" | Select-String 'name = "sprawl-cli"')) {
-    Write-Cyan "Local repository detected — installing from source..."
+    Write-Cyan "Local repository detected - installing from source..."
     pipx install . --force
     Write-Success "Sprawl CLI installed from local source."
 } elseif ($SprawlVersion) {
@@ -143,7 +143,9 @@ Write-Host ""
 Write-Host "    Architecture: $Arch"
 Write-Host "    Python:       $PyVersionOutput"
 Write-Host ""
-Write-Host "    Boot the engine with:"
-Write-Host "       sprawl --help"
-Write-Host "       sprawl doctor     # Validates environment health"
+Write-Host "    Quickstart:"
+Write-Host "       sprawl init <dna-repo-url>   # Initialize with your team's DNA repository"
+Write-Host "       sprawl init                  # Leave blank to initialize with built-in Demo DNA"
+Write-Host "       sprawl bind                  # Select IDE & agent integrations"
+Write-Host "       sprawl doctor                # Validates environment health"
 Write-Host ""

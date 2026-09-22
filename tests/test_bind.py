@@ -2,10 +2,16 @@
 
 import unittest
 import os
+import sys
 import json
 import shutil
 import tempfile
 from unittest.mock import patch, MagicMock
+
+# Ensure both repo root and src are in sys.path
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '../src')))
+
 from src.sprawl.bind import bind_adapters
 
 
@@ -151,6 +157,38 @@ class TestBind(unittest.TestCase):
         link_path_2 = os.path.join(self.test_dir, ".myrules2")
         self.assertFalse(_write_symlink("MyLabel", link_path_2, unsafe_target, force=True))
         self.assertFalse(os.path.exists(link_path_2))
+
+    @patch("sys.stdin.isatty", return_value=True)
+    @patch("sys.stdout.isatty", return_value=True)
+    @patch("src.sprawl.utils.tui.is_tui_supported", return_value=False)
+    @patch("src.sprawl.utils.tui.prompt_numbered_selection")
+    @patch("src.sprawl.bind.bind_adapters")
+    def test_cmd_bind_interactive_fallback_to_numbered_prompt(
+        self, mock_bind, mock_prompt, mock_tui_supp, mock_stdout_tty, mock_stdin_tty
+    ):
+        """When TUI is not supported, cmd_bind falls back to prompt_numbered_selection."""
+        from src.sprawl.commands.sync_cmd import cmd_bind
+        mock_prompt.return_value = {"IDE / AI Agent Integrations": ["cursor", "vscode"]}
+        cmd_bind(self.test_dir)
+        mock_prompt.assert_called_once()
+        mock_bind.assert_called_once_with(self.test_dir, force=False, targets=["cursor", "vscode"])
+
+    @patch("src.sprawl.output.print_warning")
+    @patch("sys.stdin.isatty", return_value=False)
+    @patch("src.sprawl.bind.bind_adapters")
+    def test_cmd_bind_uninitialized_workspace_warning(
+        self, mock_bind, mock_isatty, mock_warn
+    ):
+        """When target_dir has no .agents, cmd_bind prints a warning."""
+        from src.sprawl.commands.sync_cmd import cmd_bind
+        empty_dir = tempfile.mkdtemp()
+        try:
+            cmd_bind(empty_dir)
+            mock_warn.assert_called_once()
+            self.assertIn("No '.agents' governance directory found", mock_warn.call_args[0][0])
+        finally:
+            shutil.rmtree(empty_dir, ignore_errors=True)
+
 
 if __name__ == "__main__":
     unittest.main()

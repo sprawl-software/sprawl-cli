@@ -143,9 +143,16 @@ def cmd_bind(
 
     from ..bind import bind_adapters, ADAPTER_MAP
 
+    # Check if target workspace is initialized
+    agents_dir = os.path.join(target_dir, ".agents")
+    manifest_path = os.path.join(agents_dir, "sprawl_manifest.yml")
+    if not os.path.exists(agents_dir) and not is_sync:
+        from ..output import print_warning, console
+        print_warning(f"No '.agents' governance directory found in {target_dir}.")
+        console.print("[muted]Tip: Run [accent]sprawl init <dna-repo>[/accent] (or [accent]sprawl init[/accent] with no URL for demo rules) to configure governance.[/muted]\n")
+
     # Check if bindings are defined in the manifest
     manifest_bindings = None
-    manifest_path = os.path.join(target_dir, ".agents", "sprawl_manifest.yml")
     if os.path.exists(manifest_path):
         try:
             from ..validation import parse_yaml_frontmatter
@@ -179,24 +186,41 @@ def cmd_bind(
             targets = list(ADAPTER_MAP.keys())
             update_manifest_bindings(target_dir, targets)
     else:
-        # If no flags are passed, check if we are in interactive TTY mode
+        # If no flags are passed, check if we are in interactive mode
+        from ..output import console
+        categories = {
+            "IDE / AI Agent Integrations": [
+                (key, manifest_bindings is None or key in manifest_bindings) for key in ADAPTER_MAP.keys()
+            ]
+        }
+
+        from ..utils.tui import is_tui_supported, show_checkbox_menu, prompt_numbered_selection
+        selection = None
+
         if sys.stdin.isatty() and sys.stdout.isatty():
-            from ..utils.tui import show_checkbox_menu
-            # Present interactive checkbox menu of the available integrations
-            # Precheck based on manifest_bindings (if defined), otherwise default to all True
-            categories = {
-                "IDE / AI Agent Integrations": [
-                    (key, manifest_bindings is None or key in manifest_bindings) for key in ADAPTER_MAP.keys()
-                ]
-            }
-            selection = show_checkbox_menu("Select IDE & Agent Adapters", categories)
+            if is_tui_supported():
+                try:
+                    selection = show_checkbox_menu("Select IDE & Agent Adapters", categories)
+                except Exception as e:
+                    console.print(f"[warning]Interactive graphical menu unavailable ({e}). Falling back to numbered prompt...[/warning]")
+                    selection = prompt_numbered_selection("Select IDE & Agent Adapters", categories)
+            else:
+                selection = prompt_numbered_selection("Select IDE & Agent Adapters", categories)
+
+            if selection is None:
+                print_status("Binding cancelled.")
+                return False
+            targets = selection.get("IDE / AI Agent Integrations", [])
+            update_manifest_bindings(target_dir, targets)
+        elif sys.stdin.isatty():
+            selection = prompt_numbered_selection("Select IDE & Agent Adapters", categories)
             if selection is None:
                 print_status("Binding cancelled.")
                 return False
             targets = selection.get("IDE / AI Agent Integrations", [])
             update_manifest_bindings(target_dir, targets)
         else:
-            # Non-interactive / non-TTY (like script running or fallback)
+            # Non-interactive / non-TTY (automated pipeline or test harness)
             if manifest_bindings is not None:
                 targets = manifest_bindings
             else:

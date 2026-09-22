@@ -10,15 +10,23 @@ import contextlib
 from typing import Any, Dict, List, Optional, Tuple
 
 if sys.platform != "win32":
-    import tty
-    import select
-    import termios
+    try:
+        import tty
+        import select
+        import termios
+    except ImportError:
+        tty = None  # type: ignore
+        select = None  # type: ignore
+        termios = None  # type: ignore
     msvcrt = None
 else:
     try:
         import msvcrt
     except ImportError:
         msvcrt = None  # type: ignore
+    tty = None  # type: ignore
+    select = None  # type: ignore
+    termios = None  # type: ignore
 
 from rich.console import Console
 from rich.panel import Panel
@@ -42,6 +50,19 @@ def _enable_windows_vt() -> None:
             pass
 
 
+def is_tui_supported() -> bool:
+    """Returns True if the current terminal environment supports raw interactive TUI mode."""
+    try:
+        if not (sys.stdin.isatty() and sys.stdout.isatty()):
+            return False
+    except Exception:
+        return False
+
+    if sys.platform == "win32":
+        return msvcrt is not None
+    return termios is not None and tty is not None and select is not None
+
+
 @contextlib.contextmanager
 def raw_terminal():
     """Context manager to enable raw terminal mode and safely restore settings on exit."""
@@ -61,8 +82,8 @@ def raw_terminal():
     except Exception:
         fd = None
 
-    # Check if stdin is a TTY (running in terminal vs piped tests)
-    if fd is None or not sys.stdin.isatty():
+    # Check if stdin is a TTY and termios is available
+    if fd is None or not sys.stdin.isatty() or termios is None or tty is None:
         yield fd
         return
 
@@ -117,8 +138,8 @@ def read_key() -> str:
         except Exception:
             return ""
 
-    if not sys.stdin.isatty():
-        # Fallback for non-interactive test environments
+    if not sys.stdin.isatty() or termios is None or select is None:
+        # Fallback for non-interactive or constrained test environments
         return sys.stdin.read(1)
 
     fd = sys.stdin.fileno()
@@ -283,6 +304,98 @@ def show_checkbox_menu(
                     if not r["is_header"] and r["checked"]:
                         result[r["category"]].append(r["label"])
                 return result
+
+
+def prompt_numbered_selection(
+    title: str,
+    categories: Dict[str, List[Tuple[str, bool]]],
+) -> Optional[Dict[str, List[str]]]:
+    """Renders a simple, zero-raw-mode numbered CLI prompt for selecting items.
+
+    Compatible with all terminals (PowerShell, CMD, Git Bash, mintty, SSH, CI).
+    Uses line-buffered standard I/O so it never requires C-extension modules
+    or raw terminal cbreak mode.
+
+    Args:
+        title: Title of the prompt menu.
+        categories: Dict mapping category name to list of (item_name, is_checked).
+
+    Returns:
+        Dict mapping category name to list of selected item names, or None if cancelled.
+    """
+    flat_items: List[Tuple[str, str, bool]] = []
+    for cat, items in categories.items():
+        for name, checked in items:
+            flat_items.append((cat, name, checked))
+
+    if not flat_items:
+        console.print("[warning][!] No items found to configure.[/warning]")
+        return None
+
+    console.print(f"\n[bold accent]━━━ {title} ━━━[/bold accent]")
+    console.print("[muted]Selective Configuration: Enter numbers (e.g. '1, 2'), names, 'all', 'none', or press Enter for defaults.[/muted]\n")
+
+    for idx, (cat, name, checked) in enumerate(flat_items, 1):
+        status = "[success][selected][/success]" if checked else "[muted][unselected][/muted]"
+        console.print(f"  [bold cyan][{idx:>2}][/bold cyan] {name:<16} {status} [muted]({cat})[/muted]")
+
+    defaults_summary = [name for _, name, checked in flat_items if checked]
+    default_text = ", ".join(defaults_summary) if defaults_summary else "none"
+    console.print(f"\n[muted]Current defaults: {default_text}[/muted]")
+
+    try:
+        sys.stdout.write("Selection (Enter for defaults, 'q' to cancel): ")
+        sys.stdout.flush()
+        user_input = sys.stdin.readline()
+        if not user_input:
+            # EOF reached (e.g. piped or closed stdin)
+            return {cat: [name for c, name, chk in flat_items if c == cat and chk] for cat in categories}
+        user_input = user_input.strip()
+    except (KeyboardInterrupt, EOFError):
+        console.print("\n[warning]Selection cancelled.[/warning]")
+        return None
+
+    if user_input.lower() in ("q", "quit", "exit", "cancel"):
+        console.print("[warning]Operation cancelled.[/warning]")
+        return None
+
+    result: Dict[str, List[str]] = {cat: [] for cat in categories}
+
+    if user_input == "":
+        # Default: keep current checked items
+        for cat, name, checked in flat_items:
+            if checked:
+                result[cat].append(name)
+        return result
+
+    if user_input.lower() in ("none", "0", "clear", "[]"):
+        return result
+
+    if user_input.lower() in ("all", "*"):
+        for cat, name, _ in flat_items:
+            result[cat].append(name)
+        return result
+
+    tokens = [t.strip() for t in user_input.replace(" ", ",").split(",") if t.strip()]
+    selected_indices = set()
+
+    for token in tokens:
+        if token.isdigit():
+            idx = int(token)
+            if 1 <= idx <= len(flat_items):
+                selected_indices.add(idx - 1)
+        else:
+            token_lower = token.lower()
+            for i, (_, name, _) in enumerate(flat_items):
+                if name.lower() == token_lower:
+                    selected_indices.add(i)
+
+    for i in sorted(selected_indices):
+        cat, name, _ = flat_items[i]
+        result[cat].append(name)
+
+    return result
+
 
 
 def show_mount_dashboard(workspace_root: str) -> None:
@@ -467,7 +580,7 @@ def _add_new_mounts(workspace_root: str, mounts: dict, checked_states: dict) -> 
             sys.stdout.write("\033[?25h")
             sys.stdout.flush()
             
-            if sys.platform == "win32":
+            if sys.platform == "win32" or termios is None or tty is None:
                 alias_input = sys.stdin.readline().strip()
             else:
                 fd = sys.stdin.fileno()

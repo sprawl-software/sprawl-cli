@@ -15,14 +15,22 @@ Use --force to overwrite any existing bindings.
 
 import os
 import shutil
-from ..output import print_status, print_error, console
-from .adapters import ADAPTER_MAP, _bind_rules_symlink, _write_symlink, _prune_empty_dirs
-from .antigravity import _write_antigravity_gemini_json, _provision_antigravity_schemas, _remove_antigravity_schemas
-from .copilot import _export_copilot_prompts, _export_category_to_prompts
+
+from ..output import console, print_error, print_status
+from .adapters import ADAPTER_MAP, _bind_rules_symlink, _prune_empty_dirs, _write_symlink
+from .antigravity import (
+    _provision_antigravity_schemas,
+    _remove_antigravity_schemas,
+    _write_antigravity_gemini_json,
+)
+from .copilot import _export_category_to_prompts, _export_copilot_prompts
+
+__all__ = ["bind_adapters", "_export_copilot_prompts", "_export_category_to_prompts"]
 
 
-
-def bind_adapters(target_dir: str = ".", force: bool = False, targets: list[str] | None = None) -> bool:
+def bind_adapters(
+    target_dir: str = ".", force: bool = False, targets: list[str] | None = None
+) -> bool:
     """Generates selective or universal IDE/Agent bindings to the Sprawl .agents/ directory.
 
     Args:
@@ -46,6 +54,7 @@ def bind_adapters(target_dir: str = ".", force: bool = False, targets: list[str]
         targets = list(ADAPTER_MAP.keys())
     else:
         from ..exceptions import SprawlError
+
         # Normalize and validate target keys
         targets = [t.strip().lower() for t in targets]
         invalid_targets = [t for t in targets if t not in ADAPTER_MAP]
@@ -71,18 +80,18 @@ def bind_adapters(target_dir: str = ".", force: bool = False, targets: list[str]
             results.append(_provision_antigravity_schemas())
         elif adapter["type"] == "symlink":
             rules_path = os.path.join(target_dir, adapter["path"])
-            results.append(_bind_rules_symlink(
-                adapter["label"],
-                rules_path,
-                os.path.join(target_dir, "AGENTS.md"),
-                force
-            ))
+            results.append(
+                _bind_rules_symlink(
+                    adapter["label"], rules_path, os.path.join(target_dir, "AGENTS.md"), force
+                )
+            )
             if tkey == "copilot":
                 _export_copilot_prompts(target_dir)
 
     # Deletion of excluded bindings
-    excluded_targets = [k for k in ADAPTER_MAP.keys() if k not in targets]
+    excluded_targets = [k for k in ADAPTER_MAP if k not in targets]
     from ..config import config
+
     for tkey in excluded_targets:
         adapter = ADAPTER_MAP[tkey]
         if adapter["type"] == "antigravity":
@@ -91,7 +100,7 @@ def bind_adapters(target_dir: str = ".", force: bool = False, targets: list[str]
             if os.path.exists(ag_link) or os.path.islink(ag_link):
                 try:
                     os.remove(ag_link)
-                    console.print(f"  [info][-] Antigravity .agent Binding:[/info] Removed → .agent")
+                    console.print("  [info][-] Antigravity .agent Binding:[/info] Removed → .agent")
                 except Exception as e:
                     if config.verbose:
                         console.print(f"  [dim]Debug: Failed to remove {ag_link}: {e}[/dim]")
@@ -100,11 +109,15 @@ def bind_adapters(target_dir: str = ".", force: bool = False, targets: list[str]
             if os.path.exists(gemini_json_path):
                 try:
                     os.remove(gemini_json_path)
-                    console.print(f"  [info][-] Antigravity gemini.json Binding:[/info] Removed → gemini.json")
+                    console.print(
+                        "  [info][-] Antigravity gemini.json Binding:[/info] Removed → gemini.json"
+                    )
                     _prune_empty_dirs(gemini_json_path)
                 except Exception as e:
                     if config.verbose:
-                        console.print(f"  [dim]Debug: Failed to remove {gemini_json_path}: {e}[/dim]")
+                        console.print(
+                            f"  [dim]Debug: Failed to remove {gemini_json_path}: {e}[/dim]"
+                        )
             # 3. Antigravity MCP tool schemas removal
             _remove_antigravity_schemas()
         elif adapter["type"] == "symlink":
@@ -112,7 +125,9 @@ def bind_adapters(target_dir: str = ".", force: bool = False, targets: list[str]
             if os.path.exists(rules_path) or os.path.islink(rules_path):
                 try:
                     os.remove(rules_path)
-                    console.print(f"  [info][-] {adapter['label']} Binding:[/info] Removed → {adapter['path']}")
+                    console.print(
+                        f"  [info][-] {adapter['label']} Binding:[/info] Removed → {adapter['path']}"
+                    )
                     _prune_empty_dirs(rules_path)
                 except Exception as e:
                     if config.verbose:
@@ -123,18 +138,26 @@ def bind_adapters(target_dir: str = ".", force: bool = False, targets: list[str]
                 if os.path.exists(prompts_dir):
                     try:
                         shutil.rmtree(prompts_dir)
-                        console.print("  [info][-] GitHub Copilot Prompts:[/info] Removed prompts directory")
+                        console.print(
+                            "  [info][-] GitHub Copilot Prompts:[/info] Removed prompts directory"
+                        )
                         _prune_empty_dirs(os.path.join(prompts_dir, "dummy.txt"))
                     except Exception as e:
                         if config.verbose:
-                            console.print(f"  [dim]Debug: Failed to remove prompts directory {prompts_dir}: {e}[/dim]")
+                            console.print(
+                                f"  [dim]Debug: Failed to remove prompts directory {prompts_dir}: {e}[/dim]"
+                            )
 
     # Summary
     written = sum(1 for r in results if r)
     total = len(results)
     if written > 0 or force:
-        console.print(f"\n[success]✔ Binding complete:[/success] {written}/{total} adapters registered.")
+        console.print(
+            f"\n[success]✔ Binding complete:[/success] {written}/{total} adapters registered."
+        )
     else:
-        console.print("\n[dim]Bindings are present, to configure you bindings run sprawl bind.[/dim]")
+        console.print(
+            "\n[dim]Bindings are present, to configure you bindings run sprawl bind.[/dim]"
+        )
 
     return True

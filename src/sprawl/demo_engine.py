@@ -8,58 +8,146 @@ import os
 import shutil
 import subprocess
 import tempfile
-from .config import config
-from .output import print_status, print_error, console
-from .utils import CATEGORIES
-from .commands.init_cmd import cmd_init, cmd_fetch_dna
-from .commands.workspace import cmd_create
+
 from .commands.artifacts import cmd_add
-from .commands.sync_cmd import cmd_sync
 from .commands.diagnostics import cmd_clean_test
+from .commands.init_cmd import cmd_init
+from .commands.sync_cmd import cmd_sync
+from .commands.workspace import cmd_create
+from .config import config
+from .output import console, print_error, print_status
+from .utils import CATEGORIES
 
 DEMOS = {
     "1": {
         "title": "Cross-Team Scaffolding",
         "description": "Multi-squad (.NET, React, Sales) parallel execution",
         "squads": [
-            {"name": "dotnet-squad", "artifacts": ["csharp_standards.md", "entity_framework_optimizer", "ci_cd_azure.yml"]},
-            {"name": "web-squad", "artifacts": ["react_best_practices.md", "web_artifacts_builder", "vercel_production_deployment.yml"]},
-            {"name": "sales-squad", "artifacts": ["sales_outreach_compliance.md", "hubspot_api_connector", "lead_generation.yml"]},
-            {"name": "legacy-squad", "artifacts": []}
-        ]
+            {
+                "name": "dotnet-squad",
+                "artifacts": [
+                    "csharp_standards.md",
+                    "entity_framework_optimizer",
+                    "ci_cd_azure.yml",
+                ],
+            },
+            {
+                "name": "web-squad",
+                "artifacts": [
+                    "react_best_practices.md",
+                    "web_artifacts_builder",
+                    "vercel_production_deployment.yml",
+                ],
+            },
+            {
+                "name": "sales-squad",
+                "artifacts": [
+                    "sales_outreach_compliance.md",
+                    "hubspot_api_connector",
+                    "lead_generation.yml",
+                ],
+            },
+            {"name": "legacy-squad", "artifacts": []},
+        ],
     },
     "2": {
         "title": "E-Commerce & Retail Modernization",
         "description": "Target: Retail clients, E-commerce, Inventory, POS",
         "squads": [
-            {"name": "pos-system", "artifacts": ["hardware_interface_protocols.md", "offline_first_sync.md", "receipt_printer_driver", "local_inventory_cache", "end_of_day_reconciliation.yml"]},
-            {"name": "storefront-nextjs", "artifacts": ["nextjs_performance_budgets.md", "seo_core_web_vitals.md", "shopify_graphql_optimizer", "vercel_production_deployment.yml"]}
-        ]
+            {
+                "name": "pos-system",
+                "artifacts": [
+                    "hardware_interface_protocols.md",
+                    "offline_first_sync.md",
+                    "receipt_printer_driver",
+                    "local_inventory_cache",
+                    "end_of_day_reconciliation.yml",
+                ],
+            },
+            {
+                "name": "storefront-nextjs",
+                "artifacts": [
+                    "nextjs_performance_budgets.md",
+                    "seo_core_web_vitals.md",
+                    "shopify_graphql_optimizer",
+                    "vercel_production_deployment.yml",
+                ],
+            },
+        ],
     },
     "3": {
         "title": "Fintech & Banking Compliance",
         "description": "Target: Banking infra, strict PCI-DSS, zero-trust data",
         "squads": [
-            {"name": "fintech-core", "artifacts": ["pci_dss_compliance.md", "zero_trust_architecture.md", "transaction_ledger_auditor", "encryption_key_rotation", "daily_compliance_audit.yml", "fraud_detection_pipeline.yml"]},
-            {"name": "risk-analysis", "artifacts": ["data_anonymization_standards.md", "python_pandas_guidelines.md", "anomaly_detection_ml", "nightly_risk_model_training.yml"]}
-        ]
+            {
+                "name": "fintech-core",
+                "artifacts": [
+                    "pci_dss_compliance.md",
+                    "zero_trust_architecture.md",
+                    "transaction_ledger_auditor",
+                    "encryption_key_rotation",
+                    "daily_compliance_audit.yml",
+                    "fraud_detection_pipeline.yml",
+                ],
+            },
+            {
+                "name": "risk-analysis",
+                "artifacts": [
+                    "data_anonymization_standards.md",
+                    "python_pandas_guidelines.md",
+                    "anomaly_detection_ml",
+                    "nightly_risk_model_training.yml",
+                ],
+            },
+        ],
     },
     "4": {
         "title": "Healthcare & HIPAA Systems",
         "description": "Target: Hospital IT, EHR integrations, patient privacy",
         "squads": [
-            {"name": "ehr-integration", "artifacts": ["hipaa_data_handling.md", "hl7_fhir_standards.md", "epic_api_connector", "patient_record_anonymizer", "nightly_data_lake_sync.yml"]},
-            {"name": "patient-portal", "artifacts": ["web_accessibility_wcag.md", "secure_session_management.md", "secure_document_viewer", "frontend_vulnerability_scan.yml"]}
-        ]
+            {
+                "name": "ehr-integration",
+                "artifacts": [
+                    "hipaa_data_handling.md",
+                    "hl7_fhir_standards.md",
+                    "epic_api_connector",
+                    "patient_record_anonymizer",
+                    "nightly_data_lake_sync.yml",
+                ],
+            },
+            {
+                "name": "patient-portal",
+                "artifacts": [
+                    "web_accessibility_wcag.md",
+                    "secure_session_management.md",
+                    "secure_document_viewer",
+                    "frontend_vulnerability_scan.yml",
+                ],
+            },
+        ],
     },
     "5": {
         "title": "Industrial & Manufacturing IoT",
         "description": "Target: Assembly lines, SCADA, Predictive Maintenance",
         "squads": [
-            {"name": "scada-telemetry", "artifacts": ["iot_telemetry_standards.md", "zero_trust_flow_sensors.md", "predictive_maintenance.yml"]},
-            {"name": "assembly-robotics", "artifacts": ["cobol_maintenance_guide.md", "shift_scheduling_guidelines.md", "payroll_compliance.md"]}
-        ]
-    }
+            {
+                "name": "scada-telemetry",
+                "artifacts": [
+                    "iot_telemetry_standards.md",
+                    "zero_trust_flow_sensors.md",
+                    "predictive_maintenance.yml",
+                ],
+            },
+            {
+                "name": "assembly-robotics",
+                "artifacts": [
+                    "cobol_maintenance_guide.md",
+                    "shift_scheduling_guidelines.md",
+                    "payroll_compliance.md",
+                ],
+            },
+        ],
+    },
 }
 
 
@@ -93,7 +181,9 @@ def generate_dummy_dna() -> str:
     # Initialize git
     try:
         subprocess.run(["git", "init", "-q"], cwd=dummy_path, check=True)
-        subprocess.run(["git", "config", "user.email", "test@example.com"], cwd=dummy_path, check=True)
+        subprocess.run(
+            ["git", "config", "user.email", "test@example.com"], cwd=dummy_path, check=True
+        )
         subprocess.run(["git", "config", "user.name", "Test"], cwd=dummy_path, check=True)
         subprocess.run(["git", "add", "."], cwd=dummy_path, check=True)
         subprocess.run(["git", "commit", "-q", "-m", "init dummy"], cwd=dummy_path, check=True)
@@ -155,17 +245,25 @@ def run_interactive_demo(selected_key: str | None = None) -> None:
         selected_key: Optional pre-selected demo key. If None, prompts the user.
     """
     if not selected_key:
-        console.print("\n[accent]================================================================[/accent]")
+        console.print(
+            "\n[accent]================================================================[/accent]"
+        )
         console.print("[accent]  SPRAWL NATIVE DEMONSTRATION ENGINE[/accent]")
-        console.print("[accent]================================================================[/accent]")
-        console.print("[info]Select an industry scenario to simulate an automated agentic rollout:[/info]\n")
+        console.print(
+            "[accent]================================================================[/accent]"
+        )
+        console.print(
+            "[info]Select an industry scenario to simulate an automated agentic rollout:[/info]\n"
+        )
 
         for key, demo in DEMOS.items():
             console.print(f"[accent]  [{key}][/accent] [info]{demo['title']}[/info]")
             console.print(f"      [info]{demo['description']}[/info]\n")
 
         console.print("  [info][q] Quit[/info]")
-        console.print("[accent]================================================================[/accent]")
+        console.print(
+            "[accent]================================================================[/accent]"
+        )
 
         try:
             selected_key = input("Enter your choice: ").strip()
@@ -173,7 +271,7 @@ def run_interactive_demo(selected_key: str | None = None) -> None:
             # Handle non-interactive environments gracefully
             return
 
-    if selected_key.lower() == 'q':
+    if selected_key.lower() == "q":
         return
 
     demo = DEMOS.get(selected_key)
@@ -208,7 +306,7 @@ def run_interactive_demo(selected_key: str | None = None) -> None:
         # Process each squad inside the isolated context
         for i, squad in enumerate(demo["squads"], 1):
             squad_name = squad["name"]
-            console.print(f"\n[accent]=========================================[/accent]")
+            console.print("\n[accent]=========================================[/accent]")
             console.print(f"[accent]   TEAM {i}: {squad_name.upper()}[/accent]")
             console.print("[accent]=========================================[/accent]")
 
@@ -217,7 +315,7 @@ def run_interactive_demo(selected_key: str | None = None) -> None:
             except Exception as e:  # nosec B110 - best-effort demo, log and continue
                 print_error(f"Squad '{squad_name}' provisioning failed: {e}")
 
-        console.print(f"\n[accent]=========================================[/accent]")
+        console.print("\n[accent]=========================================[/accent]")
         console.print("[accent]   DEMO COMPLETE                        [/accent]")
         console.print("[accent]=========================================[/accent]")
         console.print("[info]The isolated environments have been successfully scaffolded.[/info]")

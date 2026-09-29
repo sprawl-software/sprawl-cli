@@ -1,18 +1,17 @@
 """Generator for mcp_config.json — Clean Room architecture compliant."""
 
+import json
 import os
 import sys
-import json
-from typing import Any, Dict, List, Optional
 
 
 def generate_mcp_config(
     output_path: str,
-    reqs: Dict[str, List[str]],
+    reqs: dict[str, list[str]],
     app_dir: str,
     local_agents_dir: str,
     venv_python: str,
-    vault_path: Optional[str] = None
+    vault_path: str | None = None,
 ) -> None:
     """Generates a standardized mcp_config.json for the workspace.
 
@@ -29,22 +28,14 @@ def generate_mcp_config(
     # 1. Inject Workspace Filesystem (The Hard Fence)
     mcp_config["mcpServers"]["sprawl-workspace-fs"] = {
         "command": sys.executable,
-        "args": [
-            "-m",
-            "sprawl.mcp.workspace_fs",
-            os.path.abspath(app_dir)
-        ]
+        "args": ["-m", "sprawl.mcp.workspace_fs", os.path.abspath(app_dir)],
     }
 
     # 2. Inject Vault (Global Knowledge)
     if vault_path:
         mcp_config["mcpServers"]["sprawl-vault"] = {
             "command": sys.executable,
-            "args": [
-                "-m",
-                "sprawl.mcp.vault",
-                os.path.abspath(os.path.expanduser(vault_path))
-            ]
+            "args": ["-m", "sprawl.mcp.vault", os.path.abspath(os.path.expanduser(vault_path))],
         }
 
     # 3. Process Molecules (Deprecated, skipped)
@@ -53,8 +44,8 @@ def generate_mcp_config(
     user_home = os.path.expanduser("~")
     mcp_base_dir = os.path.join(user_home, ".gemini", "antigravity", "mcp")
     from .antigravity_schemas import provision_schemas
-    provision_schemas(mcp_base_dir)
 
+    provision_schemas(mcp_base_dir)
 
     with open(output_path, "w", encoding="utf-8") as f:
         json.dump(mcp_config, f, indent=4)

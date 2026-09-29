@@ -1,24 +1,24 @@
 """Diagnostics commands — update, cleanup, manual, and demo engine."""
 
 import os
-import sys
-import json
 import shutil
 import subprocess
-from typing import Optional
+import sys
 
 from ..config import config
-from ..output import print_status, print_warning, print_error, console
 from ..exceptions import SprawlError
-from ._helpers import resolve_repo_root
+from ..output import print_error, print_status, print_warning
 from ..utils import get_git_env
+from ._helpers import resolve_repo_root
 
 
 def cmd_update() -> None:
     """Global Synchronization & Self-Updating Mechanism."""
     print_status("Initiating Sprawl Update Sequence...")
 
-    if os.path.exists(config.agents_dir_global) and os.path.exists(os.path.join(config.agents_dir_global, ".git")):
+    if os.path.exists(config.agents_dir_global) and os.path.exists(
+        os.path.join(config.agents_dir_global, ".git")
+    ):
         print_status(f"Updating Global DNA at {config.agents_dir_global}...")
         if not config.dry_run:
             try:
@@ -26,12 +26,12 @@ def cmd_update() -> None:
                 current_branch = subprocess.check_output(
                     ["git", "-C", config.agents_dir_global, "rev-parse", "--abbrev-ref", "HEAD"],
                     text=True,
-                    env=git_env
+                    env=git_env,
                 ).strip()
                 subprocess.run(
                     ["git", "-C", config.agents_dir_global, "pull", "origin", current_branch],
                     check=True,
-                    env=git_env
+                    env=git_env,
                 )
                 print_status("Global DNA updated successfully.")
             except subprocess.CalledProcessError as e:
@@ -44,7 +44,9 @@ def cmd_update() -> None:
                     "  2. Credential Manager: Ensure you are logged into your Git provider (e.g., `gh auth login`)."
                 )
     else:
-        print_warning(f"Global DNA not found or not a git repository at {config.agents_dir_global}. Run 'sprawl init' first.")
+        print_warning(
+            f"Global DNA not found or not a git repository at {config.agents_dir_global}. Run 'sprawl init' first."
+        )
 
     repo_root = resolve_repo_root()
 
@@ -56,13 +58,13 @@ def cmd_update() -> None:
                 current_branch = subprocess.check_output(
                     ["git", "-C", repo_root, "rev-parse", "--abbrev-ref", "HEAD"],
                     text=True,
-                    env=git_env
+                    env=git_env,
                 ).strip()
                 try:
                     subprocess.run(
                         ["git", "-C", repo_root, "pull", "origin", current_branch],
                         check=True,
-                        env=git_env
+                        env=git_env,
                     )
                     print_status("Source updated from remote.")
                 except subprocess.CalledProcessError as e:
@@ -72,14 +74,29 @@ def cmd_update() -> None:
                 print_status("Re-installing globally via pipx...")
                 if sys.platform == "win32":
                     runpip_res = subprocess.run(
-                        ["pipx", "runpip", "sprawl-cli", "install", "--upgrade", "--no-cache-dir", "."],
+                        [
+                            "pipx",
+                            "runpip",
+                            "sprawl-cli",
+                            "install",
+                            "--upgrade",
+                            "--no-cache-dir",
+                            ".",
+                        ],
                         cwd=repo_root,
-                        env=git_env
+                        env=git_env,
                     )
                     if runpip_res.returncode != 0:
-                        subprocess.run(["pipx", "install", ".", "--force"], cwd=repo_root, check=True, env=git_env)
+                        subprocess.run(
+                            ["pipx", "install", ".", "--force"],
+                            cwd=repo_root,
+                            check=True,
+                            env=git_env,
+                        )
                 else:
-                    subprocess.run(["pipx", "install", ".", "--force"], cwd=repo_root, check=True, env=git_env)
+                    subprocess.run(
+                        ["pipx", "install", ".", "--force"], cwd=repo_root, check=True, env=git_env
+                    )
 
                 print_status("Sprawl Engine updated and installed globally successfully.")
             except subprocess.CalledProcessError as e:
@@ -92,16 +109,23 @@ def cmd_update() -> None:
                 if sys.platform == "win32":
                     print_status("Attempting upgrade via pipx...")
                     result = subprocess.run(
-                        ["pipx", "upgrade", "sprawl-cli", "--pip-args=--no-cache-dir"],
-                        env=git_env
+                        ["pipx", "upgrade", "sprawl-cli", "--pip-args=--no-cache-dir"], env=git_env
                     )
                     if result.returncode == 0:
                         print_status("Sprawl CLI updated successfully via pipx upgrade.")
                     else:
                         print_status("Attempting in-place installation via pipx runpip...")
                         runpip_result = subprocess.run(
-                            ["pipx", "runpip", "sprawl-cli", "install", "--upgrade", "--no-cache-dir", "git+https://github.com/sprawl-software/sprawl-cli.git"],
-                            env=git_env
+                            [
+                                "pipx",
+                                "runpip",
+                                "sprawl-cli",
+                                "install",
+                                "--upgrade",
+                                "--no-cache-dir",
+                                "git+https://github.com/sprawl-software/sprawl-cli.git",
+                            ],
+                            env=git_env,
                         )
                         if runpip_result.returncode == 0:
                             print_status("Sprawl CLI updated successfully from GitHub via HTTPS.")
@@ -109,16 +133,30 @@ def cmd_update() -> None:
                             # If sprawl-cli is not installed in pipx yet, install it via pipx install --force
                             print_status("Attempting installation via pipx install --force...")
                             subprocess.run(
-                                ["pipx", "install", "git+https://github.com/sprawl-software/sprawl-cli.git", "--force", "--pip-args=--no-cache-dir"],
+                                [
+                                    "pipx",
+                                    "install",
+                                    "git+https://github.com/sprawl-software/sprawl-cli.git",
+                                    "--force",
+                                    "--pip-args=--no-cache-dir",
+                                ],
                                 check=True,
-                                env=git_env
+                                env=git_env,
                             )
                             print_status("Sprawl CLI installed successfully from GitHub via HTTPS.")
                 else:
-                    print_status("Attempting installation via HTTPS: git+https://github.com/sprawl-software/sprawl-cli.git...")
+                    print_status(
+                        "Attempting installation via HTTPS: git+https://github.com/sprawl-software/sprawl-cli.git..."
+                    )
                     result = subprocess.run(
-                        ["pipx", "install", "git+https://github.com/sprawl-software/sprawl-cli.git", "--force", "--pip-args=--no-cache-dir"],
-                        env=git_env
+                        [
+                            "pipx",
+                            "install",
+                            "git+https://github.com/sprawl-software/sprawl-cli.git",
+                            "--force",
+                            "--pip-args=--no-cache-dir",
+                        ],
+                        env=git_env,
                     )
                     if result.returncode == 0:
                         print_status("Sprawl CLI updated successfully from GitHub via HTTPS.")
@@ -128,8 +166,15 @@ def cmd_update() -> None:
                             "Attempting fallback to SSH: git+ssh://git@github.com/sprawl-software/sprawl-cli.git..."
                         )
                         subprocess.run(
-                            ["pipx", "install", "git+ssh://git@github.com/sprawl-software/sprawl-cli.git", "--force", "--pip-args=--no-cache-dir"],
-                            check=True, env=git_env
+                            [
+                                "pipx",
+                                "install",
+                                "git+ssh://git@github.com/sprawl-software/sprawl-cli.git",
+                                "--force",
+                                "--pip-args=--no-cache-dir",
+                            ],
+                            check=True,
+                            env=git_env,
                         )
                         print_status("Sprawl CLI updated successfully from GitHub via SSH.")
             except subprocess.CalledProcessError as e:
@@ -147,6 +192,7 @@ def cmd_clean_test() -> None:
     print_status("Nuking all testmode artifacts...")
     try:
         from ..utils import rmtree_safe
+
         if os.path.exists(config.agents_dir_global):
             rmtree_safe(config.agents_dir_global)
             print_status(f"[-] Deleted {config.agents_dir_global}")
@@ -164,15 +210,14 @@ def cmd_clean_test() -> None:
         raise SprawlError(f"Failed to clean testmode paths: {e}")
 
 
-
-
-def cmd_demo(demo_name: Optional[str] = None) -> None:
+def cmd_demo(demo_name: str | None = None) -> None:
     """Routes to the interactive native demonstration engine.
 
     Args:
         demo_name: Optional demo name or ID to run directly.
     """
     from ..demo_engine import run_interactive_demo
+
     run_interactive_demo(demo_name)
 
 
@@ -183,13 +228,17 @@ def cmd_clean_demo() -> None:
     if os.path.exists(demo_dir):
         # SECURITY HARDENING: Prevent Symlink Traversal Attacks
         if os.path.islink(demo_dir):
-            raise SprawlError(f"Security Violation: '{demo_dir}' is a symbolic link. Refusing to delete to prevent path traversal.")
+            raise SprawlError(
+                f"Security Violation: '{demo_dir}' is a symbolic link. Refusing to delete to prevent path traversal."
+            )
 
         # SECURITY HARDENING: Ensure exact path match
         real_demo = os.path.realpath(demo_dir)
         real_expected = os.path.realpath(os.path.join(os.getcwd(), "sprawl_demo"))
         if os.path.normcase(real_demo) != os.path.normcase(real_expected):
-            raise SprawlError(f"Security Violation: '{demo_dir}' resolves to a different real path. Refusing to delete.")
+            raise SprawlError(
+                f"Security Violation: '{demo_dir}' resolves to a different real path. Refusing to delete."
+            )
 
         try:
             shutil.rmtree(real_demo)

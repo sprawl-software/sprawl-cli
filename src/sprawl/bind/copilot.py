@@ -1,7 +1,8 @@
 """GitHub Copilot prompt export routines."""
 
+import contextlib
 import os
-import shutil
+
 from ..output import print_status, print_warning
 
 
@@ -23,13 +24,13 @@ def _export_category_to_prompts(
         name = None
 
         if os.path.isfile(item_path) and item.endswith(".md"):
-            with open(item_path, "r", encoding="utf-8", errors="ignore") as f:
+            with open(item_path, encoding="utf-8", errors="ignore") as f:
                 content = f.read()
             name = item[:-3]
         elif check_skill_subdirs and os.path.isdir(item_path):
             skill_md = os.path.join(item_path, "SKILL.md")
             if os.path.exists(skill_md):
-                with open(skill_md, "r", encoding="utf-8", errors="ignore") as f:
+                with open(skill_md, encoding="utf-8", errors="ignore") as f:
                     content = f.read()
             name = item
 
@@ -53,15 +54,17 @@ def _export_copilot_prompts(target_dir: str) -> None:
     if os.path.exists(prompts_dir):
         for f in os.listdir(prompts_dir):
             if f.endswith(".prompt.md"):
-                try:
+                with contextlib.suppress(OSError):
                     os.remove(os.path.join(prompts_dir, f))
-                except OSError:
-                    pass
 
     # Export skills (with SKILL.md subdir support) and workflows
     _export_category_to_prompts(
-        os.path.join(agents_dir, "skills"), prompts_dir, check_skill_subdirs=True,
+        os.path.join(agents_dir, "skills"),
+        prompts_dir,
+        check_skill_subdirs=True,
     )
     _export_category_to_prompts(
-        os.path.join(agents_dir, "workflows"), prompts_dir, check_skill_subdirs=False,
+        os.path.join(agents_dir, "workflows"),
+        prompts_dir,
+        check_skill_subdirs=False,
     )

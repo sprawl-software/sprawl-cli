@@ -3,10 +3,10 @@
 Limited to the workspace root. Pure stdlib + rich.
 """
 
+import json
 import os
 import sys
-import json
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 
 class MCPError(Exception):
@@ -29,7 +29,7 @@ class WorkspaceFS:
         config_path = os.path.join(self.root, ".agents", "sprawl-config.json")
         if os.path.exists(config_path):
             try:
-                with open(config_path, "r", encoding="utf-8") as f:
+                with open(config_path, encoding="utf-8") as f:
                     cfg = json.load(f)
                 self.allowed_mounts = cfg.get("allowed_mounts", {})
             except (json.JSONDecodeError, OSError):
@@ -44,50 +44,66 @@ class WorkspaceFS:
         if normalized_rel.startswith("@"):
             parts = normalized_rel.split("/", 1)
             alias = parts[0][1:]
-            
+
             if alias in self.allowed_mounts:
                 mount_root = os.path.abspath(os.path.expanduser(self.allowed_mounts[alias]))
                 sub_path = parts[1] if len(parts) > 1 else ""
-                
+
                 # Prevent absolute paths or home expansion inside mount
                 if os.path.isabs(sub_path) or sub_path.startswith("~"):
-                    raise MCPError(-32602, "Security Violation: Absolute paths and home expansion are not allowed inside mounts.")
-                
+                    raise MCPError(
+                        -32602,
+                        "Security Violation: Absolute paths and home expansion are not allowed inside mounts.",
+                    )
+
                 abs_path = os.path.abspath(os.path.join(mount_root, sub_path))
                 real_path = os.path.realpath(abs_path)
                 real_mount_root = os.path.realpath(mount_root)
-                
+
                 # Enforce strict directory boundary — prevent sibling-directory prefix escapes
                 # e.g. /home/user/mount vs /home/user/mount-secrets
                 # Use os.path.normcase to ensure drive-letter case-insensitivity on Windows
                 norm_real_path = os.path.normcase(real_path)
                 norm_real_mount_root = os.path.normcase(real_mount_root)
-                if norm_real_path != norm_real_mount_root and not norm_real_path.startswith(norm_real_mount_root + os.sep):
-                    raise MCPError(-32602, f"Security Violation: Path '{rel_path}' resolves outside mount root '{alias}'.")
+                if norm_real_path != norm_real_mount_root and not norm_real_path.startswith(
+                    norm_real_mount_root + os.sep
+                ):
+                    raise MCPError(
+                        -32602,
+                        f"Security Violation: Path '{rel_path}' resolves outside mount root '{alias}'.",
+                    )
                 return real_path
             else:
-                raise MCPError(-32602, f"Security Violation: Mount alias '{alias}' is not allowed/configured.")
+                raise MCPError(
+                    -32602, f"Security Violation: Mount alias '{alias}' is not allowed/configured."
+                )
 
         # Prevent absolute paths or home expansion
         if os.path.isabs(rel_path) or rel_path.startswith("~"):
-            raise MCPError(-32602, "Security Violation: Absolute paths and home expansion are not allowed.")
-        
+            raise MCPError(
+                -32602, "Security Violation: Absolute paths and home expansion are not allowed."
+            )
+
         abs_path = os.path.abspath(os.path.join(self.root, rel_path))
         real_path = os.path.realpath(abs_path)
         real_root = os.path.realpath(self.root)
-        
+
         # Enforce strict directory boundary — prevent sibling-directory prefix escapes
         norm_real_path = os.path.normcase(real_path)
         norm_real_root = os.path.normcase(real_root)
-        if norm_real_path != norm_real_root and not norm_real_path.startswith(norm_real_root + os.sep):
-            raise MCPError(-32602, f"Security Violation: Path '{rel_path}' resolves outside workspace root.")
+        if norm_real_path != norm_real_root and not norm_real_path.startswith(
+            norm_real_root + os.sep
+        ):
+            raise MCPError(
+                -32602, f"Security Violation: Path '{rel_path}' resolves outside workspace root."
+            )
         return real_path
 
     def read_file(self, path: str) -> str:
         safe_path = self._get_safe_path(path)
         if not os.path.isfile(safe_path):
             raise MCPError(-32602, f"File not found: {path}")
-        with open(safe_path, "r", encoding="utf-8", errors="ignore") as f:
+        with open(safe_path, encoding="utf-8", errors="ignore") as f:
             return f.read()
 
     def write_file(self, path: str, content: str) -> str:
@@ -97,7 +113,7 @@ class WorkspaceFS:
             f.write(content)
         return f"Successfully wrote to {path}"
 
-    def list_directory(self, path: str = ".") -> List[str]:
+    def list_directory(self, path: str = ".") -> list[str]:
         safe_path = self._get_safe_path(path)
         if not os.path.isdir(safe_path):
             raise MCPError(-32602, f"Directory not found: {path}")
@@ -115,14 +131,14 @@ class MCPServer:
             "list_directory": self._tool_list_directory,
         }
 
-    def _tool_read_file(self, arguments: Dict[str, Any]) -> Dict[str, Any]:
+    def _tool_read_file(self, arguments: dict[str, Any]) -> dict[str, Any]:
         path = arguments.get("path")
         if not path:
             raise MCPError(-32602, "Missing 'path' argument.")
         content = self.fs.read_file(path)
         return {"content": [{"type": "text", "text": content}]}
 
-    def _tool_write_file(self, arguments: Dict[str, Any]) -> Dict[str, Any]:
+    def _tool_write_file(self, arguments: dict[str, Any]) -> dict[str, Any]:
         path = arguments.get("path")
         content = arguments.get("content")
         if not path or content is None:
@@ -130,7 +146,7 @@ class MCPServer:
         result = self.fs.write_file(path, content)
         return {"content": [{"type": "text", "text": result}]}
 
-    def _tool_list_directory(self, arguments: Dict[str, Any]) -> Dict[str, Any]:
+    def _tool_list_directory(self, arguments: dict[str, Any]) -> dict[str, Any]:
         path = arguments.get("path", ".")
         items = self.fs.list_directory(path)
         return {"content": [{"type": "text", "text": "\n".join(items)}]}
@@ -151,7 +167,7 @@ class MCPServer:
             except Exception as e:
                 self.send_error(None, -32603, f"Internal error: {str(e)}")
 
-    def handle_request(self, request: Dict[str, Any]) -> Optional[Dict[str, Any]]:
+    def handle_request(self, request: dict[str, Any]) -> dict[str, Any] | None:
         msg_id = request.get("id")
         method = request.get("method")
         params = request.get("params", {})
@@ -163,10 +179,10 @@ class MCPServer:
                 "result": {
                     "protocolVersion": "2024-11-05",
                     "capabilities": {},
-                    "serverInfo": {"name": "sprawl-workspace-fs", "version": "1.0.0"}
-                }
+                    "serverInfo": {"name": "sprawl-workspace-fs", "version": "1.0.0"},
+                },
             }
-        
+
         if method == "notifications/initialized":
             return None
 
@@ -187,17 +203,20 @@ class MCPServer:
                             "inputSchema": {
                                 "type": "object",
                                 "properties": {"path": {"type": "string"}},
-                                "required": ["path"]
-                            }
+                                "required": ["path"],
+                            },
                         },
                         {
                             "name": "write_file",
                             "description": f"Write content to a file within the workspace.{mounts_desc}",
                             "inputSchema": {
                                 "type": "object",
-                                "properties": {"path": {"type": "string"}, "content": {"type": "string"}},
-                                "required": ["path", "content"]
-                            }
+                                "properties": {
+                                    "path": {"type": "string"},
+                                    "content": {"type": "string"},
+                                },
+                                "required": ["path", "content"],
+                            },
                         },
                         {
                             "name": "list_directory",
@@ -205,11 +224,11 @@ class MCPServer:
                             "inputSchema": {
                                 "type": "object",
                                 "properties": {"path": {"type": "string"}},
-                                "required": []
-                            }
-                        }
+                                "required": [],
+                            },
+                        },
                     ]
-                }
+                },
             }
 
         if method == "tools/call":
@@ -223,29 +242,25 @@ class MCPServer:
                     return {
                         "jsonrpc": "2.0",
                         "id": msg_id,
-                        "error": {"code": e.code, "message": e.message, "data": e.data}
+                        "error": {"code": e.code, "message": e.message, "data": e.data},
                     }
                 except Exception as e:
                     return {
                         "jsonrpc": "2.0",
                         "id": msg_id,
-                        "error": {"code": -32603, "message": str(e)}
+                        "error": {"code": -32603, "message": str(e)},
                     }
             else:
                 return {
                     "jsonrpc": "2.0",
                     "id": msg_id,
-                    "error": {"code": -32601, "message": f"Tool not found: {tool_name}"}
+                    "error": {"code": -32601, "message": f"Tool not found: {tool_name}"},
                 }
 
         return None
 
     def send_error(self, msg_id: Any, code: int, message: str):
-        response = {
-            "jsonrpc": "2.0",
-            "id": msg_id,
-            "error": {"code": code, "message": message}
-        }
+        response = {"jsonrpc": "2.0", "id": msg_id, "error": {"code": code, "message": message}}
         sys.stdout.write(json.dumps(response) + "\n")
         sys.stdout.flush()
 
@@ -254,7 +269,7 @@ if __name__ == "__main__":
     if len(sys.argv) < 2:
         print("Usage: python workspace_fs.py <root_path>", file=sys.stderr)
         sys.exit(1)
-    
+
     root = sys.argv[1]
     try:
         fs = WorkspaceFS(root)

@@ -5,10 +5,9 @@ and maps them against the local workspace sprawl_manifest.yml to determine selec
 """
 
 import os
-from typing import Dict, List, Tuple
 
-from . import CATEGORIES, get_active_dna_context
 from ..sync import parse_sprawl_manifest
+from . import CATEGORIES, get_active_dna_context
 
 
 class RegistryScanner:
@@ -24,7 +23,7 @@ class RegistryScanner:
         self.manifest_path = os.path.join(self.workspace_dir, ".agents", "sprawl_manifest.yml")
         self.active_dna_dir = get_active_dna_context(self.workspace_dir)
 
-    def scan(self) -> Dict[str, List[Tuple[str, bool]]]:
+    def scan(self) -> dict[str, list[tuple[str, bool]]]:
         """Scans the bound central DNA vault and identifies checked items.
 
         Returns:
@@ -33,7 +32,7 @@ class RegistryScanner:
         # Parse manifest to identify currently checked items
         checked_items = parse_sprawl_manifest(self.manifest_path)
 
-        result: Dict[str, List[Tuple[str, bool]]] = {}
+        result: dict[str, list[tuple[str, bool]]] = {}
 
         for category in CATEGORIES:
             result[category] = []

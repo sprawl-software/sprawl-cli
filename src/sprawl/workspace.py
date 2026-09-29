@@ -1,13 +1,16 @@
+import contextlib
+import datetime
 import json
 import os
-import datetime
-from typing import Optional, Dict, Any
+from typing import Any
 
 from .config import config
 from .exceptions import SprawlError
 
+
 class WorkspaceError(SprawlError):
     """Base exception for workspace-related errors."""
+
     pass
 
 
@@ -25,30 +28,30 @@ class Workspace:
         """Ensures the management directory exists."""
         os.makedirs(self.mgt_dir, exist_ok=True)
 
-    def get_dna_alias(self) -> Optional[str]:
+    def get_dna_alias(self) -> str | None:
         """Returns the bound DNA alias for this workspace."""
         # 1. Check management plane (New way)
         if os.path.exists(self.dna_binding_path):
             try:
-                with open(self.dna_binding_path, "r", encoding="utf-8") as f:
+                with open(self.dna_binding_path, encoding="utf-8") as f:
                     data = json.load(f)
                     return data.get("alias")
-            except (json.JSONDecodeError, IOError):
+            except (OSError, json.JSONDecodeError):
                 pass
 
         # 2. Check workspace root (Old way - Migration)
         old_dna_path = os.path.join(self.path, ".sprawl_dna")
         if os.path.exists(old_dna_path):
             try:
-                with open(old_dna_path, "r", encoding="utf-8") as f:
+                with open(old_dna_path, encoding="utf-8") as f:
                     alias = f.read().strip()
                 if alias:
                     self.bind_dna(alias)
                     # We don't delete the old file yet, just migrate the data
                     return alias
-            except IOError:
+            except OSError:
                 pass
-        
+
         return None
 
     def bind_dna(self, alias: str) -> None:
@@ -57,32 +60,39 @@ class Workspace:
         tmp_path = self.dna_binding_path + ".tmp"
         try:
             with open(tmp_path, "w", encoding="utf-8") as f:
-                json.dump({"alias": alias, "bound_at": datetime.datetime.now(datetime.timezone.utc).isoformat()}, f, indent=4)
+                json.dump(
+                    {
+                        "alias": alias,
+                        "bound_at": datetime.datetime.now(datetime.timezone.utc).isoformat(),
+                    },
+                    f,
+                    indent=4,
+                )
             os.replace(tmp_path, self.dna_binding_path)
         except Exception:
             if os.path.exists(tmp_path):
-                try:
+                with contextlib.suppress(OSError):
                     os.remove(tmp_path)
-                except OSError:
-                    pass
             raise
 
-    def get_sync_state(self) -> Dict[str, Any]:
+    def get_sync_state(self) -> dict[str, Any]:
         """Returns the sync state for this workspace."""
         if not os.path.exists(self.sync_state_path):
             return {}
         try:
-            with open(self.sync_state_path, "r", encoding="utf-8") as f:
+            with open(self.sync_state_path, encoding="utf-8") as f:
                 return json.load(f)
-        except (json.JSONDecodeError, IOError):
+        except (OSError, json.JSONDecodeError):
             return {}
 
-    def update_sync_state(self, state: Dict[str, Any]) -> None:
+    def update_sync_state(self, state: dict[str, Any]) -> None:
         """Updates the sync state in the management plane."""
         self.ensure_mgt_dir()
         current_state = self.get_sync_state()
         current_state.update(state)
-        current_state["last_sync_timestamp"] = datetime.datetime.now(datetime.timezone.utc).isoformat()
+        current_state["last_sync_timestamp"] = datetime.datetime.now(
+            datetime.timezone.utc
+        ).isoformat()
         tmp_path = self.sync_state_path + ".tmp"
         try:
             with open(tmp_path, "w", encoding="utf-8") as f:
@@ -90,26 +100,24 @@ class Workspace:
             os.replace(tmp_path, self.sync_state_path)
         except Exception:
             if os.path.exists(tmp_path):
-                try:
+                with contextlib.suppress(OSError):
                     os.remove(tmp_path)
-                except OSError:
-                    pass
             raise
 
 
-def load_workspace_registry() -> Dict[str, Any]:
+def load_workspace_registry() -> dict[str, Any]:
     """Loads the registry from disk."""
     path = config.workspace_registry_path
     if not os.path.exists(path):
         return {}
     try:
-        with open(path, "r", encoding="utf-8") as f:
+        with open(path, encoding="utf-8") as f:
             return json.load(f)
     except json.JSONDecodeError:
         return {}
 
 
-def save_workspace_registry(data: Dict[str, Any]) -> None:
+def save_workspace_registry(data: dict[str, Any]) -> None:
     """Saves the registry to disk."""
     path = config.workspace_registry_path
     os.makedirs(os.path.dirname(path), exist_ok=True)
@@ -120,30 +128,24 @@ def save_workspace_registry(data: Dict[str, Any]) -> None:
         os.replace(tmp_path, path)
     except Exception:
         if os.path.exists(tmp_path):
-            try:
+            with contextlib.suppress(OSError):
                 os.remove(tmp_path)
-            except OSError:
-                pass
         raise
 
 
-def register_workspace(name: str, path: str, dna_source: Optional[str] = None) -> None:
+def register_workspace(name: str, path: str, dna_source: str | None = None) -> None:
     """Registers a new workspace or updates an existing one's tracking info."""
     data = load_workspace_registry()
-    
+
     # Ensure path is absolute
     abs_path = os.path.abspath(os.path.expanduser(path))
-    
+
     if name not in data:
-        data[name] = {
-            "path": abs_path,
-            "dna_source": dna_source,
-            "last_sync_timestamp": None
-        }
+        data[name] = {"path": abs_path, "dna_source": dna_source, "last_sync_timestamp": None}
     else:
         data[name]["path"] = abs_path
         data[name]["dna_source"] = dna_source
-    
+
     save_workspace_registry(data)
 
 
@@ -157,13 +159,13 @@ def deregister_workspace(name: str) -> None:
         raise WorkspaceError(f"Workspace '{name}' is not registered.")
 
 
-def get_workspace_info(name: str) -> Optional[Dict[str, Any]]:
+def get_workspace_info(name: str) -> dict[str, Any] | None:
     """Gets a workspace's tracking info."""
     data = load_workspace_registry()
     return data.get(name)
 
 
-def get_all_workspaces() -> Dict[str, Any]:
+def get_all_workspaces() -> dict[str, Any]:
     """Returns all registered workspaces."""
     return load_workspace_registry()
 
@@ -185,7 +187,6 @@ def update_workspace_sync_timestamp(name: str) -> None:
         if not found_name:
             raise WorkspaceError(f"Workspace '{name}' is not registered.")
         name = found_name
-    
+
     data[name]["last_sync_timestamp"] = datetime.datetime.now(datetime.timezone.utc).isoformat()
     save_workspace_registry(data)
-

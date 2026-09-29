@@ -1,12 +1,12 @@
 """Tests for secure dynamic MCP directory mounting in workspace_fs."""
 
+import json
 import os
 import shutil
 import tempfile
-import json
 import unittest
 
-from src.sprawl.mcp.workspace_fs import WorkspaceFS, MCPError
+from src.sprawl.mcp.workspace_fs import MCPError, WorkspaceFS
 
 
 class TestWorkspaceFSMounting(unittest.TestCase):
@@ -14,23 +14,19 @@ class TestWorkspaceFSMounting(unittest.TestCase):
         self.temp_dir = tempfile.mkdtemp()
         self.workspace_root = os.path.join(self.temp_dir, "workspace")
         os.makedirs(self.workspace_root)
-        
+
         self.mount_root = os.path.join(self.temp_dir, "shared_library")
         os.makedirs(self.mount_root)
-        
+
         # Scaffold sprawl-config.json with allowed_mounts
         agents_dir = os.path.join(self.workspace_root, ".agents")
         os.makedirs(agents_dir)
-        
-        self.config_data = {
-            "allowed_mounts": {
-                "shared_lib": self.mount_root
-            }
-        }
-        
+
+        self.config_data = {"allowed_mounts": {"shared_lib": self.mount_root}}
+
         with open(os.path.join(agents_dir, "sprawl-config.json"), "w") as f:
             json.dump(self.config_data, f)
-            
+
         self.fs = WorkspaceFS(self.workspace_root)
 
     def tearDown(self):
@@ -41,11 +37,11 @@ class TestWorkspaceFSMounting(unittest.TestCase):
         content = "print('hello')"
         res = self.fs.write_file("@shared_lib/hello.py", content)
         self.assertIn("Successfully wrote to", res)
-        
+
         # Assert file was written to the mount root
         real_file = os.path.join(self.mount_root, "hello.py")
         self.assertTrue(os.path.exists(real_file))
-        
+
         # Read file back via MCP
         read_content = self.fs.read_file("@shared_lib/hello.py")
         self.assertEqual(read_content, content)
@@ -54,7 +50,7 @@ class TestWorkspaceFSMounting(unittest.TestCase):
         """WorkspaceFS correctly lists directories inside the mounted directory."""
         self.fs.write_file("@shared_lib/a.py", "a")
         self.fs.write_file("@shared_lib/b.py", "b")
-        
+
         items = self.fs.list_directory("@shared_lib")
         self.assertIn("a.py", items)
         self.assertIn("b.py", items)
@@ -71,7 +67,7 @@ class TestWorkspaceFSMounting(unittest.TestCase):
         outside_file = os.path.join(self.temp_dir, "secret.txt")
         with open(outside_file, "w") as f:
             f.write("secret data")
-            
+
         with self.assertRaises(MCPError) as context:
             # Attempt to traverse up out of the mount
             self.fs.read_file("@shared_lib/../secret.txt")

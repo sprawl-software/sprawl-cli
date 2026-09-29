@@ -1,16 +1,16 @@
 """Tests for sprawl bind adapter engine."""
 
-import unittest
-import os
-import sys
 import json
+import os
 import shutil
+import sys
 import tempfile
-from unittest.mock import patch, MagicMock
+import unittest
+from unittest.mock import patch
 
 # Ensure both repo root and src are in sys.path
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '../src')))
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "../src")))
 
 from src.sprawl.bind import bind_adapters
 
@@ -53,7 +53,7 @@ class TestBind(unittest.TestCase):
         bind_adapters(self.test_dir)
         gemini = os.path.join(self.test_dir, ".gemini", "antigravity", "gemini.json")
         self.assertTrue(os.path.exists(gemini))
-        with open(gemini, "r") as f:
+        with open(gemini) as f:
             data = json.load(f)
         self.assertIn("sprawl", data)
         self.assertTrue(data["sprawl"]["managed"])
@@ -69,7 +69,7 @@ class TestBind(unittest.TestCase):
         bind_adapters(self.test_dir, force=False)
 
         self.assertFalse(os.path.islink(cursor_file))
-        with open(cursor_file, "r") as f:
+        with open(cursor_file) as f:
             content = f.read()
         self.assertEqual(content, original)
 
@@ -98,22 +98,24 @@ class TestBind(unittest.TestCase):
         self.assertTrue(bind_adapters(self.test_dir, targets=["cursor"]))
         self.assertTrue(os.path.islink(os.path.join(self.test_dir, ".cursorrules")))
         self.assertFalse(os.path.islink(os.path.join(self.test_dir, ".clinerules")))
-        self.assertFalse(os.path.islink(os.path.join(self.test_dir, ".github", "copilot-instructions.md")))
+        self.assertFalse(
+            os.path.islink(os.path.join(self.test_dir, ".github", "copilot-instructions.md"))
+        )
 
     def test_bind_adapters_symmetric_cleanup(self):
         """bind_adapters removes excluded rules and directories when targets are updated."""
         # 1. Bind cursor and cline-roo
         self.assertTrue(bind_adapters(self.test_dir, targets=["cursor", "cline-roo"]))
-        
+
         cursor_file = os.path.join(self.test_dir, ".cursorrules")
         cline_file = os.path.join(self.test_dir, ".clinerules")
-        
+
         self.assertTrue(os.path.islink(cursor_file))
         self.assertTrue(os.path.islink(cline_file))
-        
+
         # 2. Run bind targeting only cursor
         self.assertTrue(bind_adapters(self.test_dir, targets=["cursor"]))
-        
+
         # 3. Assert cursor is kept, cline-roo is deleted
         self.assertTrue(os.path.islink(cursor_file))
         self.assertFalse(os.path.exists(cline_file))
@@ -122,6 +124,7 @@ class TestBind(unittest.TestCase):
     def test_bind_adapters_invalid_target_raises(self):
         """bind_adapters raises SprawlError when invalid target key is passed."""
         from src.sprawl.exceptions import SprawlError
+
         with self.assertRaises(SprawlError):
             bind_adapters(self.test_dir, targets=["invalid_target"])
 
@@ -129,29 +132,32 @@ class TestBind(unittest.TestCase):
     @patch("src.sprawl.bind.bind_adapters")
     def test_cmd_bind_non_tty_defaults_to_all(self, mock_bind, mock_isatty):
         """cmd_bind defaults to all adapters when not in TTY mode."""
-        from src.sprawl.commands.sync_cmd import cmd_bind
         from src.sprawl.bind import ADAPTER_MAP
+        from src.sprawl.commands.sync_cmd import cmd_bind
+
         cmd_bind(self.test_dir)
-        mock_bind.assert_called_once_with(self.test_dir, force=False, targets=list(ADAPTER_MAP.keys()))
+        mock_bind.assert_called_once_with(
+            self.test_dir, force=False, targets=list(ADAPTER_MAP.keys())
+        )
 
     @patch("src.sprawl.bind.bind_adapters")
     def test_cmd_bind_only_flag(self, mock_bind):
         """cmd_bind parses and passes only list to bind_adapters."""
         from src.sprawl.commands.sync_cmd import cmd_bind
+
         cmd_bind(self.test_dir, only="cursor,copilot")
         mock_bind.assert_called_once_with(self.test_dir, force=False, targets=["cursor", "copilot"])
-
 
     def test_bind_prevents_unsafe_symlink_targets(self):
         """_write_symlink rejects target paths resolving outside the workspace root."""
         from src.sprawl.bind.adapters import _write_symlink
-        
+
         # Safe target: resolves inside test_dir (which has .agents/)
         link_path = os.path.join(self.test_dir, ".myrules")
         safe_target = "AGENTS.md"
         self.assertTrue(_write_symlink("MyLabel", link_path, safe_target, force=True))
         self.assertTrue(os.path.islink(link_path))
-        
+
         # Unsafe target: resolves outside test_dir (e.g. points to parent directory sibling)
         unsafe_target = "../../some_sibling"
         link_path_2 = os.path.join(self.test_dir, ".myrules2")
@@ -168,6 +174,7 @@ class TestBind(unittest.TestCase):
     ):
         """When TUI is not supported, cmd_bind falls back to prompt_numbered_selection."""
         from src.sprawl.commands.sync_cmd import cmd_bind
+
         mock_prompt.return_value = {"IDE / AI Agent Integrations": ["cursor", "vscode"]}
         cmd_bind(self.test_dir)
         mock_prompt.assert_called_once()
@@ -176,11 +183,10 @@ class TestBind(unittest.TestCase):
     @patch("src.sprawl.output.print_warning")
     @patch("sys.stdin.isatty", return_value=False)
     @patch("src.sprawl.bind.bind_adapters")
-    def test_cmd_bind_uninitialized_workspace_warning(
-        self, mock_bind, mock_isatty, mock_warn
-    ):
+    def test_cmd_bind_uninitialized_workspace_warning(self, mock_bind, mock_isatty, mock_warn):
         """When target_dir has no .agents, cmd_bind prints a warning."""
         from src.sprawl.commands.sync_cmd import cmd_bind
+
         empty_dir = tempfile.mkdtemp()
         try:
             cmd_bind(empty_dir)

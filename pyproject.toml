@@ -22,6 +22,13 @@ classifiers = [
 license = { text = "BSL-1.1" }
 keywords = ["sandbox", "agentic", "fabric", "mcp", "security", "governance"]
 
+[project.optional-dependencies]
+dev = [
+    "ruff>=0.6.0",
+    "pytest>=8.0.0",
+    "bandit>=1.7.0",
+]
+
 [project.urls]
 Homepage = "https://sprawl.software"
 Repository = "https://github.com/sprawl-software/sprawl-cli"
@@ -44,3 +51,43 @@ include-package-data = true
 #   list-form subprocess calls, which prevents shell injection by design.
 # All skipped rules are Low severity and represent intentional design decisions.
 skips = ["B404", "B603", "B607"]
+
+[tool.ruff]
+target-version = "py310"
+line-length = 100
+src = ["src", "tests"]
+exclude = [
+    ".git",
+    ".venv",
+    "build",
+    "dist",
+    "test-sandbox",
+    "scratch",
+]
+
+[tool.ruff.lint]
+select = [
+    "E",     # pycodestyle errors
+    "W",     # pycodestyle warnings
+    "F",     # pyflakes
+    "I",     # isort (import sorting)
+    "B",     # flake8-bugbear (common bug patterns)
+    "C4",    # flake8-comprehensions
+    "UP",    # pyupgrade (modern Python 3.10+ syntax)
+    "SIM",   # flake8-simplify
+]
+ignore = [
+    "E501",  # Line length handled by formatter
+    "B008",  # Do not perform function calls in argument defaults (if needed for CLI defaults)
+    "B904",  # Bare raise in except clause (clean user-facing CLI SprawlError output)
+]
+
+[tool.ruff.lint.isort]
+known-first-party = ["sprawl"]
+combine-as-imports = true
+
+[tool.ruff.format]
+quote-style = "double"
+indent-style = "space"
+skip-magic-trailing-comma = false
+line-ending = "auto"

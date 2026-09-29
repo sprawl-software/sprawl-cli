@@ -6,7 +6,7 @@ and copies them as local-only rules inside the workspace registry.
 
 import abc
 import os
-from typing import List
+
 from .output import print_status
 
 
@@ -22,7 +22,7 @@ class HarvestAdapter(abc.ABC):
         """Return True if this adapter detects harvestable content in root_dir."""
 
     @abc.abstractmethod
-    def harvest(self, root_dir: str, dest_dir: str) -> List[str]:
+    def harvest(self, root_dir: str, dest_dir: str) -> list[str]:
         """Harvest content from root_dir into dest_dir/rules/.
 
         Returns:
@@ -48,12 +48,12 @@ class FileHarvestAdapter(HarvestAdapter):
         path = os.path.join(root_dir, self.filename)
         return os.path.exists(path) and os.path.isfile(path)
 
-    def harvest(self, root_dir: str, dest_dir: str) -> List[str]:
+    def harvest(self, root_dir: str, dest_dir: str) -> list[str]:
         src_path = os.path.join(root_dir, self.filename)
         if not os.path.exists(src_path):
             return []
 
-        with open(src_path, "r", encoding="utf-8", errors="ignore") as f:
+        with open(src_path, encoding="utf-8", errors="ignore") as f:
             content = f.read()
 
         # Ignore our own generated workspace directives
@@ -79,7 +79,7 @@ class PromptsFolderAdapter(HarvestAdapter):
         prompts_dir = os.path.join(root_dir, ".github", "prompts")
         return os.path.exists(prompts_dir) and os.path.isdir(prompts_dir)
 
-    def harvest(self, root_dir: str, dest_dir: str) -> List[str]:
+    def harvest(self, root_dir: str, dest_dir: str) -> list[str]:
         prompts_dir = os.path.join(root_dir, ".github", "prompts")
         harvested_files = []
         if not os.path.exists(prompts_dir) or not os.path.isdir(prompts_dir):
@@ -91,7 +91,7 @@ class PromptsFolderAdapter(HarvestAdapter):
             if file.endswith(".prompt.md") or file.endswith(".md"):
                 file_path = os.path.join(prompts_dir, file)
                 if os.path.isfile(file_path):
-                    with open(file_path, "r", encoding="utf-8", errors="ignore") as f:
+                    with open(file_path, encoding="utf-8", errors="ignore") as f:
                         content = f.read()
 
                     if not content.strip():
@@ -105,7 +105,7 @@ class PromptsFolderAdapter(HarvestAdapter):
 
                     frontmatter = parse_yaml_frontmatter(content)
                     ft_type = str(frontmatter.get("type", "rule")).strip().lower()
-                    
+
                     if ft_type == "skill":
                         category = "skills"
                     elif ft_type == "workflow":
@@ -123,9 +123,9 @@ class PromptsFolderAdapter(HarvestAdapter):
         return harvested_files
 
 
-def harvest_legacy_rules(root_dir: str, dest_dir: str) -> List[str]:
+def harvest_legacy_rules(root_dir: str, dest_dir: str) -> list[str]:
     """Harvests existing rules/prompts configuration files from root_dir to dest_dir."""
-    adapters: List[HarvestAdapter] = [
+    adapters: list[HarvestAdapter] = [
         FileHarvestAdapter(".cursorrules", "cursor"),
         FileHarvestAdapter(".clinerules", "cline"),
         FileHarvestAdapter(".windsurfrules", "windsurf"),

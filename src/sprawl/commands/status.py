@@ -2,20 +2,19 @@
 
 import os
 from datetime import datetime, timezone
-from typing import Optional
 
 from rich.panel import Panel
 from rich.table import Table
 
 from ..config import config
-from ..output import console, print_warning
 from ..exceptions import SprawlError
-from ..utils import CATEGORIES, get_venv_executable
+from ..output import console
 from ..sync import parse_sprawl_manifest
+from ..utils import CATEGORIES, get_venv_executable
 from ..workspace import Workspace
 
 
-def cmd_status(target_dir: Optional[str] = None) -> None:
+def cmd_status(target_dir: str | None = None) -> None:
     """Displays a Rich Panel with workspace name, DNA binding, loaded artifacts, venv health.
 
     Reads from ~/.sprawl/workspaces/<hash>/ + scans local .agents/ for actual state.
@@ -75,6 +74,7 @@ def cmd_status(target_dir: Optional[str] = None) -> None:
     if os.path.exists(venv_python):
         try:
             import subprocess
+
             result = subprocess.check_output(
                 [venv_python, "--version"], text=True, stderr=subprocess.STDOUT, timeout=5
             ).strip()
@@ -110,12 +110,13 @@ def cmd_status(target_dir: Optional[str] = None) -> None:
 
     if config.json_logging:
         import json
-        
+
         # Strip rich tags for clean JSON output
         import re
+
         def strip_tags(text: str) -> str:
-            return re.sub(r'\[.*?\]', '', text)
-            
+            return re.sub(r"\[.*?\]", "", text)
+
         payload = {
             "workspace": workspace_name,
             "path": cwd,
@@ -124,7 +125,7 @@ def cmd_status(target_dir: Optional[str] = None) -> None:
             "venv_status": strip_tags(venv_status),
             "last_sync": last_sync,
             "artifacts_requested": reqs,
-            "artifacts_installed": local_artifacts
+            "artifacts_installed": local_artifacts,
         }
         print(json.dumps(payload))
         return
@@ -144,7 +145,13 @@ def cmd_status(target_dir: Optional[str] = None) -> None:
     info_table.add_row("Venv", venv_status)
     info_table.add_row("Last Sync", sync_display)
 
-    console.print(Panel(info_table, title="[bold accent]Workspace Identity[/bold accent]", border_style="#5D5CFF"))
+    console.print(
+        Panel(
+            info_table,
+            title="[bold accent]Workspace Identity[/bold accent]",
+            border_style="#5D5CFF",
+        )
+    )
 
     # Artifacts table
     artifact_table = Table(show_header=True, border_style="#5D5CFF")
@@ -175,5 +182,9 @@ def cmd_status(target_dir: Optional[str] = None) -> None:
         installed_str = ", ".join(local_workflows_installed) or "[dim]—[/dim]"
         artifact_table.add_row("Local Workflows", requested_str, installed_str)
 
-    console.print(Panel(artifact_table, title="[bold accent]DNA Artifacts[/bold accent]", border_style="#5D5CFF"))
+    console.print(
+        Panel(
+            artifact_table, title="[bold accent]DNA Artifacts[/bold accent]", border_style="#5D5CFF"
+        )
+    )
     console.print()

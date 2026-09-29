@@ -5,10 +5,8 @@ Output functions have been moved to output.py.
 """
 
 import os
-from typing import Optional
 
 from ..config import config
-
 
 # Core Architecture Constants
 CATEGORIES: list[str] = ["rules", "skills", "workflows"]
@@ -25,7 +23,7 @@ DNA_ALIASES: dict[str, str] = {
 # during the transition period. New code should import from output.py directly.
 
 
-def get_active_dna_context(app_dir: Optional[str] = None) -> str:
+def get_active_dna_context(app_dir: str | None = None) -> str:
     """Deterministically resolves the active DNA context directory.
 
     Checks the management plane for bound DNA, falling back to the global
@@ -41,6 +39,7 @@ def get_active_dna_context(app_dir: Optional[str] = None) -> str:
         app_dir = os.getcwd()
 
     from ..workspace import Workspace
+
     workspace = Workspace(app_dir)
     alias_name = workspace.get_dna_alias()
 
@@ -83,6 +82,7 @@ def get_venv_executable(venv_dir: str, name: str) -> str:
         Absolute path to the executable.
     """
     import sys
+
     if sys.platform == "win32":
         bin_dir = os.path.join(venv_dir, "Scripts")
         if name in ("python", "python3"):
@@ -97,8 +97,8 @@ def get_venv_executable(venv_dir: str, name: str) -> str:
 
 def rmtree_safe(path: str, ignore_errors: bool = False) -> None:
     """Safely removes a directory tree, handling Windows read-only files (e.g. .git objects)."""
-    import stat
     import shutil
+    import stat
     import sys
 
     if not os.path.exists(path):
@@ -113,6 +113,7 @@ def rmtree_safe(path: str, ignore_errors: bool = False) -> None:
                 raise
 
     if sys.version_info >= (3, 12):
+
         def _onexc(func, p, exc):
             try:
                 os.chmod(p, stat.S_IWRITE)
@@ -120,7 +121,7 @@ def rmtree_safe(path: str, ignore_errors: bool = False) -> None:
             except OSError:
                 if not ignore_errors:
                     raise
+
         shutil.rmtree(path, onexc=_onexc, ignore_errors=ignore_errors)
     else:
         shutil.rmtree(path, onerror=_remove_readonly, ignore_errors=ignore_errors)
-

@@ -7,8 +7,8 @@ import unittest
 
 from src.sprawl.graft import (
     FileHarvestAdapter,
-    PromptsFolderAdapter,
     HarvestAdapter,
+    PromptsFolderAdapter,
     harvest_legacy_rules,
 )
 
@@ -123,8 +123,11 @@ class TestAdapterInterfaceConsistency(unittest.TestCase):
             ]
             for adapter in adapters:
                 result = adapter.harvest(root, dest)
-                self.assertIsInstance(result, list,
-                    f"{adapter.__class__.__name__}.harvest() returned {type(result).__name__}, expected list")
+                self.assertIsInstance(
+                    result,
+                    list,
+                    f"{adapter.__class__.__name__}.harvest() returned {type(result).__name__}, expected list",
+                )
         finally:
             shutil.rmtree(root, ignore_errors=True)
             shutil.rmtree(dest, ignore_errors=True)

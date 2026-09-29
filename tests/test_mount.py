@@ -96,6 +96,47 @@ class TestMountCommand(unittest.TestCase):
         with self.assertRaises(SprawlError):
             cmd_mount(Args())
 
+    @patch("src.sprawl.workspace.update_workspace_sync_timestamp")
+    @patch("src.sprawl.workspace.Workspace.update_sync_state")
+    def test_mount_add_and_remove_syncs_mcp_config(self, mock_state, mock_timestamp):
+        """Verifies sprawl mount add and remove automatically sync to mcp_config.json and AGENTS.md."""
+        manifest_path = os.path.join(self.agents_dir, "sprawl_manifest.yml")
+        with open(manifest_path, "w") as f:
+            f.write("dna: core\nrules:\nskills:\nworkflows:\n")
+
+        # 1. Mount add
+        cmd_mount_add(self.mount_dir, alias="my_mount", target_dir=self.workspace_dir)
+
+        mcp_path = os.path.join(self.workspace_dir, "mcp_config.json")
+        agents_path = os.path.join(self.workspace_dir, "AGENTS.md")
+
+        self.assertTrue(os.path.exists(mcp_path))
+        self.assertTrue(os.path.exists(agents_path))
+
+        with open(mcp_path) as f:
+            mcp_data = json.load(f)
+        args = mcp_data["mcpServers"]["sprawl-workspace-fs"]["args"]
+        self.assertIn("--mount", args)
+        self.assertIn(f"my_mount={os.path.abspath(self.mount_dir)}", args)
+
+        with open(agents_path) as f:
+            agents_md = f.read()
+        self.assertIn("@my_mount", agents_md)
+        self.assertIn(self.mount_dir, agents_md)
+
+        # 2. Mount remove
+        cmd_mount_remove("my_mount", target_dir=self.workspace_dir)
+
+        with open(mcp_path) as f:
+            mcp_data = json.load(f)
+        args = mcp_data["mcpServers"]["sprawl-workspace-fs"]["args"]
+        self.assertNotIn(f"my_mount={os.path.abspath(self.mount_dir)}", args)
+        self.assertNotIn("--mount", args)
+
+        with open(agents_path) as f:
+            agents_md = f.read()
+        self.assertNotIn("@my_mount", agents_md)
+
 
 if __name__ == "__main__":
     unittest.main()

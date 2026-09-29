@@ -19,7 +19,7 @@ class MCPError(Exception):
 class WorkspaceFS:
     """Core logic for sandboxed filesystem operations."""
 
-    def __init__(self, root_path: str):
+    def __init__(self, root_path: str, cli_mounts: dict[str, str] | None = None):
         self.root = os.path.abspath(os.path.expanduser(root_path))
         if not os.path.isdir(self.root):
             raise ValueError(f"Root path {self.root} is not a directory.")
@@ -36,6 +36,9 @@ class WorkspaceFS:
                 pass
         if not isinstance(self.allowed_mounts, dict):
             self.allowed_mounts = {}
+
+        if cli_mounts:
+            self.allowed_mounts.update(cli_mounts)
 
     def _get_safe_path(self, rel_path: str) -> str:
         """Resolves relative path and ensures it stays within root or allowed mounts."""
@@ -266,13 +269,28 @@ class MCPServer:
 
 
 if __name__ == "__main__":
-    if len(sys.argv) < 2:
-        print("Usage: python workspace_fs.py <root_path>", file=sys.stderr)
-        sys.exit(1)
+    import argparse
 
-    root = sys.argv[1]
+    parser = argparse.ArgumentParser(description="sprawl-workspace-fs MCP Server")
+    parser.add_argument("root", help="Path to workspace root directory")
+    parser.add_argument(
+        "--mount",
+        action="append",
+        dest="mounts",
+        metavar="ALIAS=PATH",
+        help="Allowed mount in format alias=path",
+    )
+    args = parser.parse_args()
+
+    cli_mounts = {}
+    if args.mounts:
+        for m in args.mounts:
+            if "=" in m:
+                alias, path = m.split("=", 1)
+                cli_mounts[alias.strip()] = os.path.abspath(os.path.expanduser(path.strip()))
+
     try:
-        fs = WorkspaceFS(root)
+        fs = WorkspaceFS(args.root, cli_mounts=cli_mounts)
         server = MCPServer(fs)
         server.run()
     except Exception as e:

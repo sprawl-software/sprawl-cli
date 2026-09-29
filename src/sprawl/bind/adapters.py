@@ -1,7 +1,7 @@
 import os
-import sys
 import shutil
-from typing import Optional
+import sys
+
 from ..output import console
 
 _RULES_CONTENT = """\
@@ -19,75 +19,32 @@ Follow the conventions and protocols defined in `AGENTS.md` and `.agents/` witho
 """
 
 ADAPTER_MAP = {
-    "claude-code": {
-        "label": "Claude Code",
-        "path": "CLAUDE.md",
-        "type": "symlink"
-    },
-    "gemini-cli": {
-        "label": "Gemini CLI",
-        "path": "GEMINI.md",
-        "type": "symlink"
-    },
-    "google-antigravity": {
-        "label": "Google Antigravity",
-        "type": "antigravity"
-    },
+    "claude-code": {"label": "Claude Code", "path": "CLAUDE.md", "type": "symlink"},
+    "gemini-cli": {"label": "Gemini CLI", "path": "GEMINI.md", "type": "symlink"},
+    "google-antigravity": {"label": "Google Antigravity", "type": "antigravity"},
     "copilot": {
         "label": "GitHub Copilot",
         "path": os.path.join(".github", "copilot-instructions.md"),
-        "type": "symlink"
+        "type": "symlink",
     },
-    "cursor": {
-        "label": "Cursor",
-        "path": ".cursorrules",
-        "type": "symlink"
-    },
-    "windsurf": {
-        "label": "Windsurf",
-        "path": ".windsurfrules",
-        "type": "symlink"
-    },
-    "codex": {
-        "label": "Codex",
-        "path": os.path.join("rules", ".rules"),
-        "type": "symlink"
-    },
+    "cursor": {"label": "Cursor", "path": ".cursorrules", "type": "symlink"},
+    "windsurf": {"label": "Windsurf", "path": ".windsurfrules", "type": "symlink"},
+    "codex": {"label": "Codex", "path": os.path.join("rules", ".rules"), "type": "symlink"},
     "intellij": {
         "label": "IntelliJ",
         "path": os.path.join(".aiassistant", "rules", "agents.md"),
-        "type": "symlink"
+        "type": "symlink",
     },
-    "jupyter": {
-        "label": "Jupyter Notebooks",
-        "path": ".jupyterrules",
-        "type": "symlink"
-    },
-    "vscode": {
-        "label": "VS Code",
-        "path": ".vscoderules",
-        "type": "symlink"
-    },
-    "vscodium": {
-        "label": "VS Codium",
-        "path": ".vscodiumrules",
-        "type": "symlink"
-    },
-    "cline-roo": {
-        "label": "RooCode/Cline",
-        "path": ".clinerules",
-        "type": "symlink"
-    },
-    "zed": {
-        "label": "Zed",
-        "path": ".zedrules",
-        "type": "symlink"
-    },
+    "jupyter": {"label": "Jupyter Notebooks", "path": ".jupyterrules", "type": "symlink"},
+    "vscode": {"label": "VS Code", "path": ".vscoderules", "type": "symlink"},
+    "vscodium": {"label": "VS Codium", "path": ".vscodiumrules", "type": "symlink"},
+    "cline-roo": {"label": "RooCode/Cline", "path": ".clinerules", "type": "symlink"},
+    "zed": {"label": "Zed", "path": ".zedrules", "type": "symlink"},
     "opencode": {
         "label": "OpenCode",
         "path": os.path.join(".opencode", "rules", "agents.md"),
-        "type": "symlink"
-    }
+        "type": "symlink",
+    },
 }
 
 
@@ -106,14 +63,16 @@ def _write_binding(
         with open(target_path, "w", encoding="utf-8") as f:
             f.write(content)
         action = "Overwritten" if os.path.exists(target_path) and force else "Created"
-        console.print(f"  [success]✔ {label} Binding:[/success] {action} → {os.path.basename(target_path)}")
+        console.print(
+            f"  [success]✔ {label} Binding:[/success] {action} → {os.path.basename(target_path)}"
+        )
         return True
     except Exception as e:
         console.print(f"  [error]✗ {label} Binding:[/error] Failed: {e}")
         return False
 
 
-def _find_workspace_root(path: str) -> Optional[str]:
+def _find_workspace_root(path: str) -> str | None:
     """Finds the workspace root by searching upwards for a .agents directory."""
     current = os.path.abspath(path)
     while True:
@@ -130,7 +89,9 @@ def _is_safe_symlink_target(link_path: str, target: str) -> bool:
     """Verifies if the symlink target resolves strictly inside the workspace containing link_path."""
     workspace_root = _find_workspace_root(link_path)
     if not workspace_root:
-        return True  # Allow outside-of-workspace symlinks if no .agents context exists (e.g. testing)
+        return (
+            True  # Allow outside-of-workspace symlinks if no .agents context exists (e.g. testing)
+        )
 
     abs_target = os.path.realpath(os.path.join(os.path.dirname(link_path), target))
     real_root = os.path.realpath(workspace_root)
@@ -140,12 +101,16 @@ def _is_safe_symlink_target(link_path: str, target: str) -> bool:
 def _write_symlink(label: str, link_path: str, target: str, force: bool) -> bool:
     """Creates a symlink binding, falling back to junction or copy on Windows/restricted filesystems."""
     if not _is_safe_symlink_target(link_path, target):
-        console.print(f"  [error]✗ {label} Binding:[/error] Security Violation: Target '{target}' resolves outside workspace root.")
+        console.print(
+            f"  [error]✗ {label} Binding:[/error] Security Violation: Target '{target}' resolves outside workspace root."
+        )
         return False
 
     if os.path.exists(link_path) or os.path.islink(link_path):
         if not force:
-            console.print(f"  [dim]○ {label} Binding:[/dim] already exists (use --force to overwrite)")
+            console.print(
+                f"  [dim]○ {label} Binding:[/dim] already exists (use --force to overwrite)"
+            )
             return False
         if os.path.isdir(link_path) and not os.path.islink(link_path):
             shutil.rmtree(link_path)
@@ -162,8 +127,11 @@ def _write_symlink(label: str, link_path: str, target: str, force: bool) -> bool
         if sys.platform == "win32" and os.path.isdir(abs_target):
             try:
                 import _winapi
+
                 _winapi.CreateJunction(abs_target, os.path.abspath(link_path))
-                console.print(f"  [success]✔ {label} Binding:[/success] Created junction (fallback) → {target}")
+                console.print(
+                    f"  [success]✔ {label} Binding:[/success] Created junction (fallback) → {target}"
+                )
                 return True
             except (AttributeError, OSError):  # nosec B110
                 pass
@@ -171,17 +139,23 @@ def _write_symlink(label: str, link_path: str, target: str, force: bool) -> bool
         try:
             if os.path.isdir(abs_target):
                 shutil.copytree(abs_target, link_path)
-                console.print(f"  [success]✔ {label} Binding:[/success] Created directory copy (fallback) → {target}")
+                console.print(
+                    f"  [success]✔ {label} Binding:[/success] Created directory copy (fallback) → {target}"
+                )
                 return True
             elif os.path.isfile(abs_target):
                 shutil.copy2(abs_target, link_path)
-                console.print(f"  [success]✔ {label} Binding:[/success] Created file copy (fallback) → {target}")
+                console.print(
+                    f"  [success]✔ {label} Binding:[/success] Created file copy (fallback) → {target}"
+                )
                 return True
         except Exception as e:
             console.print(f"  [error]✗ {label} Binding:[/error] Failed: {e}")
             return False
 
-        console.print(f"  [error]✗ {label} Binding:[/error] Target '{target}' not found for fallback.")
+        console.print(
+            f"  [error]✗ {label} Binding:[/error] Target '{target}' not found for fallback."
+        )
         return False
 
 
@@ -197,12 +171,14 @@ def _bind_rules_symlink(
         return False
 
     os.makedirs(os.path.dirname(rules_path), exist_ok=True)
-    
+
     # Calculate target path of the symlink (relative to the directory of rules_path)
     rel_target = os.path.relpath(agents_md_path, os.path.dirname(rules_path))
-    
+
     if not _is_safe_symlink_target(rules_path, rel_target):
-        console.print(f"  [error]✗ {label} Binding:[/error] Security Violation: Target '{rel_target}' resolves outside workspace root.")
+        console.print(
+            f"  [error]✗ {label} Binding:[/error] Security Violation: Target '{rel_target}' resolves outside workspace root."
+        )
         return False
 
     # Try to create symlink
@@ -218,16 +194,18 @@ def _bind_rules_symlink(
         try:
             content = _RULES_CONTENT
             if os.path.exists(agents_md_path):
-                with open(agents_md_path, "r", encoding="utf-8") as f:
+                with open(agents_md_path, encoding="utf-8") as f:
                     content = f.read()
-            
+
             if os.path.exists(rules_path) or os.path.islink(rules_path):
                 os.remove(rules_path)
-                
+
             with open(rules_path, "w", encoding="utf-8") as f:
                 f.write(content)
             action = "Overwritten copy (fallback)" if force else "Created copy (fallback)"
-            console.print(f"  [success]✔ {label} Binding:[/success] {action} → {os.path.basename(rules_path)}")
+            console.print(
+                f"  [success]✔ {label} Binding:[/success] {action} → {os.path.basename(rules_path)}"
+            )
             return True
         except Exception as e:
             console.print(f"  [error]✗ {label} Binding:[/error] Failed: {e}")
@@ -243,6 +221,6 @@ def _prune_empty_dirs(path: str) -> None:
             _prune_empty_dirs(dir_name)
     except Exception as e:
         from ..config import config
+
         if config.verbose:
             console.print(f"  [dim]Debug: Failed to prune directory {dir_name}: {e}[/dim]")
-

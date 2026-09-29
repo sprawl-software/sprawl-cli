@@ -1,21 +1,21 @@
 """Tests for validation module — TASK-001-05 (pydantic drop) + TASK-001-06 (pyyaml drop)."""
 
+import json
 import os
 import sys
-import json
 import tempfile
 import unittest
 
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "../src")))
 
+from src.sprawl.exceptions import SprawlError
 from src.sprawl.validation import (
-    parse_yaml_frontmatter,
     AtomSchema,
-    SkillSchema,
     MoleculeSchema,
+    SkillSchema,
+    parse_yaml_frontmatter,
     validate_dna_directory,
 )
-from src.sprawl.exceptions import SprawlError
 
 
 class TestParseYamlFrontmatter(unittest.TestCase):
@@ -64,7 +64,7 @@ class TestParseYamlFrontmatter(unittest.TestCase):
         self.assertEqual(result["items"], ["alpha", "beta", "gamma"])
 
     def test_quoted_strings(self) -> None:
-        content = '---\ntitle: "Hello World"\nsingle: \'Test\'\n---'
+        content = "---\ntitle: \"Hello World\"\nsingle: 'Test'\n---"
         result = parse_yaml_frontmatter(content)
         self.assertEqual(result["title"], "Hello World")
         self.assertEqual(result["single"], "Test")
@@ -202,6 +202,7 @@ class TestValidateDnaDirectory(unittest.TestCase):
                 f.write("{corrupted}")
 
             validate_dna_directory(tmpdir)  # Should not raise
+
     def test_json_with_extra_keys_ignored(self) -> None:
         """Valid JSON containing unexpected metadata keys passes validation by filtering keys."""
         with tempfile.TemporaryDirectory() as tmpdir:
@@ -209,26 +210,33 @@ class TestValidateDnaDirectory(unittest.TestCase):
             os.makedirs(atoms_dir)
             atom_file = os.path.join(atoms_dir, "test_atom.json")
             with open(atom_file, "w") as f:
-                json.dump({
-                    "name": "test",
-                    "description": "A test",
-                    "type": "config",
-                    "title": "Extra Key",
-                    "custom_comment": "This should be ignored"
-                }, f)
+                json.dump(
+                    {
+                        "name": "test",
+                        "description": "A test",
+                        "type": "config",
+                        "title": "Extra Key",
+                        "custom_comment": "This should be ignored",
+                    },
+                    f,
+                )
 
             molecules_dir = os.path.join(tmpdir, "molecules")
             os.makedirs(molecules_dir)
             molecule_file = os.path.join(molecules_dir, "test_molecule.json")
             with open(molecule_file, "w") as f:
-                json.dump({
-                    "name": "test_mol",
-                    "version": "1.0.0",
-                    "atoms": ["test"],
-                    "mcpServers": {"server": "config"}
-                }, f)
+                json.dump(
+                    {
+                        "name": "test_mol",
+                        "version": "1.0.0",
+                        "atoms": ["test"],
+                        "mcpServers": {"server": "config"},
+                    },
+                    f,
+                )
 
             validate_dna_directory(tmpdir)  # Should not raise type errors
+
     def test_json_fallback_and_mcp_config(self) -> None:
         """Validates that title/filename fallbacks and raw MCP molecule skips behave correctly."""
         with tempfile.TemporaryDirectory() as tmpdir:
@@ -237,24 +245,21 @@ class TestValidateDnaDirectory(unittest.TestCase):
             os.makedirs(atoms_dir)
             atom_file = os.path.join(atoms_dir, "user_profile.json")
             with open(atom_file, "w") as f:
-                json.dump({
-                    "title": "UserProfile",
-                    "type": "object",
-                    "description": "A template description"
-                }, f)
+                json.dump(
+                    {
+                        "title": "UserProfile",
+                        "type": "object",
+                        "description": "A template description",
+                    },
+                    f,
+                )
 
             # 2. Raw MCP config inside 'molecules'
             molecules_dir = os.path.join(tmpdir, "molecules")
             os.makedirs(molecules_dir)
             molecule_file = os.path.join(molecules_dir, "local-filesystem-mcp.json")
             with open(molecule_file, "w") as f:
-                json.dump({
-                    "mcpServers": {
-                        "filesystem": {
-                            "command": "npx"
-                        }
-                    }
-                }, f)
+                json.dump({"mcpServers": {"filesystem": {"command": "npx"}}}, f)
 
             validate_dna_directory(tmpdir)  # Should pass without error
 

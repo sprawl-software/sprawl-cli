@@ -1,7 +1,7 @@
 """Configuration management commands."""
 
 from ..config import config
-from ..output import print_status, print_error
+from ..output import print_error, print_status
 
 
 def cmd_config_set(key: str, value: str) -> None:
@@ -35,15 +35,16 @@ def cmd_config_list() -> None:
     if not data:
         print_status("Configuration is empty.")
         return
-    
+
     from rich.table import Table
+
     from ..output import console
-    
+
     table = Table(title="Global Configuration")
     table.add_column("Key", style="accent")
     table.add_column("Value", style="info")
-    
+
     for k, v in sorted(data.items()):
         table.add_row(k, str(v))
-        
+
     console.print(table)

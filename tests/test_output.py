@@ -5,7 +5,6 @@ import json
 import os
 import sys
 import unittest
-from unittest.mock import patch
 
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "../src")))
 
@@ -18,6 +17,7 @@ class TestOutputModule(unittest.TestCase):
     def _get_output_module(self, cfg: SprawlConfig):
         """Import output module with a specific config injected."""
         import src.sprawl.output as output_mod
+
         original_config = output_mod.config
         output_mod.config = cfg
         return output_mod, original_config

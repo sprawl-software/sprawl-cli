@@ -1,11 +1,10 @@
-import unittest
 import os
 import shutil
 import tempfile
-import json
-import sys
-from io import StringIO
-from src.sprawl.mcp.workspace_fs import WorkspaceFS, MCPServer, MCPError
+import unittest
+
+from src.sprawl.mcp.workspace_fs import MCPError, MCPServer, WorkspaceFS
+
 
 class TestWorkspaceFS(unittest.TestCase):
     def setUp(self):
@@ -21,7 +20,7 @@ class TestWorkspaceFS(unittest.TestCase):
         path = os.path.join(self.root, "test.txt")
         with open(path, "w") as f:
             f.write("hello world")
-        
+
         content = self.fs.read_file("test.txt")
         self.assertEqual(content, "hello world")
 
@@ -34,8 +33,8 @@ class TestWorkspaceFS(unittest.TestCase):
     def test_write_file_safe(self):
         result = self.fs.write_file("new.txt", "data")
         self.assertIn("Successfully wrote", result)
-        
-        with open(os.path.join(self.root, "new.txt"), "r") as f:
+
+        with open(os.path.join(self.root, "new.txt")) as f:
             self.assertEqual(f.read(), "data")
 
     def test_write_file_unsafe(self):
@@ -46,10 +45,10 @@ class TestWorkspaceFS(unittest.TestCase):
         outside_file = os.path.join(self.test_dir, "outside.txt")
         with open(outside_file, "w") as f:
             f.write("secret")
-        
+
         symlink_path = os.path.join(self.root, "link.txt")
         os.symlink(outside_file, symlink_path)
-        
+
         with self.assertRaises(MCPError) as cm:
             self.fs.read_file("link.txt")
         self.assertEqual(cm.exception.code, -32602)
@@ -59,10 +58,11 @@ class TestWorkspaceFS(unittest.TestCase):
         os.makedirs(os.path.join(self.root, "subdir"))
         with open(os.path.join(self.root, "file.txt"), "w") as f:
             f.write("test")
-            
+
         items = self.fs.list_directory(".")
         self.assertIn("subdir", items)
         self.assertIn("file.txt", items)
+
 
 class TestMCPServer(unittest.TestCase):
     def setUp(self):
@@ -91,18 +91,16 @@ class TestMCPServer(unittest.TestCase):
     def test_handle_tools_call_read(self):
         with open(os.path.join(self.test_dir, "test.txt"), "w") as f:
             f.write("content")
-            
+
         req = {
             "jsonrpc": "2.0",
             "id": 3,
             "method": "tools/call",
-            "params": {
-                "name": "read_file",
-                "arguments": {"path": "test.txt"}
-            }
+            "params": {"name": "read_file", "arguments": {"path": "test.txt"}},
         }
         resp = self.server.handle_request(req)
         self.assertEqual(resp["result"]["content"][0]["text"], "content")
+
 
 if __name__ == "__main__":
     unittest.main()

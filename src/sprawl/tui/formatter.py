@@ -51,7 +51,9 @@ def format_panel(
             lines.append(f"{border_color}│{reset} {' ' * content_width} {border_color}│{reset}")
         for wrap_line in wrapped:
             padded = wrap_line.ljust(content_width)
-            lines.append(f"{border_color}│{reset} {text_color}{padded}{reset} {border_color}│{reset}")
+            lines.append(
+                f"{border_color}│{reset} {text_color}{padded}{reset} {border_color}│{reset}"
+            )
 
     # Bottom border
     bottom = f"╰{'─' * (width - 2)}╯"

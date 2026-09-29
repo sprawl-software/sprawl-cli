@@ -1,14 +1,13 @@
-import unittest
-import os
-import tempfile
 import json
+import os
 import shutil
+import tempfile
+import unittest
 from unittest.mock import patch
 
+from sprawl.commands.workspace import cmd_create
 from sprawl.config import config
 from sprawl.sync import sync_app_directory
-from sprawl.commands.workspace import cmd_create
-from sprawl.exceptions import SprawlError
 
 
 class TestSyncPathsAndRootPollution(unittest.TestCase):
@@ -26,7 +25,7 @@ class TestSyncPathsAndRootPollution(unittest.TestCase):
         os.makedirs(os.path.join(config.agents_dir_global, "rules"), exist_ok=True)
         os.makedirs(os.path.join(config.agents_dir_global, "skills"), exist_ok=True)
         os.makedirs(os.path.join(config.agents_dir_global, "workflows"), exist_ok=True)
-        
+
         with open(os.path.join(config.agents_dir_global, "DESIGN.md"), "w") as f:
             f.write("# Global Design Specs")
         with open(os.path.join(config.agents_dir_global, "rules", "engineering.md"), "w") as f:
@@ -36,27 +35,27 @@ class TestSyncPathsAndRootPollution(unittest.TestCase):
         os.chdir(self.original_cwd)
         shutil.rmtree(self.temp_dir, ignore_errors=True)
 
-    @patch('sprawl.workspace.register_workspace')
+    @patch("sprawl.workspace.register_workspace")
     def test_workspace_creation_paths(self, mock_register):
         """Verifies sprawl create scaffolds config files inside .agents/ and not in root."""
         cmd_create("MyWorkspace", path=self.temp_dir)
         ws_path = os.path.join(self.temp_dir, "MyWorkspace")
-        
+
         self.assertTrue(os.path.exists(ws_path))
         self.assertTrue(os.path.exists(os.path.join(ws_path, ".agents", "sprawl_manifest.yml")))
         self.assertTrue(os.path.exists(os.path.join(ws_path, ".agents", "sprawl-config.json")))
-        
+
         # Verify no root pollution from creation
         self.assertFalse(os.path.exists(os.path.join(ws_path, "sprawl_manifest.yml")))
         self.assertFalse(os.path.exists(os.path.join(ws_path, "sprawl-config.json")))
-        
+
         # Verify JSON validity of sprawl-config.json
-        with open(os.path.join(ws_path, ".agents", "sprawl-config.json"), "r") as f:
+        with open(os.path.join(ws_path, ".agents", "sprawl-config.json")) as f:
             data = json.load(f)
             self.assertIn("allowed_mounts", data)
 
-    @patch('sprawl.workspace.update_workspace_sync_timestamp')
-    @patch('sprawl.workspace.Workspace.update_sync_state')
+    @patch("sprawl.workspace.update_workspace_sync_timestamp")
+    @patch("sprawl.workspace.Workspace.update_sync_state")
     def test_sync_paths_and_root_cleanup(self, mock_state, mock_timestamp):
         """Verifies sprawl sync generates root-level files and cleans up stray root directories."""
         # 1. Create a workspace
@@ -64,7 +63,7 @@ class TestSyncPathsAndRootPollution(unittest.TestCase):
         os.makedirs(ws_path)
         local_agents_dir = os.path.join(ws_path, ".agents")
         os.makedirs(local_agents_dir)
-        
+
         # Write sprawl_manifest.yml
         manifest_content = """# SyncWorkspace
 dna: core
@@ -75,7 +74,7 @@ workflows:
 """
         with open(os.path.join(local_agents_dir, "sprawl_manifest.yml"), "w") as f:
             f.write(manifest_content)
-            
+
         # Write default sprawl-config.json
         with open(os.path.join(local_agents_dir, "sprawl-config.json"), "w") as f:
             json.dump({"allowed_mounts": {"my_custom_mount": "/tmp/custom_mount"}}, f)
@@ -86,7 +85,7 @@ workflows:
         os.makedirs(os.path.join(ws_path, "rules"))
         os.makedirs(os.path.join(ws_path, "skills"))
         os.makedirs(os.path.join(ws_path, "workflows"))
-        
+
         # Also add deprecated categories in .agents/
         os.makedirs(os.path.join(local_agents_dir, "atoms"))
         os.makedirs(os.path.join(local_agents_dir, "molecules"))
@@ -95,19 +94,28 @@ workflows:
         sync_app_directory(ws_path)
 
         # 4. Verify Root-Level Exclusions (Human-Agent Interfaces)
-        self.assertTrue(os.path.exists(os.path.join(ws_path, "AGENTS.md")), "AGENTS.md should be in root")
-        self.assertTrue(os.path.exists(os.path.join(ws_path, "DESIGN.md")), "DESIGN.md should be in root")
-        self.assertTrue(os.path.exists(os.path.join(ws_path, "mcp_config.json")), "mcp_config.json should be in root")
+        self.assertTrue(
+            os.path.exists(os.path.join(ws_path, "AGENTS.md")), "AGENTS.md should be in root"
+        )
+        self.assertTrue(
+            os.path.exists(os.path.join(ws_path, "DESIGN.md")), "DESIGN.md should be in root"
+        )
+        self.assertTrue(
+            os.path.exists(os.path.join(ws_path, "mcp_config.json")),
+            "mcp_config.json should be in root",
+        )
 
         # Verify mounts documentation inside AGENTS.md
-        with open(os.path.join(ws_path, "AGENTS.md"), "r") as f:
+        with open(os.path.join(ws_path, "AGENTS.md")) as f:
             agents_md_content = f.read()
             self.assertIn("@my_custom_mount", agents_md_content)
             self.assertIn("/tmp/custom_mount", agents_md_content)
-            self.assertIn("except through the allowed mounts mapped via the MCP server", agents_md_content)
+            self.assertIn(
+                "except through the allowed mounts mapped via the MCP server", agents_md_content
+            )
 
         # Verify JSON validity of mcp_config.json
-        with open(os.path.join(ws_path, "mcp_config.json"), "r") as f:
+        with open(os.path.join(ws_path, "mcp_config.json")) as f:
             mcp_data = json.load(f)
             self.assertIn("sprawl-workspace-fs", mcp_data["mcpServers"])
 

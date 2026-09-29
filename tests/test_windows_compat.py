@@ -1,21 +1,19 @@
 """Automated test suite for Windows cross-platform compatibility."""
 
 import os
-import sys
 import shutil
+import sys
 import tempfile
 import unittest
-from unittest.mock import patch, MagicMock, ANY
+from unittest.mock import ANY, MagicMock, patch
 
 # Ensure both repo root and local src are available
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '../src')))
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "../src")))
 
-from src.sprawl.utils import get_venv_executable
-from src.sprawl.utils import tui
 from src.sprawl.bind.adapters import _write_symlink
-from src.sprawl.mcp.workspace_fs import WorkspaceFS, MCPError
-import src.sprawl.commands.diagnostics
+from src.sprawl.mcp.workspace_fs import WorkspaceFS
+from src.sprawl.utils import get_venv_executable, tui
 
 
 class TestWindowsCompatibility(unittest.TestCase):
@@ -45,10 +43,11 @@ class TestWindowsCompatibility(unittest.TestCase):
     def test_tui_read_key_windows_arrows(self):
         """tui.read_key must decode msvcrt arrow key escape sequences on Windows."""
         mock_msvcrt = MagicMock()
-        with patch("sys.platform", "win32"), \
-             patch("sys.stdin.isatty", return_value=True), \
-             patch("src.sprawl.utils.tui.msvcrt", mock_msvcrt):
-
+        with (
+            patch("sys.platform", "win32"),
+            patch("sys.stdin.isatty", return_value=True),
+            patch("src.sprawl.utils.tui.msvcrt", mock_msvcrt),
+        ):
             # Up arrow: 0xe0 followed by 'H'
             mock_msvcrt.getch.side_effect = [b"\xe0", b"H"]
             self.assertEqual(tui.read_key(), "\x1b[A")
@@ -68,10 +67,11 @@ class TestWindowsCompatibility(unittest.TestCase):
     def test_tui_read_key_windows_standard_keys(self):
         """tui.read_key must handle Enter, Space, and standard characters on Windows."""
         mock_msvcrt = MagicMock()
-        with patch("sys.platform", "win32"), \
-             patch("sys.stdin.isatty", return_value=True), \
-             patch("src.sprawl.utils.tui.msvcrt", mock_msvcrt):
-
+        with (
+            patch("sys.platform", "win32"),
+            patch("sys.stdin.isatty", return_value=True),
+            patch("src.sprawl.utils.tui.msvcrt", mock_msvcrt),
+        ):
             mock_msvcrt.getch.return_value = b"\r"
             self.assertEqual(tui.read_key(), "\r")
 
@@ -83,19 +83,23 @@ class TestWindowsCompatibility(unittest.TestCase):
 
     def test_tui_raw_terminal_windows_enables_vt(self):
         """tui.raw_terminal context manager must enable VT mode on Windows."""
-        with patch("sys.platform", "win32"), \
-             patch("src.sprawl.utils.tui._enable_windows_vt") as mock_enable_vt:
+        with (
+            patch("sys.platform", "win32"),
+            patch("src.sprawl.utils.tui._enable_windows_vt") as mock_enable_vt,
+        ):
             with tui.raw_terminal():
                 pass
             mock_enable_vt.assert_called_once()
 
     def test_tui_missing_termios_safe_fallback(self):
         """tui must safely handle environments where termios is None."""
-        with patch("sys.platform", "linux"), \
-             patch("src.sprawl.utils.tui.termios", None), \
-             patch("src.sprawl.utils.tui.tty", None):
+        with (
+            patch("sys.platform", "linux"),
+            patch("src.sprawl.utils.tui.termios", None),
+            patch("src.sprawl.utils.tui.tty", None),
+        ):
             self.assertFalse(tui.is_tui_supported())
-            with tui.raw_terminal() as fd:
+            with tui.raw_terminal():
                 pass  # Must not raise AttributeError or TypeError
 
     def test_workspace_fs_mount_backslash_normalization(self):
@@ -116,6 +120,7 @@ class TestWindowsCompatibility(unittest.TestCase):
             agents_dir = os.path.join(workspace_root, ".agents")
             os.makedirs(agents_dir)
             import json
+
             with open(os.path.join(agents_dir, "sprawl-config.json"), "w") as f:
                 json.dump({"allowed_mounts": {"lib": mount_dir}}, f)
 
@@ -159,6 +164,7 @@ class TestWindowsCompatibility(unittest.TestCase):
     def test_validate_dna_directory_utf8_encoding(self):
         """validate_dna_directory must decode UTF-8 characters without charmap decoding errors."""
         from src.sprawl.validation import validate_dna_directory
+
         temp_dir = tempfile.mkdtemp()
         try:
             skills_dir = os.path.join(temp_dir, "skills", "test-skill")
@@ -201,12 +207,12 @@ class TestWindowsCompatibility(unittest.TestCase):
         """cmd_update on Windows must use pipx upgrade to avoid python.exe file-locking PermissionError."""
         from src.sprawl.commands.diagnostics import cmd_update
         from src.sprawl.config import config
+
         config.dry_run = False
         mock_run.return_value = MagicMock(returncode=0)
         cmd_update()
         mock_run.assert_called_with(
-            ["pipx", "upgrade", "sprawl-cli", "--pip-args=--no-cache-dir"],
-            env=ANY
+            ["pipx", "upgrade", "sprawl-cli", "--pip-args=--no-cache-dir"], env=ANY
         )
 
     @patch("src.sprawl.commands.diagnostics.resolve_repo_root", return_value=None)
@@ -217,25 +223,34 @@ class TestWindowsCompatibility(unittest.TestCase):
         """cmd_update on Windows falls back to pipx runpip if pipx upgrade fails."""
         from src.sprawl.commands.diagnostics import cmd_update
         from src.sprawl.config import config
+
         config.dry_run = False
-        mock_run.side_effect = [
-            MagicMock(returncode=1),
-            MagicMock(returncode=0)
-        ]
+        mock_run.side_effect = [MagicMock(returncode=1), MagicMock(returncode=0)]
         cmd_update()
         mock_run.assert_any_call(
-            ["pipx", "runpip", "sprawl-cli", "install", "--upgrade", "--no-cache-dir", "git+https://github.com/sprawl-software/sprawl-cli.git"],
-            env=ANY
+            [
+                "pipx",
+                "runpip",
+                "sprawl-cli",
+                "install",
+                "--upgrade",
+                "--no-cache-dir",
+                "git+https://github.com/sprawl-software/sprawl-cli.git",
+            ],
+            env=ANY,
         )
 
     @patch("src.sprawl.commands.diagnostics.resolve_repo_root", return_value=None)
     @patch("src.sprawl.commands.diagnostics.subprocess.run")
     @patch("src.sprawl.commands.diagnostics.os.path.exists", return_value=False)
     @patch("sys.platform", "win32")
-    def test_cmd_update_windows_falls_back_to_pipx_install(self, mock_exists, mock_run, mock_resolve):
+    def test_cmd_update_windows_falls_back_to_pipx_install(
+        self, mock_exists, mock_run, mock_resolve
+    ):
         """cmd_update on Windows falls back to pipx install --force if not yet installed in pipx."""
         from src.sprawl.commands.diagnostics import cmd_update
         from src.sprawl.config import config
+
         config.dry_run = False
         mock_run.side_effect = [
             MagicMock(returncode=1),  # pipx upgrade fails
@@ -244,9 +259,15 @@ class TestWindowsCompatibility(unittest.TestCase):
         ]
         cmd_update()
         mock_run.assert_any_call(
-            ["pipx", "install", "git+https://github.com/sprawl-software/sprawl-cli.git", "--force", "--pip-args=--no-cache-dir"],
+            [
+                "pipx",
+                "install",
+                "git+https://github.com/sprawl-software/sprawl-cli.git",
+                "--force",
+                "--pip-args=--no-cache-dir",
+            ],
             check=True,
-            env=ANY
+            env=ANY,
         )
 
 

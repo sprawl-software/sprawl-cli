@@ -1,15 +1,14 @@
 """Sync orchestration and IDE binding commands."""
 
 import os
-from typing import Optional
 
 from ..config import config
-from ..output import print_status
 from ..exceptions import SprawlError
+from ..output import print_status
 from ..sync import sync_app_directory
 
 
-def cmd_sync(target_dir: Optional[str] = None) -> None:
+def cmd_sync(target_dir: str | None = None) -> None:
     """File Orchestration Protocol: Syncs DNA into local workspace scope.
 
     Args:
@@ -23,23 +22,30 @@ def cmd_sync(target_dir: Optional[str] = None) -> None:
         cwd = None
 
     from ..output import operation_spinner
+
     if cwd:
         if config.verbose:
             print_status(f"Running sync in TARGETED MODE at {cwd}.")
         with operation_spinner(f"Syncing workspace at {cwd}"):
             stats = sync_app_directory(cwd)
             bindings = cmd_bind(cwd, is_sync=True)
-            
+
         if stats:
             from rich.panel import Panel
+
             from ..output import console
-            text = f"[success]✔ Sync Complete[/success]\n"
+
+            text = "[success]✔ Sync Complete[/success]\n"
             text += f"• Files Synced: {stats['copied']}\n"
             text += f"• Files Pruned: {stats['pruned']}\n"
             text += f"• Venv Provisioned: {'Yes' if stats['venv_provisioned'] else 'Existing'}\n"
             text += f"• Bindings Created: {'Yes' if bindings else 'No'}"
             console.print()
-            console.print(Panel(text, title="[accent]Workspace Orchestration[/accent]", border_style="#5D5CFF"))
+            console.print(
+                Panel(
+                    text, title="[accent]Workspace Orchestration[/accent]", border_style="#5D5CFF"
+                )
+            )
     else:
         if config.verbose:
             print_status(f"Running sync in RECURSIVE MODE inside {config.sprawl_dir}...")
@@ -56,36 +62,46 @@ def cmd_sync(target_dir: Optional[str] = None) -> None:
                 with operation_spinner(f"Syncing workspace at {item_path}"):
                     stats = sync_app_directory(item_path)
                     bindings = cmd_bind(item_path, is_sync=True)
-                    
+
                 if stats:
                     from rich.panel import Panel
+
                     from ..output import console
-                    text = f"[success]✔ Sync Complete[/success]\n"
+
+                    text = "[success]✔ Sync Complete[/success]\n"
                     text += f"• Files Synced: {stats['copied']}\n"
                     text += f"• Files Pruned: {stats['pruned']}\n"
                     text += f"• Venv Provisioned: {'Yes' if stats['venv_provisioned'] else 'Existing'}\n"
                     text += f"• Bindings Created: {'Yes' if bindings else 'No'}"
                     console.print()
-                    console.print(Panel(text, title="[accent]Workspace Orchestration[/accent]", border_style="#5D5CFF"))
+                    console.print(
+                        Panel(
+                            text,
+                            title="[accent]Workspace Orchestration[/accent]",
+                            border_style="#5D5CFF",
+                        )
+                    )
 
 
 def update_manifest_bindings(target_dir: str, targets: list[str]) -> None:
     manifest_path = os.path.join(target_dir, ".agents", "sprawl_manifest.yml")
     if not os.path.exists(manifest_path):
         return
-        
-    with open(manifest_path, "r", encoding="utf-8") as f:
+
+    with open(manifest_path, encoding="utf-8") as f:
         content = f.read()
-        
+
     from ..validation import parse_yaml_frontmatter
+
     manifest_data = parse_yaml_frontmatter(f"---\n{content}\n---")
-    
+
     # Preserve the rest of the manifest and replace/add the `bindings` key
     dna_val = manifest_data.get("dna", "core")
     new_manifest = []
     new_manifest.append(f"dna: {dna_val}\n")
-    
+
     from ..utils import CATEGORIES
+
     for category in CATEGORIES:
         items = manifest_data.get(category, [])
         new_manifest.append(f"{category}:")
@@ -93,19 +109,19 @@ def update_manifest_bindings(target_dir: str, targets: list[str]) -> None:
             for item in items:
                 new_manifest.append(f"  - {item}")
         new_manifest.append("")
-        
+
     local_rules = manifest_data.get("local_rules", [])
     if local_rules:
         new_manifest.append("local_rules:")
         for item in local_rules:
             new_manifest.append(f"  - {item}")
         new_manifest.append("")
-        
+
     new_manifest.append("bindings:")
     for target in sorted(targets):
         new_manifest.append(f"  - {target}")
     new_manifest.append("")
-    
+
     for k, v in manifest_data.items():
         if k not in CATEGORIES and k not in ("dna", "local_rules", "bindings"):
             if isinstance(v, list):
@@ -115,18 +131,18 @@ def update_manifest_bindings(target_dir: str, targets: list[str]) -> None:
             else:
                 new_manifest.append(f"{k}: {v}")
             new_manifest.append("")
-            
+
     manifest_text = "\n".join(new_manifest)
     with open(manifest_path, "w", encoding="utf-8") as f:
         f.write(manifest_text)
 
 
 def cmd_bind(
-    target_dir: Optional[str] = None, 
-    force: bool = False, 
-    all_adapters: bool = False, 
-    only: Optional[str] = None,
-    is_sync: bool = False
+    target_dir: str | None = None,
+    force: bool = False,
+    all_adapters: bool = False,
+    only: str | None = None,
+    is_sync: bool = False,
 ) -> bool:
     """Generates selective or universal IDE/Agent bindings.
 
@@ -138,25 +154,30 @@ def cmd_bind(
         is_sync: If True, behaves non-interactively and synchronizes with manifest bindings.
     """
     import sys
+
     if not target_dir:
         target_dir = os.getcwd()
 
-    from ..bind import bind_adapters, ADAPTER_MAP
+    from ..bind import ADAPTER_MAP, bind_adapters
 
     # Check if target workspace is initialized
     agents_dir = os.path.join(target_dir, ".agents")
     manifest_path = os.path.join(agents_dir, "sprawl_manifest.yml")
     if not os.path.exists(agents_dir) and not is_sync:
-        from ..output import print_warning, console
+        from ..output import console, print_warning
+
         print_warning(f"No '.agents' governance directory found in {target_dir}.")
-        console.print("[muted]Tip: Run [accent]sprawl init <dna-repo>[/accent] (or [accent]sprawl init[/accent] with no URL for demo rules) to configure governance.[/muted]\n")
+        console.print(
+            "[muted]Tip: Run [accent]sprawl init <dna-repo>[/accent] (or [accent]sprawl init[/accent] with no URL for demo rules) to configure governance.[/muted]\n"
+        )
 
     # Check if bindings are defined in the manifest
     manifest_bindings = None
     if os.path.exists(manifest_path):
         try:
             from ..validation import parse_yaml_frontmatter
-            with open(manifest_path, "r", encoding="utf-8") as f:
+
+            with open(manifest_path, encoding="utf-8") as f:
                 content = f.read()
             manifest_data = parse_yaml_frontmatter(f"---\n{content}\n---")
             if "bindings" in manifest_data:
@@ -164,7 +185,11 @@ def cmd_bind(
                 if val is None or str(val).strip() in ("[]", "", "none"):
                     manifest_bindings = []
                 elif isinstance(val, list):
-                    manifest_bindings = [str(b).strip().lower() for b in val if str(b).strip() and str(b).strip() != "[]"]
+                    manifest_bindings = [
+                        str(b).strip().lower()
+                        for b in val
+                        if str(b).strip() and str(b).strip() != "[]"
+                    ]
                 else:
                     manifest_bindings = [str(val).strip().lower()]
         except (OSError, ValueError, TypeError):
@@ -188,13 +213,15 @@ def cmd_bind(
     else:
         # If no flags are passed, check if we are in interactive mode
         from ..output import console
+
         categories = {
             "IDE / AI Agent Integrations": [
-                (key, manifest_bindings is None or key in manifest_bindings) for key in ADAPTER_MAP.keys()
+                (key, manifest_bindings is None or key in manifest_bindings) for key in ADAPTER_MAP
             ]
         }
 
-        from ..utils.tui import is_tui_supported, show_checkbox_menu, prompt_numbered_selection
+        from ..utils.tui import is_tui_supported, prompt_numbered_selection, show_checkbox_menu
+
         selection = None
 
         if sys.stdin.isatty() and sys.stdout.isatty():
@@ -202,7 +229,9 @@ def cmd_bind(
                 try:
                     selection = show_checkbox_menu("Select IDE & Agent Adapters", categories)
                 except Exception as e:
-                    console.print(f"[warning]Interactive graphical menu unavailable ({e}). Falling back to numbered prompt...[/warning]")
+                    console.print(
+                        f"[warning]Interactive graphical menu unavailable ({e}). Falling back to numbered prompt...[/warning]"
+                    )
                     selection = prompt_numbered_selection("Select IDE & Agent Adapters", categories)
             else:
                 selection = prompt_numbered_selection("Select IDE & Agent Adapters", categories)

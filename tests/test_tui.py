@@ -1,30 +1,31 @@
-import unittest
-from unittest.mock import patch, MagicMock
-import sys
 import os
+import sys
+import unittest
+from unittest.mock import MagicMock, patch
 
 # Ensure both repo root and local src are available
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '../src')))
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "../src")))
 
 from src.sprawl.utils.tui import (
+    is_tui_supported,
+    prompt_numbered_selection,
     raw_terminal,
     read_key,
     show_checkbox_menu,
-    is_tui_supported,
-    prompt_numbered_selection,
 )
 
 
 class TestTUI(unittest.TestCase):
-
     @unittest.skipIf(sys.platform == "win32", "POSIX-specific terminal test")
     def test_raw_terminal_non_tty(self):
         """Verify raw_terminal context manager handles non-TTY gracefully."""
-        with patch("sys.stdin.isatty", return_value=False), \
-             patch("sys.stdin.fileno", return_value=0):
-            with raw_terminal() as fd:
-                self.assertEqual(fd, 0)
+        with (
+            patch("sys.stdin.isatty", return_value=False),
+            patch("sys.stdin.fileno", return_value=0),
+            raw_terminal() as fd,
+        ):
+            self.assertEqual(fd, 0)
 
     @patch("sys.stdin.isatty", return_value=False)
     @patch("sys.stdin.read")
@@ -84,7 +85,7 @@ class TestTUI(unittest.TestCase):
         }
 
         res = show_checkbox_menu("Test Menu", categories)
-        
+
         # Expected:
         # atom1: checked False -> space pressed -> checked True
         # skill1: checked True -> arrow down, space pressed -> checked False
@@ -158,9 +159,11 @@ class TestTUI(unittest.TestCase):
 
     def test_is_tui_supported_windows(self):
         """is_tui_supported checks msvcrt on win32."""
-        with patch("sys.platform", "win32"), \
-             patch("sys.stdin.isatty", return_value=True), \
-             patch("sys.stdout.isatty", return_value=True):
+        with (
+            patch("sys.platform", "win32"),
+            patch("sys.stdin.isatty", return_value=True),
+            patch("sys.stdout.isatty", return_value=True),
+        ):
             with patch("src.sprawl.utils.tui.msvcrt", MagicMock()):
                 self.assertTrue(is_tui_supported())
             with patch("src.sprawl.utils.tui.msvcrt", None):
@@ -168,12 +171,16 @@ class TestTUI(unittest.TestCase):
 
     def test_is_tui_supported_posix(self):
         """is_tui_supported checks termios, tty, and select on POSIX."""
-        with patch("sys.platform", "linux"), \
-             patch("sys.stdin.isatty", return_value=True), \
-             patch("sys.stdout.isatty", return_value=True):
-            with patch("src.sprawl.utils.tui.termios", MagicMock()), \
-                 patch("src.sprawl.utils.tui.tty", MagicMock()), \
-                 patch("src.sprawl.utils.tui.select", MagicMock()):
+        with (
+            patch("sys.platform", "linux"),
+            patch("sys.stdin.isatty", return_value=True),
+            patch("sys.stdout.isatty", return_value=True),
+        ):
+            with (
+                patch("src.sprawl.utils.tui.termios", MagicMock()),
+                patch("src.sprawl.utils.tui.tty", MagicMock()),
+                patch("src.sprawl.utils.tui.select", MagicMock()),
+            ):
                 self.assertTrue(is_tui_supported())
             with patch("src.sprawl.utils.tui.termios", None):
                 self.assertFalse(is_tui_supported())

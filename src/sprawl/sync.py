@@ -1,16 +1,17 @@
+import filecmp
+import json
 import os
 import shutil
-import filecmp
 import subprocess
 import sys
-import json
 
 from .config import config
-from .output import print_status, print_warning, print_error
-from .utils import CATEGORIES, get_venv_executable
 from .exceptions import SprawlError
 from .generators.agents_md import generate_agents_md
 from .generators.mcp_config import generate_mcp_config
+from .output import print_error, print_status, print_warning
+from .utils import CATEGORIES, get_venv_executable
+
 
 def parse_sprawl_manifest(file_path: str) -> dict[str, list[str]]:
     """
@@ -23,10 +24,11 @@ def parse_sprawl_manifest(file_path: str) -> dict[str, list[str]]:
     if not os.path.exists(file_path):
         return required_files
 
-    with open(file_path, "r", encoding="utf-8") as f:
+    with open(file_path, encoding="utf-8") as f:
         content = f.read()
 
     from .validation import parse_yaml_frontmatter
+
     # Wrap in --- to use the frontmatter parser for basic YAML list parsing
     manifest_data = parse_yaml_frontmatter(f"---\n{content}\n---")
 
@@ -40,7 +42,9 @@ def parse_sprawl_manifest(file_path: str) -> dict[str, list[str]]:
                     if stripped.lower() == "none":
                         continue
                     if ".." in stripped or "/" in stripped or "\\" in stripped:
-                        raise SprawlError(f"Security Violation: Path traversal detected in '{stripped}'. Execution aborted.")
+                        raise SprawlError(
+                            f"Security Violation: Path traversal detected in '{stripped}'. Execution aborted."
+                        )
                     sanitized_items.append(stripped)
             required_files[category] = sanitized_items
 
@@ -55,7 +59,9 @@ def parse_sprawl_manifest(file_path: str) -> dict[str, list[str]]:
                     if stripped.lower() == "none":
                         continue
                     if ".." in stripped or "/" in stripped or "\\" in stripped:
-                        raise SprawlError(f"Security Violation: Path traversal detected in '{stripped}'. Execution aborted.")
+                        raise SprawlError(
+                            f"Security Violation: Path traversal detected in '{stripped}'. Execution aborted."
+                        )
                     sanitized_local.append(stripped)
             required_files[local_key] = sanitized_local
 
@@ -74,13 +80,15 @@ def _sync_app_directory_impl(app_dir: str, local_agents_dir: str, manifest_path:
     print_status(f"Syncing {app_dir}...")
 
     from .workspace import Workspace
-    workspace = Workspace(app_dir)
-    
+
+    Workspace(app_dir)
+
     reqs = parse_sprawl_manifest(manifest_path)
-        
+
     from .utils import get_active_dna_context
+
     source_dna_dir = get_active_dna_context(app_dir)
-    
+
     if config.verbose:
         print_status(f"Resolved workspace DNA context: {source_dna_dir}")
     # Clean up obsolete lowercase design.md
@@ -130,22 +138,29 @@ def _sync_app_directory_impl(app_dir: str, local_agents_dir: str, manifest_path:
                                     shutil.rmtree(dest_path)
                                 shutil.copytree(src_path, dest_path, dirs_exist_ok=True)
                                 copied_files.append((category, file_name))
-                                if config.verbose: print_status(f"[Synced] {file_name} -> {category_dir}/")
+                                if config.verbose:
+                                    print_status(f"[Synced] {file_name} -> {category_dir}/")
                             else:
-                                if os.path.exists(dest_path) and filecmp.cmp(src_path, dest_path, shallow=False):
+                                if os.path.exists(dest_path) and filecmp.cmp(
+                                    src_path, dest_path, shallow=False
+                                ):
                                     copied_files.append((category, file_name))
-                                    if config.verbose: print_status(f"[Skipped] {file_name} is already identical.")
+                                    if config.verbose:
+                                        print_status(f"[Skipped] {file_name} is already identical.")
                                 else:
                                     shutil.copy2(src_path, dest_path)
                                     copied_files.append((category, file_name))
-                                    if config.verbose: print_status(f"[Synced] {file_name} -> {category_dir}/")
+                                    if config.verbose:
+                                        print_status(f"[Synced] {file_name} -> {category_dir}/")
                         except Exception as e:
                             print_error(f"Failed to copy {file_name}: {e}")
                     else:
                         print_status(f"[Would sync] {file_name} -> {category_dir}/")
                         copied_files.append((category, file_name))
                 else:
-                    print_warning(f"Required file/dir {file_name} not found in {os.path.join(source_dna_dir, category)}/")
+                    print_warning(
+                        f"Required file/dir {file_name} not found in {os.path.join(source_dna_dir, category)}/"
+                    )
 
     # Pruning Engine: Remove local artifacts no longer listed in the manifest
     if not config.dry_run:
@@ -165,11 +180,11 @@ def _sync_app_directory_impl(app_dir: str, local_agents_dir: str, manifest_path:
                             print_status(f"[Pruned] {existing_item} removed from local {category}/")
                         except Exception as e:
                             print_error(f"Failed to prune {existing_item}: {e}")
-    
+
     venv_dir = os.path.join(local_agents_dir, ".venv")
     venv_pip = get_venv_executable(venv_dir, "pip")
     venv_python = get_venv_executable(venv_dir, "python3")
-    
+
     provisioned_venv = False
     if not config.dry_run:
         if not os.path.exists(venv_dir):
@@ -182,16 +197,20 @@ def _sync_app_directory_impl(app_dir: str, local_agents_dir: str, manifest_path:
             skill_dir = os.path.join(local_agents_dir, "skills", skill)
             if not os.path.exists(skill_dir):
                 continue
-            for root, dirs, files in os.walk(skill_dir):
+            for root, _dirs, files in os.walk(skill_dir):
                 if "requirements.txt" in files:
                     req_file = os.path.join(root, "requirements.txt")
-                    print_status(f"Installing Python dependencies from {os.path.relpath(req_file, app_dir)}...")
+                    print_status(
+                        f"Installing Python dependencies from {os.path.relpath(req_file, app_dir)}..."
+                    )
                     subprocess.run([venv_pip, "install", "-r", req_file, "--quiet"], check=True)
-                
+
                 if "package.json" in files:
                     npm_path = shutil.which("npm")
                     if npm_path:
-                        print_status(f"Installing Node dependencies in {os.path.relpath(root, app_dir)}...")
+                        print_status(
+                            f"Installing Node dependencies in {os.path.relpath(root, app_dir)}..."
+                        )
                         if "package-lock.json" in files or "npm-shrinkwrap.json" in files:
                             subprocess.run([npm_path, "ci", "--silent"], cwd=root, check=True)
                         else:
@@ -202,7 +221,9 @@ def _sync_app_directory_impl(app_dir: str, local_agents_dir: str, manifest_path:
                 if "Cargo.toml" in files:
                     cargo_path = shutil.which("cargo")
                     if cargo_path:
-                        print_status(f"Fetching Rust dependencies in {os.path.relpath(root, app_dir)}...")
+                        print_status(
+                            f"Fetching Rust dependencies in {os.path.relpath(root, app_dir)}..."
+                        )
                         subprocess.run([cargo_path, "fetch", "--quiet"], cwd=root, check=True)
                     else:
                         print_warning(f"cargo not found. Skipping Rust dependencies in {root}")
@@ -218,11 +239,13 @@ def _sync_app_directory_impl(app_dir: str, local_agents_dir: str, manifest_path:
                         print_status(f"Pruned deprecated workspace-root file: {old_file}")
                 except Exception as e:
                     if config.verbose:
-                        print_status(f"Error removing deprecated workspace-root file {old_file}: {e}")
+                        print_status(
+                            f"Error removing deprecated workspace-root file {old_file}: {e}"
+                        )
 
     agents_md_path = os.path.join(app_dir, "AGENTS.md")
     if config.verbose and config.dry_run:
-        print_status(f"DRY RUN: Would generate AGENTS.md registry mapping.")
+        print_status("DRY RUN: Would generate AGENTS.md registry mapping.")
     elif not config.dry_run:
         persona_content = None
         for skill in reqs.get("skills", []):
@@ -230,7 +253,7 @@ def _sync_app_directory_impl(app_dir: str, local_agents_dir: str, manifest_path:
                 persona_path = os.path.join(source_dna_dir, "skills", skill, "SKILL.md")
                 if os.path.exists(persona_path):
                     try:
-                        with open(persona_path, "r", encoding="utf-8") as pf:
+                        with open(persona_path, encoding="utf-8") as pf:
                             persona_content = pf.read()
                         break
                     except Exception as e:
@@ -240,14 +263,16 @@ def _sync_app_directory_impl(app_dir: str, local_agents_dir: str, manifest_path:
         config_path = os.path.join(local_agents_dir, "sprawl-config.json")
         if os.path.exists(config_path):
             try:
-                with open(config_path, "r", encoding="utf-8") as f:
+                with open(config_path, encoding="utf-8") as f:
                     cfg = json.load(f)
                     allowed_mounts = cfg.get("allowed_mounts", {})
             except Exception as e:
                 if config.verbose:
                     print_status(f"Error loading sprawl-config.json: {e}")
 
-        generate_agents_md(agents_md_path, reqs, app_dir, persona_content, allowed_mounts=allowed_mounts)
+        generate_agents_md(
+            agents_md_path, reqs, app_dir, persona_content, allowed_mounts=allowed_mounts
+        )
 
         if config.verbose:
             print_status(f"Generated standardized registry payload at {agents_md_path}")
@@ -255,30 +280,27 @@ def _sync_app_directory_impl(app_dir: str, local_agents_dir: str, manifest_path:
     # Generate MCP Configuration
     mcp_config_path = os.path.join(app_dir, "mcp_config.json")
     if config.verbose and config.dry_run:
-        print_status(f"DRY RUN: Would generate mcp_config.json registry.")
+        print_status("DRY RUN: Would generate mcp_config.json registry.")
     elif not config.dry_run:
         generate_mcp_config(
-            mcp_config_path, 
-            reqs, 
-            app_dir, 
-            local_agents_dir, 
-            venv_python,
-            config.vault_path
+            mcp_config_path, reqs, app_dir, local_agents_dir, venv_python, config.vault_path
         )
         # Double-check JSON structure validity
         try:
-            with open(mcp_config_path, "r", encoding="utf-8") as f:
+            with open(mcp_config_path, encoding="utf-8") as f:
                 json.loads(f.read())
         except Exception as e:
             raise SprawlError(f"Generated mcp_config.json is not valid JSON: {e}")
 
         if config.verbose:
-            print_status(f"Generated Claude Desktop standard MCP configuration at {mcp_config_path}")
+            print_status(
+                f"Generated Claude Desktop standard MCP configuration at {mcp_config_path}"
+            )
 
     return {
         "copied": len(copied_files),
         "pruned": pruned_count,
-        "venv_provisioned": provisioned_venv
+        "venv_provisioned": provisioned_venv,
     }
 
 
@@ -294,10 +316,9 @@ def sync_app_directory(app_dir: str) -> dict:
     manifest_path = os.path.join(local_agents_dir, "sprawl_manifest.yml")
     legacy_manifest = os.path.join(app_dir, "sprawl_package.md")
 
-    if not os.path.exists(manifest_path) and os.path.exists(legacy_manifest):
-        if not config.dry_run:
-            shutil.move(legacy_manifest, manifest_path)
-            print_status(f"Migrated legacy manifest sprawl_package.md -> .agents/sprawl_manifest.yml")
+    if not os.path.exists(manifest_path) and os.path.exists(legacy_manifest) and not config.dry_run:
+        shutil.move(legacy_manifest, manifest_path)
+        print_status("Migrated legacy manifest sprawl_package.md -> .agents/sprawl_manifest.yml")
 
     if not os.path.exists(manifest_path):
         print_warning(f"No sprawl_manifest.yml found in {local_agents_dir}. Skipping.")
@@ -318,7 +339,7 @@ def sync_app_directory(app_dir: str) -> dict:
         # Verify sprawl-config.json JSON validity if it exists
         sprawl_config_path = os.path.join(local_agents_dir, "sprawl-config.json")
         try:
-            with open(sprawl_config_path, "r", encoding="utf-8") as f:
+            with open(sprawl_config_path, encoding="utf-8") as f:
                 content = f.read().strip()
                 if content:
                     json.loads(content)
@@ -328,7 +349,7 @@ def sync_app_directory(app_dir: str) -> dict:
             raise SprawlError(f"sprawl-config.json is not valid JSON: {e}")
 
         result = _sync_app_directory_impl(app_dir, local_agents_dir, manifest_path)
-        
+
         # Clean up root pollution: delete stray folders if they exist at the workspace root
         if not config.dry_run:
             stray_categories = ["atoms", "molecules", "rules", "skills", "workflows"]
@@ -360,13 +381,14 @@ def sync_app_directory(app_dir: str) -> dict:
 
         # Update sync state in management plane
         from .workspace import Workspace, update_workspace_sync_timestamp
+
         workspace = Workspace(app_dir)
         workspace.update_sync_state({"last_manifest_sync": True})
         update_workspace_sync_timestamp(workspace.path)
-        
+
         if backup_dir and not config.dry_run:
             shutil.rmtree(backup_dir, ignore_errors=True)
-            
+
         return result
 
     except Exception as e:

@@ -37,6 +37,7 @@ The findings below are **hardening recommendations**, not blockers. The codebase
 ```python
 # src/sprawl/__init__.py
 from importlib.metadata import version, PackageNotFoundError
+
 try:
     __version__ = version("sprawl-cli")
 except PackageNotFoundError:

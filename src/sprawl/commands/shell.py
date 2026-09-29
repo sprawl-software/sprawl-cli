@@ -2,13 +2,12 @@
 
 import os
 import subprocess
-from typing import Optional
 
-from ..output import print_status, print_error
 from ..exceptions import SprawlError
+from ..output import print_status
 
 
-def cmd_shell(target_dir: Optional[str] = None) -> None:
+def cmd_shell(target_dir: str | None = None) -> None:
     """Activates the workspace virtual environment in a subshell.
 
     Args:
@@ -29,31 +28,28 @@ def cmd_shell(target_dir: Optional[str] = None) -> None:
 
     # Prepare environment
     env = os.environ.copy()
-    
+
     # Prepend venv bin to PATH
     if os.name == "nt":
         venv_bin = os.path.join(venv_dir, "Scripts")
     else:
         venv_bin = os.path.join(venv_dir, "bin")
     env["PATH"] = f"{venv_bin}{os.pathsep}{env.get('PATH', '')}"
-    
+
     # Set VIRTUAL_ENV (standard for venv activation)
     env["VIRTUAL_ENV"] = venv_dir
-    
+
     # Set workspace context
     env["SPRAWL_WORKSPACE"] = os.path.abspath(cwd)
-    
+
     # Remove any parent VIRTUAL_ENV if it exists to avoid confusion
     env.pop("PYTHONHOME", None)
 
     # Determine shell
     shell = env.get("SHELL")
     if not shell:
-        if os.name == "nt":
-            shell = env.get("COMSPEC", "cmd.exe")
-        else:
-            shell = "/bin/bash"
-    
+        shell = env.get("COMSPEC", "cmd.exe") if os.name == "nt" else "/bin/bash"
+
     # Launch subshell
     try:
         subprocess.run([shell], env=env, check=False)

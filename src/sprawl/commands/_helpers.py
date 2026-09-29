@@ -1,12 +1,11 @@
 """Shared helpers used across command modules."""
 
 import os
-from typing import Optional
 
 from ..utils import CATEGORIES
 
 
-def resolve_item_in_dna(item: str, source_dna_dir: str) -> tuple[Optional[str], Optional[str]]:
+def resolve_item_in_dna(item: str, source_dna_dir: str) -> tuple[str | None, str | None]:
     """Resolves a named item to its exact filename within the active DNA context.
 
     Checks for directory match, then .md, .yml, .yaml, .json extensions in order.
@@ -29,7 +28,7 @@ def resolve_item_in_dna(item: str, source_dna_dir: str) -> tuple[Optional[str], 
     return None, None
 
 
-def resolve_repo_root() -> Optional[str]:
+def resolve_repo_root() -> str | None:
     """Deterministically resolves the Sprawl CLI source repository root.
 
     Walks up from the installed script path, then falls back to known
@@ -46,7 +45,9 @@ def resolve_repo_root() -> Optional[str]:
 
     # Check current working directory (dev mode)
     cwd = os.getcwd()
-    if os.path.exists(os.path.join(cwd, ".git")) and os.path.exists(os.path.join(cwd, "src", "sprawl", "core.py")):
+    if os.path.exists(os.path.join(cwd, ".git")) and os.path.exists(
+        os.path.join(cwd, "src", "sprawl", "core.py")
+    ):
         return cwd
 
     # Fallback to environment variable if set

@@ -3,14 +3,16 @@
 Includes CLI subcommands (add, remove, list) and routes to interactive TUI menus.
 """
 
+import json
 import os
 import re
 import sys
-import json
 from typing import Any
+
 from rich.table import Table
+
 from ..exceptions import SprawlError
-from ..output import console, print_status, print_error
+from ..output import console, print_status
 from .sync_cmd import cmd_sync
 
 
@@ -39,7 +41,7 @@ def _load_config(config_path: str) -> dict[str, Any]:
     """Helper to read sprawl-config.json safely."""
     if os.path.exists(config_path):
         try:
-            with open(config_path, "r", encoding="utf-8") as f:
+            with open(config_path, encoding="utf-8") as f:
                 data = json.load(f)
                 if isinstance(data, dict):
                     return data
@@ -98,7 +100,9 @@ def cmd_mount_remove(alias: str, target_dir: str = None) -> None:
     removed_path = mounts.pop(alias)
     cfg["allowed_mounts"] = mounts
     _write_config(config_path, cfg)
-    print_status(f"Removed workspace mount: [accent]{alias}[/accent] (was mapping to {removed_path})")
+    print_status(
+        f"Removed workspace mount: [accent]{alias}[/accent] (was mapping to {removed_path})"
+    )
 
     # Immediately trigger sync to regenerate mcp_config.json
     print_status("Synchronizing workspace configurations...")
@@ -128,7 +132,7 @@ def cmd_mount_list(target_dir: str = None) -> None:
 def cmd_mount(args: Any) -> None:
     """Core routing entrypoint for the sprawl mount command block."""
     target_dir = getattr(args, "project", None)
-    
+
     if args.mount_command == "add":
         cmd_mount_add(args.path, getattr(args, "alias", None), target_dir)
     elif args.mount_command == "remove":
@@ -139,7 +143,8 @@ def cmd_mount(args: Any) -> None:
         # Launch interactive TUI Dashboard
         if not sys.stdin.isatty() or not sys.stdout.isatty():
             raise SprawlError("Cannot launch interactive mount dashboard in a non-TTY environment.")
-            
+
         workspace_root, _, _ = _get_workspace_paths(target_dir)
         from ..utils.tui import show_mount_dashboard
+
         show_mount_dashboard(workspace_root)

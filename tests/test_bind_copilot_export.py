@@ -5,7 +5,7 @@ import shutil
 import tempfile
 import unittest
 
-from src.sprawl.bind import _export_copilot_prompts, _export_category_to_prompts
+from src.sprawl.bind import _export_category_to_prompts, _export_copilot_prompts
 
 
 class TestExportCategoryToPrompts(unittest.TestCase):

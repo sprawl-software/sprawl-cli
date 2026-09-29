@@ -1,10 +1,11 @@
 """Antigravity-specific bindings, workspace manifest, and MCP schema provisioning."""
 
-import os
 import json
+import os
 import shutil
+
 from ..output import console
-from .adapters import _write_binding, _prune_empty_dirs
+from .adapters import _write_binding
 
 
 def _write_antigravity_gemini_json(target_dir: str, force: bool) -> bool:
@@ -31,9 +32,12 @@ def _provision_antigravity_schemas() -> bool:
     user_home = os.path.expanduser("~")
     mcp_base_dir = os.path.join(user_home, ".gemini", "antigravity", "mcp")
     from ..generators.antigravity_schemas import provision_schemas
+
     success = provision_schemas(mcp_base_dir)
     if success:
-        console.print("  [success]✔ Antigravity MCP Schemas:[/success] Provisioned → ~/.gemini/antigravity/mcp/")
+        console.print(
+            "  [success]✔ Antigravity MCP Schemas:[/success] Provisioned → ~/.gemini/antigravity/mcp/"
+        )
         return True
     else:
         console.print("  [error]✗ Antigravity MCP Schemas:[/error] Failed to provision schemas")

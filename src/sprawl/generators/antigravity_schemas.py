@@ -1,7 +1,7 @@
 """Generator for Antigravity MCP schemas — DRY implementation."""
 
-import os
 import json
+import os
 
 
 def provision_schemas(mcp_base_dir: str) -> bool:
@@ -26,11 +26,11 @@ def provision_schemas(mcp_base_dir: str) -> bool:
                     "properties": {
                         "path": {
                             "type": "string",
-                            "description": "The path to read. Can be relative to the workspace root or start with '@<alias>/<subpath>'."
+                            "description": "The path to read. Can be relative to the workspace root or start with '@<alias>/<subpath>'.",
                         }
                     },
-                    "required": ["path"]
-                }
+                    "required": ["path"],
+                },
             },
             "write_file.json": {
                 "name": "write_file",
@@ -40,15 +40,12 @@ def provision_schemas(mcp_base_dir: str) -> bool:
                     "properties": {
                         "path": {
                             "type": "string",
-                            "description": "The target path to write to. Can be relative to the workspace root or start with '@<alias>/<subpath>'."
+                            "description": "The target path to write to. Can be relative to the workspace root or start with '@<alias>/<subpath>'.",
                         },
-                        "content": {
-                            "type": "string",
-                            "description": "The file content to write."
-                        }
+                        "content": {"type": "string", "description": "The file content to write."},
                     },
-                    "required": ["path", "content"]
-                }
+                    "required": ["path", "content"],
+                },
             },
             "list_directory.json": {
                 "name": "list_directory",
@@ -58,12 +55,12 @@ def provision_schemas(mcp_base_dir: str) -> bool:
                     "properties": {
                         "path": {
                             "type": "string",
-                            "description": "The path to list. Can be relative to the workspace root, start with '@<alias>/<subpath>', or '@<alias>' to list mount root."
+                            "description": "The path to list. Can be relative to the workspace root, start with '@<alias>/<subpath>', or '@<alias>' to list mount root.",
                         }
                     },
-                    "required": []
-                }
-            }
+                    "required": [],
+                },
+            },
         }
         for filename, data in ws_schemas.items():
             with open(os.path.join(ws_schema_dir, filename), "w", encoding="utf-8") as sf:
@@ -91,11 +88,11 @@ def provision_schemas(mcp_base_dir: str) -> bool:
                     "properties": {
                         "path": {
                             "type": "string",
-                            "description": "The path to the note relative to the vault root (with or without .md)."
+                            "description": "The path to the note relative to the vault root (with or without .md).",
                         }
                     },
-                    "required": ["path"]
-                }
+                    "required": ["path"],
+                },
             },
             "write_note.json": {
                 "name": "write_note",
@@ -105,15 +102,15 @@ def provision_schemas(mcp_base_dir: str) -> bool:
                     "properties": {
                         "path": {
                             "type": "string",
-                            "description": "The path to the target note relative to the vault root."
+                            "description": "The path to the target note relative to the vault root.",
                         },
                         "content": {
                             "type": "string",
-                            "description": "The content to write into the note."
-                        }
+                            "description": "The content to write into the note.",
+                        },
                     },
-                    "required": ["path", "content"]
-                }
+                    "required": ["path", "content"],
+                },
             },
             "list_notes.json": {
                 "name": "list_notes",
@@ -123,11 +120,11 @@ def provision_schemas(mcp_base_dir: str) -> bool:
                     "properties": {
                         "path": {
                             "type": "string",
-                            "description": "The relative directory path to list. Defaults to the vault root."
+                            "description": "The relative directory path to list. Defaults to the vault root.",
                         }
                     },
-                    "required": []
-                }
+                    "required": [],
+                },
             },
             "search_notes.json": {
                 "name": "search_notes",
@@ -135,14 +132,11 @@ def provision_schemas(mcp_base_dir: str) -> bool:
                 "inputSchema": {
                     "type": "object",
                     "properties": {
-                        "query": {
-                            "type": "string",
-                            "description": "The search term or keyword."
-                        }
+                        "query": {"type": "string", "description": "The search term or keyword."}
                     },
-                    "required": ["query"]
-                }
-            }
+                    "required": ["query"],
+                },
+            },
         }
         for filename, data in vault_schemas.items():
             with open(os.path.join(vault_schema_dir, filename), "w", encoding="utf-8") as sf:

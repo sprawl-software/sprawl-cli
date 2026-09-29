@@ -3,12 +3,12 @@
 import re
 import unittest
 
-from src.sprawl.tui.formatter import format_panel, format_checklist_item
+from src.sprawl.tui.formatter import format_checklist_item, format_panel
 
 
 def strip_ansi(text: str) -> str:
     """Remove ANSI escape sequences from text."""
-    return re.sub(r'\033\[[0-9;]*m', '', text)
+    return re.sub(r"\033\[[0-9;]*m", "", text)
 
 
 class TestFormatPanelEdgeCases(unittest.TestCase):
@@ -21,7 +21,9 @@ class TestFormatPanelEdgeCases(unittest.TestCase):
         self.assertTrue(len(lines) >= 3, "Panel must have at least top, content, bottom lines")
         for line in lines:
             stripped = strip_ansi(line)
-            self.assertEqual(len(stripped), 100, f"Line width mismatch: '{stripped}' ({len(stripped)} chars)")
+            self.assertEqual(
+                len(stripped), 100, f"Line width mismatch: '{stripped}' ({len(stripped)} chars)"
+            )
 
     def test_whitespace_only_content(self):
         """format_panel with whitespace-only content still produces valid 100-char lines."""

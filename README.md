@@ -140,7 +140,49 @@ sprawl bind
 - **Zero Heavy Dependencies**: Pure Python standard library + Rich. Sub-100ms boot.
 - **Standard Library Only**: No dependency bloat. Auditable in 48 hours.
 
-### Contributing
+## Development & Testing
+
+### 1. Setup Local Environment
+Clone the repository and install Sprawl in editable mode with development dependencies:
+
+```bash
+git clone https://github.com/sprawl-software/sprawl-cli.git
+cd sprawl-cli
+python -m venv .venv
+source .venv/bin/activate  # On Windows: .venv\Scripts\Activate.ps1
+pip install -e ".[dev]"
+```
+
+### 2. Lint & Code Formatting (Ruff)
+Sprawl uses [Ruff](https://astral.sh/ruff) to enforce fast, consistent code style, import sorting, and quality standards:
+
+```bash
+# Check code quality and imports
+ruff check src/ tests/
+
+# Verify formatting without modifying files
+ruff format --check src/ tests/
+
+# Auto-fix safe lint rules and format code
+ruff check --fix src/ tests/
+ruff format src/ tests/
+```
+
+### 3. Run Unit & Integration Tests
+Execute the full test suite using `pytest`:
+
+```bash
+pytest
+```
+
+### 4. Run E2E Integration Suite (Smoke Test)
+Run the automated 26-scenario end-to-end sandbox verification:
+
+```bash
+python tests/qa_run_verifier.py --ci
+```
+
+## Contributing
 
 Sprawl is in active private development. Contribution guidelines will be published at public launch. For early access or partnerships: hello@sprawl.software.
 

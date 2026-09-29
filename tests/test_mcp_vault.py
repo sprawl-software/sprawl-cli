@@ -1,9 +1,10 @@
-import unittest
 import os
 import shutil
 import tempfile
-import json
-from src.sprawl.mcp.vault import VaultManager, MCPServer, MCPError
+import unittest
+
+from src.sprawl.mcp.vault import MCPError, MCPServer, VaultManager
+
 
 class TestVaultManager(unittest.TestCase):
     def setUp(self):
@@ -19,7 +20,7 @@ class TestVaultManager(unittest.TestCase):
         path = os.path.join(self.vault_root, "Idea.md")
         with open(path, "w") as f:
             f.write("brilliant idea")
-        
+
         content = self.mgr.read_note("Idea.md")
         self.assertEqual(content, "brilliant idea")
 
@@ -27,7 +28,7 @@ class TestVaultManager(unittest.TestCase):
         path = os.path.join(self.vault_root, "Idea.md")
         with open(path, "w") as f:
             f.write("brilliant idea")
-        
+
         # Should auto-append .md
         content = self.mgr.read_note("Idea")
         self.assertEqual(content, "brilliant idea")
@@ -43,30 +44,30 @@ class TestVaultManager(unittest.TestCase):
             sibling_file = os.path.join(sibling_dir, "private.md")
             with open(sibling_file, "w") as f:
                 f.write("secret data")
-            
+
             with self.assertRaises(MCPError):
                 self.mgr.read_note("../my-vault-secrets/private.md")
         finally:
             shutil.rmtree(sibling_dir, ignore_errors=True)
 
-
     def test_write_note(self):
         self.mgr.write_note("Draft", "some content")
         path = os.path.join(self.vault_root, "Draft.md")
         self.assertTrue(os.path.exists(path))
-        with open(path, "r") as f:
+        with open(path) as f:
             self.assertEqual(f.read(), "some content")
 
     def test_search_notes(self):
         self.mgr.write_note("Note1", "The quick brown fox")
         self.mgr.write_note("Note2", "Jumps over the lazy dog")
-        
+
         results = self.mgr.search_notes("fox")
         self.assertEqual(len(results), 1)
         self.assertEqual(results[0]["path"], "Note1.md")
-        
+
         results = self.mgr.search_notes("the")
         self.assertEqual(len(results), 2)
+
 
 class TestVaultMCPServer(unittest.TestCase):
     def setUp(self):
@@ -89,6 +90,7 @@ class TestVaultMCPServer(unittest.TestCase):
         self.assertIn("read_note", tool_names)
         self.assertIn("write_note", tool_names)
         self.assertIn("search_notes", tool_names)
+
 
 if __name__ == "__main__":
     unittest.main()

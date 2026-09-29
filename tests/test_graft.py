@@ -4,12 +4,11 @@ import os
 import shutil
 import tempfile
 import unittest
-from unittest.mock import patch, MagicMock
+from unittest.mock import patch
 
 from src.sprawl.commands.workspace import cmd_graft
-from src.sprawl.sync import sync_app_directory, parse_sprawl_manifest
-from src.sprawl.commands.diff import diff_files
 from src.sprawl.config import config
+from src.sprawl.sync import parse_sprawl_manifest, sync_app_directory
 
 
 class TestGraftHarvesting(unittest.TestCase):
@@ -68,16 +67,18 @@ class TestGraftHarvesting(unittest.TestCase):
         """sync does not prune harvested local rules from local rules folder."""
         cmd_graft()
         local_agents_dir = os.path.join(self.test_dir, ".agents")
-        
+
         # Mock global dna directory
         global_dna = tempfile.mkdtemp()
         os.makedirs(os.path.join(global_dna, "rules"))
         mock_get_dna.return_value = global_dna
 
         try:
-            stats = sync_app_directory(self.test_dir)
+            sync_app_directory(self.test_dir)
             # Ensure local_cursor.md is not pruned
-            self.assertTrue(os.path.exists(os.path.join(local_agents_dir, "rules", "local_cursor.md")))
+            self.assertTrue(
+                os.path.exists(os.path.join(local_agents_dir, "rules", "local_cursor.md"))
+            )
         finally:
             shutil.rmtree(global_dna, ignore_errors=True)
 

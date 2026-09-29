@@ -5,19 +5,19 @@ Replaces pyyaml with a regex-based YAML frontmatter parser.
 External dependencies: NONE (pure stdlib).
 """
 
-import os
 import json
+import os
 import re
 from dataclasses import dataclass, fields
 from typing import Any
 
-from .output import print_warning, print_error, print_status
 from .exceptions import SprawlError
-
+from .output import print_error, print_status
 
 # ---------------------------------------------------------------------------
 # Stdlib YAML Frontmatter Parser (replaces pyyaml)
 # ---------------------------------------------------------------------------
+
 
 def parse_yaml_frontmatter(content: str) -> dict[str, Any]:
     """Parses YAML frontmatter from a markdown file using pure stdlib.
@@ -83,8 +83,9 @@ def parse_yaml_frontmatter(content: str) -> dict[str, Any]:
                         result[key] = float(value)
                     except ValueError:
                         # Strip optional quotes
-                        if (value.startswith('"') and value.endswith('"')) or \
-                           (value.startswith("'") and value.endswith("'")):
+                        if (value.startswith('"') and value.endswith('"')) or (
+                            value.startswith("'") and value.endswith("'")
+                        ):
                             value = value[1:-1]
                         result[key] = value
             continue
@@ -96,9 +97,11 @@ def parse_yaml_frontmatter(content: str) -> dict[str, Any]:
 # Dataclass Schemas (replaces pydantic BaseModel)
 # ---------------------------------------------------------------------------
 
+
 @dataclass
 class AtomSchema:
     """Schema for validating Atom artifacts in the DNA registry."""
+
     name: str
     description: str
     type: str
@@ -108,12 +111,15 @@ class AtomSchema:
         for field_name in ("name", "description", "type"):
             value = getattr(self, field_name)
             if not isinstance(value, str) or not value.strip():
-                raise ValueError(f"AtomSchema: '{field_name}' must be a non-empty string, got: {value!r}")
+                raise ValueError(
+                    f"AtomSchema: '{field_name}' must be a non-empty string, got: {value!r}"
+                )
 
 
 @dataclass
 class SkillSchema:
     """Schema for validating Skill artifacts in the DNA registry."""
+
     name: str
     description: str
 
@@ -122,12 +128,15 @@ class SkillSchema:
         for field_name in ("name", "description"):
             value = getattr(self, field_name)
             if not isinstance(value, str) or not value.strip():
-                raise ValueError(f"SkillSchema: '{field_name}' must be a non-empty string, got: {value!r}")
+                raise ValueError(
+                    f"SkillSchema: '{field_name}' must be a non-empty string, got: {value!r}"
+                )
 
 
 @dataclass
 class MoleculeSchema:
     """Schema for validating Molecule artifacts in the DNA registry."""
+
     name: str
     version: str
     atoms: list[str]
@@ -135,16 +144,23 @@ class MoleculeSchema:
     def validate(self) -> None:
         """Manual validation — raises ValueError on invalid state."""
         if not isinstance(self.name, str) or not self.name.strip():
-            raise ValueError(f"MoleculeSchema: 'name' must be a non-empty string, got: {self.name!r}")
+            raise ValueError(
+                f"MoleculeSchema: 'name' must be a non-empty string, got: {self.name!r}"
+            )
         if not isinstance(self.version, str) or not self.version.strip():
-            raise ValueError(f"MoleculeSchema: 'version' must be a non-empty string, got: {self.version!r}")
+            raise ValueError(
+                f"MoleculeSchema: 'version' must be a non-empty string, got: {self.version!r}"
+            )
         if not isinstance(self.atoms, list):
-            raise ValueError(f"MoleculeSchema: 'atoms' must be a list, got: {type(self.atoms).__name__}")
+            raise ValueError(
+                f"MoleculeSchema: 'atoms' must be a list, got: {type(self.atoms).__name__}"
+            )
 
 
 # ---------------------------------------------------------------------------
 # DNA Directory Validation Engine
 # ---------------------------------------------------------------------------
+
 
 def validate_dna_directory(dna_dir: str) -> None:
     """Validates all incoming .md, .yml, .yaml, and .json files in a DNA directory.
@@ -167,16 +183,28 @@ def validate_dna_directory(dna_dir: str) -> None:
             filepath = os.path.join(root, file)
             try:
                 if file.endswith(".json"):
-                    with open(filepath, "r", encoding="utf-8") as f:
+                    with open(filepath, encoding="utf-8") as f:
                         data = json.load(f)
                     if "atoms" in root:
                         allowed_fields = {f.name for f in fields(AtomSchema)}
                         filtered_data = {k: v for k, v in data.items() if k in allowed_fields}
-                        
-                        name = filtered_data.get("name") if filtered_data.get("name") is not None else (data.get("title") or os.path.splitext(file)[0])
-                        desc = filtered_data.get("description") if filtered_data.get("description") is not None else ""
-                        atype = filtered_data.get("type") if filtered_data.get("type") is not None else "object"
-                        
+
+                        name = (
+                            filtered_data.get("name")
+                            if filtered_data.get("name") is not None
+                            else (data.get("title") or os.path.splitext(file)[0])
+                        )
+                        desc = (
+                            filtered_data.get("description")
+                            if filtered_data.get("description") is not None
+                            else ""
+                        )
+                        atype = (
+                            filtered_data.get("type")
+                            if filtered_data.get("type") is not None
+                            else "object"
+                        )
+
                         schema = AtomSchema(name=name, description=desc, type=atype)
                         schema.validate()
                     elif "molecules" in root:
@@ -186,26 +214,38 @@ def validate_dna_directory(dna_dir: str) -> None:
                         else:
                             allowed_fields = {f.name for f in fields(MoleculeSchema)}
                             filtered_data = {k: v for k, v in data.items() if k in allowed_fields}
-                            
-                            name = filtered_data.get("name") if filtered_data.get("name") is not None else os.path.splitext(file)[0]
-                            version = filtered_data.get("version") if filtered_data.get("version") is not None else "1.0.0"
-                            atoms = filtered_data.get("atoms") if filtered_data.get("atoms") is not None else []
-                            
+
+                            name = (
+                                filtered_data.get("name")
+                                if filtered_data.get("name") is not None
+                                else os.path.splitext(file)[0]
+                            )
+                            version = (
+                                filtered_data.get("version")
+                                if filtered_data.get("version") is not None
+                                else "1.0.0"
+                            )
+                            atoms = (
+                                filtered_data.get("atoms")
+                                if filtered_data.get("atoms") is not None
+                                else []
+                            )
+
                             schema = MoleculeSchema(name=name, version=version, atoms=atoms)
                             schema.validate()
                 elif file.endswith((".yaml", ".yml")):
                     # Generic structure check — just verify it's parseable
-                    with open(filepath, "r", encoding="utf-8") as f:
+                    with open(filepath, encoding="utf-8") as f:
                         content = f.read()
                     parse_yaml_frontmatter(f"---\n{content}\n---")
                 elif file.endswith(".md"):
-                    with open(filepath, "r", encoding="utf-8") as f:
+                    with open(filepath, encoding="utf-8") as f:
                         content = f.read()
                     frontmatter = parse_yaml_frontmatter(content)
                     if "skills" in root and file == "SKILL.md":
                         schema = SkillSchema(
                             name=frontmatter.get("name", ""),
-                            description=frontmatter.get("description", "")
+                            description=frontmatter.get("description", ""),
                         )
                         schema.validate()
             except ValueError as e:
@@ -216,5 +256,7 @@ def validate_dna_directory(dna_dir: str) -> None:
     if errors:
         for err in errors:
             print_error(err)
-        raise SprawlError("Zero-Trust DNA Validation failed. The fetched DNA is corrupted or malicious.")
+        raise SprawlError(
+            "Zero-Trust DNA Validation failed. The fetched DNA is corrupted or malicious."
+        )
     print_status("DNA Validation passed.")

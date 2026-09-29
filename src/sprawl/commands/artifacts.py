@@ -1,18 +1,17 @@
 """Artifact discovery, injection, scaffolding, and removal commands."""
 
+import json
 import os
 import re
-import json
-from typing import Optional
 
 from rich.panel import Panel
 from rich.text import Text
 from rich.tree import Tree
 
 from ..config import config
-from ..output import print_status, print_warning, print_error, console
-from ..utils import CATEGORIES, get_active_dna_context
 from ..exceptions import SprawlError
+from ..output import console, print_error, print_status, print_warning
+from ..utils import CATEGORIES, get_active_dna_context
 from ._helpers import resolve_item_in_dna
 from .sync_cmd import cmd_sync
 
@@ -50,7 +49,13 @@ def cmd_list() -> None:
     console.print()
 
     # Gather Artifacts
-    data: dict[str, list[str]] = {"Personas": [], "Rules": [], "Skills": [], "Atoms": [], "Workflows": []}
+    data: dict[str, list[str]] = {
+        "Personas": [],
+        "Rules": [],
+        "Skills": [],
+        "Atoms": [],
+        "Workflows": [],
+    }
     for category in CATEGORIES:
         category_dir = os.path.join(source_dna_dir, category)
         if os.path.exists(category_dir):
@@ -73,7 +78,7 @@ def cmd_list() -> None:
     console.print()
 
 
-def cmd_add(items: list[str], target_dir: Optional[str] = None) -> None:
+def cmd_add(items: list[str], target_dir: str | None = None) -> None:
     """Smart Injection Engine: Infers the category and injects items into the workspace.
 
     Args:
@@ -105,7 +110,7 @@ def cmd_add(items: list[str], target_dir: Optional[str] = None) -> None:
             return
 
         # Read existing manifest to preserve non-category values
-        with open(manifest_path, "r", encoding="utf-8") as f:
+        with open(manifest_path, encoding="utf-8") as f:
             content = f.read()
 
         manifest_data = parse_yaml_frontmatter(f"---\n{content}\n---")
@@ -163,9 +168,11 @@ def cmd_add(items: list[str], target_dir: Optional[str] = None) -> None:
             if resolved_name:
                 additions[category].append(resolved_name)
             else:
-                raise SprawlError(f"Item '{item}' not found in any category within the active DNA context.")
+                raise SprawlError(
+                    f"Item '{item}' not found in any category within the active DNA context."
+                )
 
-    with open(manifest_path, "r", encoding="utf-8") as f:
+    with open(manifest_path, encoding="utf-8") as f:
         content = f.read()
 
     for category, new_items in additions.items():
@@ -195,7 +202,9 @@ def cmd_add(items: list[str], target_dir: Optional[str] = None) -> None:
 
     for category, new_items in additions.items():
         for item in new_items:
-            cat_name = category[:-1].capitalize() if category.endswith("s") else category.capitalize()
+            cat_name = (
+                category[:-1].capitalize() if category.endswith("s") else category.capitalize()
+            )
             print_status(f"[+] {cat_name} '{item}' successfully sandboxed.")
 
 
@@ -212,9 +221,13 @@ def cmd_scaffold(type_str: str, name: str) -> None:
         raise SprawlError(f"DNA context not found at {source_dna_dir}. Have you run sprawl init?")
 
     if ".." in name or "/" in name or "\\" in name:
-        raise SprawlError("Security Violation: Artifact name cannot contain path traversal characters.")
+        raise SprawlError(
+            "Security Violation: Artifact name cannot contain path traversal characters."
+        )
     if not re.match(r"^[a-zA-Z0-9_\- ]+$", name):
-        raise SprawlError("Security Violation: Artifact name must be alphanumeric, spaces, underscores, or hyphens only.")
+        raise SprawlError(
+            "Security Violation: Artifact name must be alphanumeric, spaces, underscores, or hyphens only."
+        )
 
     if type_str == "persona":
         name_snake = name.lower().replace(" ", "_")
@@ -269,10 +282,12 @@ def cmd_remove(items: list[str]) -> None:
         if resolved_name:
             removals.append(resolved_name)
         else:
-            print_warning(f"Item '{item}' not found in active DNA context. Proceeding to blindly attempt removal from manifest.")
+            print_warning(
+                f"Item '{item}' not found in active DNA context. Proceeding to blindly attempt removal from manifest."
+            )
             removals.append(item)
 
-    with open(manifest_path, "r", encoding="utf-8") as f:
+    with open(manifest_path, encoding="utf-8") as f:
         content = f.read()
     lines = content.splitlines()
     new_lines: list[str] = []

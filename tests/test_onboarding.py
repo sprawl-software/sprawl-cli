@@ -4,17 +4,17 @@ import os
 import shutil
 import tempfile
 import unittest
-from unittest.mock import patch, MagicMock
+from unittest.mock import patch
 
-from src.sprawl.onboarding import run_onboarding_wizard
 from src.sprawl.config import config
+from src.sprawl.onboarding import run_onboarding_wizard
 
 
 class TestOnboarding(unittest.TestCase):
     def setUp(self):
         self.test_dir = tempfile.mkdtemp()
         self.config_path = os.path.join(self.test_dir, "config.json")
-        
+
         self.original_config_path = config.config_path
         config.config_path = self.config_path
 

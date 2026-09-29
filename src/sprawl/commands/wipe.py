@@ -1,24 +1,22 @@
 """Nuclear wipe command to remove Sprawl traces."""
 
+import contextlib
 import os
-import shutil
-from typing import Optional
 
 from rich.prompt import Confirm
 
 from ..config import config
-from ..output import console, print_status, print_warning
 from ..exceptions import SprawlError
-from ..workspace import get_all_workspaces, deregister_workspace, WorkspaceError
+from ..output import console, print_status, print_warning
+from ..workspace import WorkspaceError, deregister_workspace, get_all_workspaces
 
 
-
-def cmd_wipe(target_dir: Optional[str] = None, force: bool = False, local_only: bool = False) -> None:
+def cmd_wipe(target_dir: str | None = None, force: bool = False, local_only: bool = False) -> None:
     """Deletes Sprawl artifacts.
-    
+
     If local_only is True, only wipes the local workspace (.agents/).
     Otherwise, wipes both the local workspace (if active) and the entire global Sprawl registry (~/.sprawl).
-    
+
     Args:
         target_dir: The directory to check for a local workspace. Defaults to cwd.
         force: Skip confirmation prompts.
@@ -26,28 +24,34 @@ def cmd_wipe(target_dir: Optional[str] = None, force: bool = False, local_only: 
     """
     cwd = target_dir or os.getcwd()
     local_agents_dir = os.path.join(cwd, ".agents")
-    
+
     has_local = os.path.exists(local_agents_dir)
     has_global = os.path.exists(os.path.dirname(config.config_path))
-    
+
     if not has_local and (not has_global or local_only):
         print_warning("No Sprawl traces found to wipe.")
         return
 
     # Warning UI
     console.print("\n[bold red]!!! NUCLEAR WIPE INITIATED !!![/bold red]")
-    
+
     if has_local:
         console.print(f"[warning]Will destroy local workspace: {local_agents_dir}[/warning]")
-    
+
     if not local_only and has_global:
         global_dir = os.path.dirname(config.config_path)
-        console.print(f"[warning]Will destroy global DNA registry & configuration: {global_dir}[/warning]")
-        console.print("[dim]Note: To completely uninstall the CLI tool itself, run: pipx uninstall sprawl-cli[/dim]")
+        console.print(
+            f"[warning]Will destroy global DNA registry & configuration: {global_dir}[/warning]"
+        )
+        console.print(
+            "[dim]Note: To completely uninstall the CLI tool itself, run: pipx uninstall sprawl-cli[/dim]"
+        )
 
     if not force:
         console.print()
-        if not Confirm.ask("[bold red]Are you absolutely sure you want to destroy these Sprawl traces?[/bold red]"):
+        if not Confirm.ask(
+            "[bold red]Are you absolutely sure you want to destroy these Sprawl traces?[/bold red]"
+        ):
             print_status("Wipe aborted.")
             return
 
@@ -61,12 +65,13 @@ def cmd_wipe(target_dir: Optional[str] = None, force: bool = False, local_only: 
                     deregister_workspace(workspace_name)
                     print_status(f"Deregistered workspace '{workspace_name}' from global tracking.")
                 except WorkspaceError:
-                    pass # Was not registered, ignore
+                    pass  # Was not registered, ignore
             except Exception:  # nosec B110
-                pass # Ignore registry errors during a nuclear wipe
-                
+                pass  # Ignore registry errors during a nuclear wipe
+
         try:
             from ..utils import rmtree_safe
+
             rmtree_safe(local_agents_dir)
             print_status(f"Destroyed local workspace: {local_agents_dir}")
         except Exception as e:
@@ -76,27 +81,24 @@ def cmd_wipe(target_dir: Optional[str] = None, force: bool = False, local_only: 
     if not local_only and has_global:
         try:
             from ..bind import ADAPTER_MAP
+
             workspaces = get_all_workspaces()
-            for ws_name, ws_info in workspaces.items():
+            for _ws_name, ws_info in workspaces.items():
                 ws_path = ws_info.get("path")
                 if ws_path and os.path.exists(ws_path):
                     # Remove .agent symlink/file
                     ag_symlink = os.path.join(ws_path, ".agent")
                     if os.path.islink(ag_symlink) or os.path.exists(ag_symlink):
-                        try:
+                        with contextlib.suppress(OSError):
                             os.remove(ag_symlink)
-                        except OSError:
-                            pass
-                    
+
                     # Remove all standard rules files
                     for adapter in ADAPTER_MAP.values():
                         if "path" in adapter:
                             rule_path = os.path.join(ws_path, adapter["path"])
                             if os.path.exists(rule_path):
-                                try:
+                                with contextlib.suppress(OSError):
                                     os.remove(rule_path)
-                                except OSError:
-                                    pass
                     print_status(f"Cleaned up editor bindings in workspace: {ws_path}")
         except Exception:  # nosec B110
             pass
@@ -116,6 +118,7 @@ def cmd_wipe(target_dir: Optional[str] = None, force: bool = False, local_only: 
         # Clean up any provisioned Antigravity MCP schemas
         try:
             from ..bind import _remove_antigravity_schemas
+
             _remove_antigravity_schemas()
         except Exception:  # nosec B110
             pass
@@ -123,9 +126,10 @@ def cmd_wipe(target_dir: Optional[str] = None, force: bool = False, local_only: 
         global_dir = os.path.dirname(config.config_path)
         try:
             from ..utils import rmtree_safe
+
             rmtree_safe(global_dir)
             print_status(f"Destroyed global DNA registry and configuration: {global_dir}")
         except Exception as e:
             raise SprawlError(f"Failed to wipe global registry: {e}")
-            
+
     console.print("\n[bold green]✔ Sprawl traces have been wiped.[/bold green]")

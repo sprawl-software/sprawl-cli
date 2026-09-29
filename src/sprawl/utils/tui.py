@@ -4,16 +4,16 @@ Pure standard library raw keypress reader and visual selection rendering using R
 Restores terminal cleanly on exit or abrupt failure.
 """
 
+import contextlib
 import os
 import sys
-import contextlib
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any
 
 if sys.platform != "win32":
     try:
-        import tty
         import select
         import termios
+        import tty
     except ImportError:
         tty = None  # type: ignore
         select = None  # type: ignore
@@ -29,7 +29,7 @@ else:
     termios = None  # type: ignore
 
 from rich.console import Console
-from rich.panel import Panel
+
 from ..theme import SDS_THEME
 
 # Reuse the global console styled with Sprawl Design System theme
@@ -41,11 +41,14 @@ def _enable_windows_vt() -> None:
     if sys.platform == "win32":
         try:
             import ctypes
+
             kernel32 = ctypes.windll.kernel32
             handle = kernel32.GetStdHandle(-11)  # STD_OUTPUT_HANDLE = -11
             mode = ctypes.c_ulong()
             if kernel32.GetConsoleMode(handle, ctypes.byref(mode)):
-                kernel32.SetConsoleMode(handle, mode.value | 0x0004)  # ENABLE_VIRTUAL_TERMINAL_PROCESSING
+                kernel32.SetConsoleMode(
+                    handle, mode.value | 0x0004
+                )  # ENABLE_VIRTUAL_TERMINAL_PROCESSING
         except (AttributeError, OSError):  # nosec B110
             pass
 
@@ -116,15 +119,13 @@ def read_key() -> str:
                 ch2 = msvcrt.getch()
             except Exception:
                 return ""
-            if ch2 == b"H":  # Arrow Up
-                return "\x1b[A"
-            elif ch2 == b"P":  # Arrow Down
-                return "\x1b[B"
-            elif ch2 == b"K":  # Arrow Left
-                return "\x1b[D"
-            elif ch2 == b"M":  # Arrow Right
-                return "\x1b[C"
-            return ""
+            arrow_keys = {
+                b"H": "\x1b[A",  # Arrow Up
+                b"P": "\x1b[B",  # Arrow Down
+                b"K": "\x1b[D",  # Arrow Left
+                b"M": "\x1b[C",  # Arrow Right
+            }
+            return arrow_keys.get(ch2, "")
         elif ch == b"\r":
             return "\r"
         elif ch == b"\n":
@@ -163,9 +164,9 @@ def read_key() -> str:
 
 def show_checkbox_menu(
     title: str,
-    categories: Dict[str, List[Tuple[str, bool]]],
+    categories: dict[str, list[tuple[str, bool]]],
     max_viewport: int = 12,
-) -> Optional[Dict[str, List[str]]]:
+) -> dict[str, list[str]] | None:
     """Renders a keyboard-interactive TUI checkbox menu for categorized DNA items.
 
     Args:
@@ -177,20 +178,24 @@ def show_checkbox_menu(
         Dict mapping category name to list of checked item names, or None if cancelled.
     """
     # Flatten categories into flat list of rows for rendering and index mapping
-    rows: List[Dict[str, Any]] = []
+    rows: list[dict[str, Any]] = []
     for cat, items in categories.items():
-        rows.append({
-            "is_header": True,
-            "label": cat.upper(),
-            "category": cat,
-        })
-        for name, checked in items:
-            rows.append({
-                "is_header": False,
-                "label": name,
+        rows.append(
+            {
+                "is_header": True,
+                "label": cat.upper(),
                 "category": cat,
-                "checked": checked,
-            })
+            }
+        )
+        for name, checked in items:
+            rows.append(
+                {
+                    "is_header": False,
+                    "label": name,
+                    "category": cat,
+                    "checked": checked,
+                }
+            )
 
     # List of all selectable file rows (non-headers)
     selectable_indices = [i for i, r in enumerate(rows) if not r["is_header"]]
@@ -217,12 +222,14 @@ def show_checkbox_menu(
             with console.capture() as capture:
                 # Menu Title / Instructions
                 console.print(f"[accent]━━━ {title} ━━━[/accent]")
-                console.print("[muted]Navigate: ↑/↓ | Toggle: Space | Confirm: Enter | Cancel: Esc/q[/muted]")
+                console.print(
+                    "[muted]Navigate: ↑/↓ | Toggle: Space | Confirm: Enter | Cancel: Esc/q[/muted]"
+                )
                 console.print()
 
                 # Viewport window of rows
                 visible_rows = rows[scroll_offset : scroll_offset + max_viewport]
-                
+
                 # Indicator if scrolled off top
                 if scroll_offset > 0:
                     console.print("   [accent]▲ (more items above)[/accent]")
@@ -231,17 +238,21 @@ def show_checkbox_menu(
 
                 for idx, row in enumerate(visible_rows):
                     absolute_idx = scroll_offset + idx
-                    is_active = (absolute_idx == active_row_idx)
+                    is_active = absolute_idx == active_row_idx
 
                     if row["is_header"]:
                         console.print(f" 📁 [accent]{row['label']}[/accent]")
                     else:
                         checkbox = "[success]✔[/success]" if row["checked"] else "[muted]☐[/muted]"
                         if is_active:
-                            console.print(f"  [accent]→[/accent] {checkbox} [accent][bold]{row['label']}[/bold][/accent]")
+                            console.print(
+                                f"  [accent]→[/accent] {checkbox} [accent][bold]{row['label']}[/bold][/accent]"
+                            )
                         else:
                             item_style = "info" if row["checked"] else "muted"
-                            console.print(f"    {checkbox} [{item_style}]{row['label']}[/{item_style}]")
+                            console.print(
+                                f"    {checkbox} [{item_style}]{row['label']}[/{item_style}]"
+                            )
 
                 # Indicator if scrolled off bottom
                 if scroll_offset + max_viewport < len(rows):
@@ -252,7 +263,9 @@ def show_checkbox_menu(
                 # Bottom status/metrics
                 num_checked = sum(1 for r in rows if not r["is_header"] and r.get("checked"))
                 active_label = rows[active_row_idx]["label"]
-                console.print(f" [muted]Selected: {active_label} | Checked: {num_checked}/{len(selectable_indices)}[/muted]")
+                console.print(
+                    f" [muted]Selected: {active_label} | Checked: {num_checked}/{len(selectable_indices)}[/muted]"
+                )
 
             # Render output and clean up old lines
             output_text = capture.get()
@@ -299,7 +312,7 @@ def show_checkbox_menu(
                     sys.stdout.flush()
 
                 # Compile and return checked items mapping
-                result: Dict[str, List[str]] = {cat: [] for cat in categories}
+                result: dict[str, list[str]] = {cat: [] for cat in categories}
                 for r in rows:
                     if not r["is_header"] and r["checked"]:
                         result[r["category"]].append(r["label"])
@@ -308,8 +321,8 @@ def show_checkbox_menu(
 
 def prompt_numbered_selection(
     title: str,
-    categories: Dict[str, List[Tuple[str, bool]]],
-) -> Optional[Dict[str, List[str]]]:
+    categories: dict[str, list[tuple[str, bool]]],
+) -> dict[str, list[str]] | None:
     """Renders a simple, zero-raw-mode numbered CLI prompt for selecting items.
 
     Compatible with all terminals (PowerShell, CMD, Git Bash, mintty, SSH, CI).
@@ -323,7 +336,7 @@ def prompt_numbered_selection(
     Returns:
         Dict mapping category name to list of selected item names, or None if cancelled.
     """
-    flat_items: List[Tuple[str, str, bool]] = []
+    flat_items: list[tuple[str, str, bool]] = []
     for cat, items in categories.items():
         for name, checked in items:
             flat_items.append((cat, name, checked))
@@ -333,11 +346,15 @@ def prompt_numbered_selection(
         return None
 
     console.print(f"\n[bold accent]━━━ {title} ━━━[/bold accent]")
-    console.print("[muted]Selective Configuration: Enter numbers (e.g. '1, 2'), names, 'all', 'none', or press Enter for defaults.[/muted]\n")
+    console.print(
+        "[muted]Selective Configuration: Enter numbers (e.g. '1, 2'), names, 'all', 'none', or press Enter for defaults.[/muted]\n"
+    )
 
     for idx, (cat, name, checked) in enumerate(flat_items, 1):
         status = "[success][selected][/success]" if checked else "[muted][unselected][/muted]"
-        console.print(f"  [bold cyan][{idx:>2}][/bold cyan] {name:<16} {status} [muted]({cat})[/muted]")
+        console.print(
+            f"  [bold cyan][{idx:>2}][/bold cyan] {name:<16} {status} [muted]({cat})[/muted]"
+        )
 
     defaults_summary = [name for _, name, checked in flat_items if checked]
     default_text = ", ".join(defaults_summary) if defaults_summary else "none"
@@ -349,7 +366,9 @@ def prompt_numbered_selection(
         user_input = sys.stdin.readline()
         if not user_input:
             # EOF reached (e.g. piped or closed stdin)
-            return {cat: [name for c, name, chk in flat_items if c == cat and chk] for cat in categories}
+            return {
+                cat: [name for c, name, chk in flat_items if c == cat and chk] for cat in categories
+            }
         user_input = user_input.strip()
     except (KeyboardInterrupt, EOFError):
         console.print("\n[warning]Selection cancelled.[/warning]")
@@ -359,7 +378,7 @@ def prompt_numbered_selection(
         console.print("[warning]Operation cancelled.[/warning]")
         return None
 
-    result: Dict[str, List[str]] = {cat: [] for cat in categories}
+    result: dict[str, list[str]] = {cat: [] for cat in categories}
 
     if user_input == "":
         # Default: keep current checked items
@@ -397,10 +416,9 @@ def prompt_numbered_selection(
     return result
 
 
-
 def show_mount_dashboard(workspace_root: str) -> None:
     """Renders the workspace mount manager dashboard."""
-    from ..commands.mount import _load_config, _write_config, _get_workspace_paths, slugify
+    from ..commands.mount import _get_workspace_paths, _load_config, _write_config
     from ..commands.sync_cmd import cmd_sync
 
     _, _, config_path = _get_workspace_paths(workspace_root)
@@ -412,7 +430,7 @@ def show_mount_dashboard(workspace_root: str) -> None:
 
     # Copy to mutable local state
     mounts = dict(mounts)
-    checked_states = {alias: True for alias in mounts}
+    checked_states = dict.fromkeys(mounts, True)
 
     active_idx = 0
     scroll_offset = 0
@@ -424,18 +442,22 @@ def show_mount_dashboard(workspace_root: str) -> None:
             # Construct dashboard rows
             rows = []
             for alias, path in sorted(mounts.items()):
-                rows.append({
-                    "alias": alias,
-                    "path": path,
-                    "checked": checked_states.get(alias, False),
-                    "is_add_btn": False
-                })
-            rows.append({
-                "alias": "[Add new directory mount...]",
-                "path": "",
-                "checked": False,
-                "is_add_btn": True
-            })
+                rows.append(
+                    {
+                        "alias": alias,
+                        "path": path,
+                        "checked": checked_states.get(alias, False),
+                        "is_add_btn": False,
+                    }
+                )
+            rows.append(
+                {
+                    "alias": "[Add new directory mount...]",
+                    "path": "",
+                    "checked": False,
+                    "is_add_btn": True,
+                }
+            )
 
             # Selectable index bounds
             if active_idx < 0:
@@ -463,8 +485,7 @@ def show_mount_dashboard(workspace_root: str) -> None:
 
                 for idx, r in enumerate(visible_rows):
                     abs_idx = scroll_offset + idx
-                    pointer = "→" if abs_idx == active_idx else " "
-                    
+
                     if r["is_add_btn"]:
                         btn_text = f"[success]{r['alias']}[/success]"
                         if abs_idx == active_idx:
@@ -474,17 +495,23 @@ def show_mount_dashboard(workspace_root: str) -> None:
                     else:
                         checkbox = "[success]✔[/success]" if r["checked"] else "[muted]☐[/muted]"
                         if abs_idx == active_idx:
-                            console.print(f"  [accent]→[/accent] {checkbox} [accent][bold]@{r['alias']}[/bold][/accent] → {r['path']}")
+                            console.print(
+                                f"  [accent]→[/accent] {checkbox} [accent][bold]@{r['alias']}[/bold][/accent] → {r['path']}"
+                            )
                         else:
                             item_style = "info" if r["checked"] else "muted"
-                            console.print(f"     {checkbox} [{item_style}]@{r['alias']}[/{item_style}] → {r['path']}")
+                            console.print(
+                                f"     {checkbox} [{item_style}]@{r['alias']}[/{item_style}] → {r['path']}"
+                            )
 
                 if scroll_offset + max_viewport < len(rows):
                     console.print("   [accent]▼ (more items below)[/accent]")
                 else:
                     console.print()
 
-                console.print("\n[muted][Enter] Save & Sync | [Space] Toggle | [Esc/q] Cancel[/muted]")
+                console.print(
+                    "\n[muted][Enter] Save & Sync | [Space] Toggle | [Esc/q] Cancel[/muted]"
+                )
 
             # Erase previous print
             output_text = capture.get()
@@ -525,11 +552,16 @@ def show_mount_dashboard(workspace_root: str) -> None:
                         sys.stdout.write("\033[J")
                         sys.stdout.flush()
                         last_printed_lines = 0
-                    
+
                     if _add_new_mounts(workspace_root, mounts, checked_states):
-                        cfg["allowed_mounts"] = {alias: path for alias, path in mounts.items() if checked_states.get(alias, False)}
+                        cfg["allowed_mounts"] = {
+                            alias: path
+                            for alias, path in mounts.items()
+                            if checked_states.get(alias, False)
+                        }
                         _write_config(config_path, cfg)
                         from ..output import print_status
+
                         print_status("Synchronizing workspace configurations...")
                         cmd_sync(workspace_root)
                         return
@@ -546,9 +578,14 @@ def show_mount_dashboard(workspace_root: str) -> None:
                         sys.stdout.flush()
                         last_printed_lines = 0
                     if _add_new_mounts(workspace_root, mounts, checked_states):
-                        cfg["allowed_mounts"] = {alias: path for alias, path in mounts.items() if checked_states.get(alias, False)}
+                        cfg["allowed_mounts"] = {
+                            alias: path
+                            for alias, path in mounts.items()
+                            if checked_states.get(alias, False)
+                        }
                         _write_config(config_path, cfg)
                         from ..output import print_status
+
                         print_status("Synchronizing workspace configurations...")
                         cmd_sync(workspace_root)
                         return
@@ -558,11 +595,16 @@ def show_mount_dashboard(workspace_root: str) -> None:
                         sys.stdout.write(f"\r\033[{last_printed_lines}A")
                         sys.stdout.write("\033[J")
                         sys.stdout.flush()
-                    
-                    cfg["allowed_mounts"] = {alias: path for alias, path in mounts.items() if checked_states.get(alias, False)}
+
+                    cfg["allowed_mounts"] = {
+                        alias: path
+                        for alias, path in mounts.items()
+                        if checked_states.get(alias, False)
+                    }
                     _write_config(config_path, cfg)
- 
+
                     from ..output import print_status
+
                     print_status("Synchronizing workspace configurations...")
                     cmd_sync(workspace_root)
                     return
@@ -571,15 +613,18 @@ def show_mount_dashboard(workspace_root: str) -> None:
 def _add_new_mounts(workspace_root: str, mounts: dict, checked_states: dict) -> bool:
     """Helper to run the directory picker and prompt for aliases without key bleeding."""
     from ..commands.mount import slugify
+
     new_paths = show_directory_picker(workspace_root)
     if new_paths:
         for new_path in new_paths:
             default_alias = slugify(os.path.basename(new_path))
-            sys.stdout.write(f"\rEnter mount alias for {os.path.basename(new_path)} (default: {default_alias}): ")
+            sys.stdout.write(
+                f"\rEnter mount alias for {os.path.basename(new_path)} (default: {default_alias}): "
+            )
             sys.stdout.flush()
             sys.stdout.write("\033[?25h")
             sys.stdout.flush()
-            
+
             if sys.platform == "win32" or termios is None or tty is None:
                 alias_input = sys.stdin.readline().strip()
             else:
@@ -604,8 +649,7 @@ def _add_new_mounts(workspace_root: str, mounts: dict, checked_states: dict) -> 
     return False
 
 
-
-def show_directory_picker(start_dir: str) -> Optional[List[str]]:
+def show_directory_picker(start_dir: str) -> list[str] | None:
     """Renders a keyboard-interactive directory selection browser TUI with checkboxes."""
     current_dir = os.path.abspath(start_dir)
     selected_paths = set()
@@ -613,40 +657,46 @@ def show_directory_picker(start_dir: str) -> Optional[List[str]]:
     scroll_offset = 0
     max_viewport = 10
     last_printed_lines = 0
-    
+
     while True:
         rows = []
-        rows.append({
-            "label": f"[Confirm Selection ({len(selected_paths)} folders checked)]",
-            "path": None,
-            "is_confirm": True,
-            "is_parent": False,
-            "is_dir": False
-        })
-        
+        rows.append(
+            {
+                "label": f"[Confirm Selection ({len(selected_paths)} folders checked)]",
+                "path": None,
+                "is_confirm": True,
+                "is_parent": False,
+                "is_dir": False,
+            }
+        )
+
         parent = os.path.dirname(current_dir)
         if parent != current_dir:
-            rows.append({
-                "label": ".. (Up one level)",
-                "path": parent,
-                "is_confirm": False,
-                "is_parent": True,
-                "is_dir": False
-            })
-            
+            rows.append(
+                {
+                    "label": ".. (Up one level)",
+                    "path": parent,
+                    "is_confirm": False,
+                    "is_parent": True,
+                    "is_dir": False,
+                }
+            )
+
         try:
             for item in sorted(os.listdir(current_dir)):
                 if item.startswith("."):
                     continue
                 full_path = os.path.join(current_dir, item)
                 if os.path.isdir(full_path):
-                    rows.append({
-                        "label": f"{item}/",
-                        "path": full_path,
-                        "is_confirm": False,
-                        "is_parent": False,
-                        "is_dir": True
-                    })
+                    rows.append(
+                        {
+                            "label": f"{item}/",
+                            "path": full_path,
+                            "is_confirm": False,
+                            "is_parent": False,
+                            "is_dir": True,
+                        }
+                    )
         except OSError:
             pass
 
@@ -665,41 +715,48 @@ def show_directory_picker(start_dir: str) -> Optional[List[str]]:
         with console.capture() as capture:
             console.print("[bold]━━━ Select Directories to Mount ━━━[/bold]")
             console.print(f"Current Path: [accent]{current_dir}[/accent]\n")
-            
+
             if scroll_offset > 0:
                 console.print("   [accent]▲ (more items above)[/accent]")
             else:
                 console.print()
-                
+
             for idx, r in enumerate(visible_rows):
                 abs_idx = scroll_offset + idx
-                pointer = "→" if abs_idx == active_idx else " "
-                
+
                 if r["is_confirm"]:
                     if abs_idx == active_idx:
-                        console.print(f"  [accent]→[/accent] [success][bold]{r['label']}[/bold][/success]")
+                        console.print(
+                            f"  [accent]→[/accent] [success][bold]{r['label']}[/bold][/success]"
+                        )
                     else:
                         console.print(f"     [success]{r['label']}[/success]")
                 elif r["is_parent"]:
                     if abs_idx == active_idx:
-                        console.print(f"  [accent]→[/accent] [muted][bold]{r['label']}[/bold][/muted]")
+                        console.print(
+                            f"  [accent]→[/accent] [muted][bold]{r['label']}[/bold][/muted]"
+                        )
                     else:
                         console.print(f"     [muted]{r['label']}[/muted]")
                 else:
                     checked = r["path"] in selected_paths
                     checkbox = "[success]✔[/success]" if checked else "[muted]☐[/muted]"
                     if abs_idx == active_idx:
-                        console.print(f"  [accent]→[/accent] {checkbox} [accent][bold]{r['label']}[/bold][/accent]")
+                        console.print(
+                            f"  [accent]→[/accent] {checkbox} [accent][bold]{r['label']}[/bold][/accent]"
+                        )
                     else:
                         item_style = "info" if checked else "muted"
                         console.print(f"     {checkbox} [{item_style}]{r['label']}[/{item_style}]")
-                        
+
             if scroll_offset + max_viewport < len(rows):
                 console.print("   [accent]▼ (more items below)[/accent]")
             else:
                 console.print()
-                
-            console.print("\n[muted][Space] Toggle Checkbox | [Enter] Navigate/Confirm | [Left] Go Up | [Esc/q] Cancel[/muted]")
+
+            console.print(
+                "\n[muted][Space] Toggle Checkbox | [Enter] Navigate/Confirm | [Left] Go Up | [Esc/q] Cancel[/muted]"
+            )
 
         output_text = capture.get()
         lines_to_print = output_text.splitlines()
@@ -757,4 +814,3 @@ def show_directory_picker(start_dir: str) -> Optional[List[str]]:
                 current_dir = r["path"]
                 active_idx = 0
                 scroll_offset = 0
-

@@ -3,13 +3,11 @@
 import os
 import re
 import subprocess
-from typing import Optional
 
 from ..config import config
-from ..output import print_status, print_warning, print_error
-from ..utils import DNA_ALIASES, get_git_env
 from ..exceptions import SprawlError
-from ._helpers import resolve_item_in_dna
+from ..output import print_error, print_status, print_warning
+from ..utils import DNA_ALIASES, get_git_env
 
 
 def cmd_init(git_url: str, target_dir: str) -> None:
@@ -38,6 +36,7 @@ def cmd_init(git_url: str, target_dir: str) -> None:
             fetched_dir = os.path.join(config.dna_registry_dir, alias_name)
             if os.path.exists(fetched_dir):
                 import shutil
+
                 print_status(f"Populating Global DNA hub at {config.agents_dir_global}...")
                 if not config.dry_run:
                     shutil.copytree(fetched_dir, config.agents_dir_global)
@@ -47,6 +46,7 @@ def cmd_init(git_url: str, target_dir: str) -> None:
         if not config.dry_run:
             os.makedirs(target_abs, exist_ok=True)
             from ..workspace import Workspace
+
             workspace = Workspace(target_abs)
             workspace.bind_dna(alias_name)
         print_status(f"Bound workspace to DNA context: @{alias_name}")
@@ -55,32 +55,43 @@ def cmd_init(git_url: str, target_dir: str) -> None:
     # Global Company DNA Initialization
     valid_prefixes = ("http://", "https://", "git@", "ssh://", "file://")
     if not git_url.startswith(valid_prefixes):
-        raise SprawlError(f"Security Violation: Invalid Git URL scheme. Must start with one of {valid_prefixes}")
+        raise SprawlError(
+            f"Security Violation: Invalid Git URL scheme. Must start with one of {valid_prefixes}"
+        )
 
     safe_print_url = re.sub(r"(https?://)[^:]+:[^@]+@", r"\g<1>***:***@", git_url)
 
     target_abs = os.path.abspath(target_dir)
     print_status(f"Initializing Sprawl Hub from {safe_print_url} into {target_abs}...")
 
-    config.update({
-        "remote_dna_url": safe_print_url,
-        "global_hub": config.agents_dir_global,
-        "target_hub_dir": target_abs,
-    })
-    
+    config.update(
+        {
+            "remote_dna_url": safe_print_url,
+            "global_hub": config.agents_dir_global,
+            "target_hub_dir": target_abs,
+        }
+    )
+
     from ..registry import update_dna_registry
+
     if config.verbose:
         print_status(f"Configuration written natively to {config.config_path}")
 
     if os.path.exists(config.agents_dir_global):
-        print_warning(f"{config.agents_dir_global} already exists. Skipping clone or you can manually update.")
+        print_warning(
+            f"{config.agents_dir_global} already exists. Skipping clone or you can manually update."
+        )
         if not config.dry_run:
             update_dna_registry(git_url)
     else:
         print_status(f"Cloning Global DNA to {config.agents_dir_global}...")
         if not config.dry_run:
             try:
-                subprocess.run(["git", "clone", git_url, config.agents_dir_global], check=True, env=get_git_env())
+                subprocess.run(
+                    ["git", "clone", git_url, config.agents_dir_global],
+                    check=True,
+                    env=get_git_env(),
+                )
                 update_dna_registry(git_url)
             except subprocess.CalledProcessError as e:
                 print_warning(f"Failed to clone repository: {e}")
@@ -108,7 +119,7 @@ def cmd_init(git_url: str, target_dir: str) -> None:
     print_status("Initialization complete. Ensure ~/.local/bin is in your PATH.")
 
 
-def cmd_fetch_dna(git_url: str, alias_name: Optional[str] = None) -> None:
+def cmd_fetch_dna(git_url: str, alias_name: str | None = None) -> None:
     """Downloads a secondary DNA directly into the registry without modifying global context.
 
     Args:
@@ -120,21 +131,29 @@ def cmd_fetch_dna(git_url: str, alias_name: Optional[str] = None) -> None:
 
     valid_prefixes = ("http://", "https://", "git@", "ssh://", "file://")
     if not git_url.startswith(valid_prefixes):
-        raise SprawlError(f"Security Violation: Invalid Git URL scheme. Must start with one of {valid_prefixes}")
+        raise SprawlError(
+            f"Security Violation: Invalid Git URL scheme. Must start with one of {valid_prefixes}"
+        )
 
     if not alias_name:
         match = re.search(r"([^/]+?)(?:\.git)?/?$", git_url)
         alias_name = match.group(1) if match else "default"
 
     if ".." in alias_name or "/" in alias_name or "\\" in alias_name:
-        raise SprawlError("Security Violation: Alias name cannot contain path traversal characters.")
+        raise SprawlError(
+            "Security Violation: Alias name cannot contain path traversal characters."
+        )
     if not re.match(r"^[a-zA-Z0-9_-]+$", alias_name):
-        raise SprawlError("Security Violation: Alias name must be alphanumeric, underscores, or hyphens only.")
+        raise SprawlError(
+            "Security Violation: Alias name must be alphanumeric, underscores, or hyphens only."
+        )
 
     dna_target_dir = os.path.join(config.dna_registry_dir, alias_name)
 
     if os.path.exists(dna_target_dir):
-        print_status(f"DNA context '{alias_name}' already exists at {dna_target_dir}. Attempting to pull latest changes...")
+        print_status(
+            f"DNA context '{alias_name}' already exists at {dna_target_dir}. Attempting to pull latest changes..."
+        )
         if not config.dry_run:
             try:
                 subprocess.run(["git", "-C", dna_target_dir, "pull"], check=True, env=get_git_env())
@@ -145,11 +164,14 @@ def cmd_fetch_dna(git_url: str, alias_name: Optional[str] = None) -> None:
         if not config.dry_run:
             os.makedirs(config.dna_registry_dir, exist_ok=True)
             try:
-                subprocess.run(["git", "clone", git_url, dna_target_dir], check=True, env=get_git_env())
+                subprocess.run(
+                    ["git", "clone", git_url, dna_target_dir], check=True, env=get_git_env()
+                )
             except subprocess.CalledProcessError as e:
                 print_warning(f"Failed to clone repository: {e}")
                 raise SprawlError("Authentication failed during git clone.")
 
     if not config.dry_run:
         from ..validation import validate_dna_directory
+
         validate_dna_directory(dna_target_dir)

@@ -3,7 +3,7 @@
 import os
 import sys
 import unittest
-from unittest.mock import patch, MagicMock
+from unittest.mock import MagicMock, patch
 
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "../src")))
 
@@ -15,12 +15,25 @@ class TestCommandRegistry(unittest.TestCase):
         """All known commands are registered in the COMMAND_REGISTRY."""
         # We test by importing get_parser and checking subparser destinations
         from src.sprawl.cli import get_parser
+
         parser = get_parser()
 
         expected_commands = [
-            "init", "fetch-dna", "ls", "add", "create", "graft",
-            "sync", "bind", "update", "clean-test", "clean-demo",
-            "scaffold", "rm", "man", "demo",
+            "init",
+            "fetch-dna",
+            "ls",
+            "add",
+            "create",
+            "graft",
+            "sync",
+            "bind",
+            "update",
+            "clean-test",
+            "clean-demo",
+            "scaffold",
+            "rm",
+            "man",
+            "demo",
         ]
 
         # All expected commands must have a subparser
@@ -58,6 +71,7 @@ class TestCommandRegistry(unittest.TestCase):
 
         # Simulate the registry dispatch pattern
         from src.sprawl.core import cmd_graft
+
         REGISTRY = {
             "graft": lambda a: cmd_graft(),
         }

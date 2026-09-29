@@ -4,13 +4,13 @@ Tests the sibling-directory prefix escape that was patched in the
 startswith() path containment check.
 """
 
+import json
 import os
 import shutil
 import tempfile
-import json
 import unittest
 
-from src.sprawl.mcp.workspace_fs import WorkspaceFS, MCPError
+from src.sprawl.mcp.workspace_fs import MCPError, WorkspaceFS
 
 
 class TestWorkspaceFSSiblingDirectoryEscape(unittest.TestCase):
@@ -42,11 +42,7 @@ class TestWorkspaceFSSiblingDirectoryEscape(unittest.TestCase):
         # Scaffold sprawl-config.json with allowed_mounts
         agents_dir = os.path.join(self.workspace_root, ".agents")
         os.makedirs(agents_dir)
-        config_data = {
-            "allowed_mounts": {
-                "lib": self.mount_root
-            }
-        }
+        config_data = {"allowed_mounts": {"lib": self.mount_root}}
         with open(os.path.join(agents_dir, "sprawl-config.json"), "w") as f:
             json.dump(config_data, f)
 
@@ -91,7 +87,7 @@ class TestWorkspaceFSSiblingDirectoryEscape(unittest.TestCase):
         safe_path = self.fs._get_safe_path("@lib/src/main.py")
         self.assertEqual(
             os.path.realpath(safe_path),
-            os.path.realpath(os.path.join(self.mount_root, "src", "main.py"))
+            os.path.realpath(os.path.join(self.mount_root, "src", "main.py")),
         )
 
 

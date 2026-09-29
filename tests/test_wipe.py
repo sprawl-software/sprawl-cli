@@ -4,11 +4,10 @@ import os
 import shutil
 import tempfile
 import unittest
-from unittest.mock import patch, MagicMock
+from unittest.mock import patch
 
 from src.sprawl.commands.wipe import cmd_wipe
 from src.sprawl.config import config
-from src.sprawl.exceptions import SprawlError
 
 
 class TestWipe(unittest.TestCase):
@@ -62,11 +61,7 @@ class TestWipe(unittest.TestCase):
     def test_wipe_nuclear_purges_everything(self, mock_get_all, mock_expanduser):
         """wipe nuclear deletes local workspace, global registry, sprawl_rc, and cleans adapter files."""
         mock_expanduser.return_value = self.sprawl_rc
-        mock_get_all.return_value = {
-            "my_workspace": {
-                "path": self.test_dir
-            }
-        }
+        mock_get_all.return_value = {"my_workspace": {"path": self.test_dir}}
 
         cmd_wipe(target_dir=self.test_dir, force=True, local_only=False)
 

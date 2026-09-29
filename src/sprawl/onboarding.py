@@ -1,9 +1,7 @@
 """Interactive first-run onboarding wizard for lead generation."""
 
-import sys
-from .output import print_status, print_warning
-from .tui.formatter import format_panel
 from .config import config
+from .tui.formatter import format_panel
 
 
 def run_onboarding_wizard() -> None:
@@ -83,16 +81,16 @@ def run_onboarding_wizard() -> None:
             pass
 
     # Save to config.json
-    config.update({
-        "onboarding_completed": True,
-        "lead_info": {
-            "name": name,
-            "email": email,
-            "company_size": size_choice,
-            "primary_use_case": case_choice,
-        },
-    })
-
-    print(
-        "\n\033[38;2;16;185;129m✔ Onboarding complete! Thank you for setting up Sprawl.\033[0m\n"
+    config.update(
+        {
+            "onboarding_completed": True,
+            "lead_info": {
+                "name": name,
+                "email": email,
+                "company_size": size_choice,
+                "primary_use_case": case_choice,
+            },
+        }
     )
+
+    print("\n\033[38;2;16;185;129m✔ Onboarding complete! Thank you for setting up Sprawl.\033[0m\n")

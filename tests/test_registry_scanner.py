@@ -1,18 +1,17 @@
-import unittest
 import os
 import shutil
-import tempfile
 import sys
+import tempfile
+import unittest
 from unittest.mock import patch
 
 # Ensure the local src is available
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '../src')))
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "../src")))
 
 from src.sprawl.utils.registry_scanner import RegistryScanner
 
 
 class TestRegistryScanner(unittest.TestCase):
-
     def setUp(self):
         self.test_dir = tempfile.mkdtemp()
         self.workspace_dir = os.path.join(self.test_dir, "my-workspace")
@@ -32,7 +31,7 @@ class TestRegistryScanner(unittest.TestCase):
             f.write("# Rule B")
         with open(os.path.join(self.dna_dir, "rules", ".hidden_rule"), "w") as f:
             f.write("# Hidden")
-        
+
         # Skill folder
         os.makedirs(os.path.join(self.dna_dir, "skills", "skill_one"))
         os.makedirs(os.path.join(self.dna_dir, "skills", "skill_two"))
@@ -44,7 +43,7 @@ class TestRegistryScanner(unittest.TestCase):
     def test_scan_no_manifest(self, mock_get_context):
         """Verify scan handles missing sprawl_manifest.yml gracefully (all items unchecked)."""
         mock_get_context.return_value = self.dna_dir
-        
+
         scanner = RegistryScanner(self.workspace_dir)
         res = scanner.scan()
 

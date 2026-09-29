@@ -1,7 +1,9 @@
 """Unit tests for the Sprawl Theme system."""
 
 import unittest
+
 from src.sprawl.theme import SDS_THEME
+
 
 class TestTheme(unittest.TestCase):
     def test_theme_keys(self):

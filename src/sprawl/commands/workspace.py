@@ -4,14 +4,17 @@ import os
 import re
 import shutil
 
-from ..config import config
-from ..output import print_status, print_warning, console
-from ..exceptions import SprawlError
-from ..workspace import (
-    register_workspace, deregister_workspace, get_workspace_info,
-    get_all_workspaces, WorkspaceError
-)
 from rich.table import Table
+
+from ..config import config
+from ..exceptions import SprawlError
+from ..output import console, print_status, print_warning
+from ..workspace import (
+    deregister_workspace,
+    get_all_workspaces,
+    get_workspace_info,
+    register_workspace,
+)
 
 
 def cmd_create(workspace_name: str, path: str = None) -> None:
@@ -34,6 +37,7 @@ def cmd_create(workspace_name: str, path: str = None) -> None:
         raise SprawlError(f"Workspace directory {workspace_dir} already exists.")
 
     from ..output import operation_spinner
+
     if config.dry_run:
         print_status(f"Creating new workspace '{workspace_name}' at {workspace_dir}...")
         if config.verbose:
@@ -58,7 +62,7 @@ bindings: []
 """
         with open(manifest_path, "w", encoding="utf-8") as f:
             f.write(default_content)
-        
+
         # Scaffold clean sprawl-config.json
         config_path = os.path.join(local_agents_dir, "sprawl-config.json")
         default_config = """{
@@ -69,17 +73,23 @@ bindings: []
             f.write(default_config)
 
         register_workspace(workspace_name, workspace_dir)
-        
+
     from rich.panel import Panel
+
     from ..output import console
-    text = f"[success]✔ Workspace Created[/success]\n"
+
+    text = "[success]✔ Workspace Created[/success]\n"
     text += f"• Name: {workspace_name}\n"
     text += f"• Path: {workspace_dir}\n"
-    text += f"• DNA Binding: @core\n"
-    text += f"\n• Run [accent]sprawl bind[/accent] inside to select rules bindings for your IDEs/agents."
-    text += f"\n• Run [accent]sprawl sync[/accent] inside to orchestrate."
+    text += "• DNA Binding: @core\n"
+    text += (
+        "\n• Run [accent]sprawl bind[/accent] inside to select rules bindings for your IDEs/agents."
+    )
+    text += "\n• Run [accent]sprawl sync[/accent] inside to orchestrate."
     console.print()
-    console.print(Panel(text, title="[accent]Workspace Initialization[/accent]", border_style="#5D5CFF"))
+    console.print(
+        Panel(text, title="[accent]Workspace Initialization[/accent]", border_style="#5D5CFF")
+    )
 
 
 def cmd_graft() -> None:
@@ -89,21 +99,25 @@ def cmd_graft() -> None:
     local_agents_dir = os.path.join(cwd, ".agents")
     if not config.dry_run:
         os.makedirs(local_agents_dir, exist_ok=True)
-        
+
     manifest_path = os.path.join(local_agents_dir, "sprawl_manifest.yml")
 
     if os.path.exists(manifest_path):
-        raise SprawlError(f"A sprawl_manifest.yml already exists in {local_agents_dir}. Grafting aborted.")
+        raise SprawlError(
+            f"A sprawl_manifest.yml already exists in {local_agents_dir}. Grafting aborted."
+        )
 
     print_status(f"Grafting Sprawl DNA onto '{app_name}' at {cwd}...")
 
     # Harvest legacy configurations first
     from ..graft import harvest_legacy_rules
+
     harvested = []
     if not config.dry_run:
         harvested = harvest_legacy_rules(cwd, local_agents_dir)
 
     from ..utils import CATEGORIES
+
     discovered_artifacts = {cat: [] for cat in CATEGORIES}
 
     # 1. Scan existing .agents/
@@ -116,18 +130,20 @@ def cmd_graft() -> None:
 
     # 2. Heuristic discovery based on workspace root files
     if not discovered_artifacts["rules"]:
-        if os.path.exists(os.path.join(cwd, "requirements.txt")) or os.path.exists(os.path.join(cwd, "pyproject.toml")):
+        if os.path.exists(os.path.join(cwd, "requirements.txt")) or os.path.exists(
+            os.path.join(cwd, "pyproject.toml")
+        ):
             discovered_artifacts["rules"].append("python.md")
         if os.path.exists(os.path.join(cwd, "package.json")):
             discovered_artifacts["rules"].append("web-dev.md")
         if os.path.exists(os.path.join(cwd, "Cargo.toml")):
             discovered_artifacts["rules"].append("wasm.md")
-            
+
         if not discovered_artifacts["rules"]:
-            discovered_artifacts["rules"].append("engineering.md") # absolute fallback
+            discovered_artifacts["rules"].append("engineering.md")  # absolute fallback
 
     if not discovered_artifacts["skills"]:
-        discovered_artifacts["skills"].append("web_artifacts_builder") # absolute fallback
+        discovered_artifacts["skills"].append("web_artifacts_builder")  # absolute fallback
 
     # 3. Detect MCP configuration
     # (atoms is deprecated, skipping atoms discovery)
@@ -139,7 +155,7 @@ def cmd_graft() -> None:
         "local_windsurf.md": "windsurf",
         "local_copilot.md": "copilot",
         "local_claude.md": "claude-code",
-        "local_agent.md": "google-antigravity"
+        "local_agent.md": "google-antigravity",
     }
     active_bindings = []
     local_groups = {f"local_{cat}": [] for cat in CATEGORIES}
@@ -195,12 +211,14 @@ def cmd_graft() -> None:
             "• Run [accent]sprawl sync[/accent] to orchestrate the workspace."
         )
 
+
 def cmd_ws_list() -> None:
     """Lists all tracked workspaces with their details."""
     workspaces = get_all_workspaces()
     if not workspaces:
         if config.json_logging:
             import json
+
             print(json.dumps([]))
             return
         print_status("No workspaces currently tracked in the registry.")
@@ -208,6 +226,7 @@ def cmd_ws_list() -> None:
 
     if config.json_logging:
         import json
+
         print(json.dumps([{"name": k, **v} for k, v in workspaces.items()]))
         return
 
@@ -224,9 +243,9 @@ def cmd_ws_list() -> None:
         path = data.get("path", "Unknown")
         dna = data.get("dna_source") or "Global/Default"
         last_sync = data.get("last_sync_timestamp") or "Never"
-        
+
         status = "[success]●[/success]" if os.path.exists(path) else "[error]○[/error]"
-        
+
         sync_colored = last_sync
         if last_sync != "Never":
             try:
@@ -242,14 +261,15 @@ def cmd_ws_list() -> None:
                 pass
         else:
             sync_colored = "[error]Never[/error]"
-            
+
         table.add_row(status, name, path, dna, sync_colored)
 
     console.print(table)
 
+
 def cmd_ws_remove(name: str, delete: bool = False) -> None:
     """Removes a workspace from the registry and optionally from disk.
-    
+
     Args:
         name: Name of the workspace to remove.
         delete: Whether to also delete the directory.
@@ -263,47 +283,47 @@ def cmd_ws_remove(name: str, delete: bool = False) -> None:
         path = ws_info.get("path")
         deregister_workspace(name)
         print_status(f"Workspace '{name}' has been deregistered.")
-        
+
         if delete and path and os.path.exists(path):
             if not config.dry_run:
                 shutil.rmtree(path)
             print_status(f"Workspace directory {path} has been deleted.")
-            
+
     except SprawlError as e:
         raise e
     except Exception as e:
         raise SprawlError(f"Failed to remove workspace '{name}': {e}")
 
+
 def cmd_ws_push(name: str = None) -> None:
     """Syncs DNA updates to all tracked workspaces or a specific one.
-    
+
     Args:
         name: Optional name of a specific workspace to sync.
     """
     from .sync_cmd import cmd_sync
+
     workspaces = get_all_workspaces()
-    
+
     if name:
         if name not in workspaces:
             raise SprawlError(f"Workspace '{name}' is not currently tracked.")
         targets = {name: workspaces[name]}
     else:
         targets = workspaces
-        
+
     if not targets:
         print_status("No workspaces currently tracked in the registry.")
         return
-        
+
     for ws_name, data in targets.items():
         path = data.get("path")
         if not path or not os.path.exists(path):
             print_warning(f"Workspace '{ws_name}' path '{path}' not found. Skipping.")
             continue
-            
+
         print_status(f"Pushing updates to workspace '{ws_name}' at {path}...")
         try:
             cmd_sync(target_dir=path)
         except Exception as e:
             print_warning(f"Failed to sync workspace '{ws_name}': {e}")
-
-

@@ -4,11 +4,12 @@ Replaces the old global singleton with a proper dataclass that supports
 dependency injection for testing and environment-driven path resolution.
 """
 
-import os
-import json
+import contextlib
 import hashlib
+import json
+import os
 from dataclasses import dataclass, field
-from typing import Any, Optional
+from typing import Any
 
 
 @dataclass
@@ -31,7 +32,7 @@ class SprawlConfig:
     config_path: str = field(default="", init=False)
     workspace_registry_path: str = field(default="", init=False)
     workspaces_dir: str = field(default="", init=False)
-    vault_path: Optional[str] = field(default=None, init=False)
+    vault_path: str | None = field(default=None, init=False)
 
     def __post_init__(self) -> None:
         """Resolve all filesystem paths based on current test_mode state."""
@@ -64,7 +65,6 @@ class SprawlConfig:
         path_hash = hashlib.sha256(abs_path.encode()).hexdigest()
         return os.path.join(self.workspaces_dir, path_hash)
 
-
     def reinitialize(self) -> None:
         """Re-evaluates environment state and resolves paths accordingly."""
         self.test_mode = os.environ.get("SPRAWL_TEST_MODE") == "1"
@@ -76,7 +76,7 @@ class SprawlConfig:
         if not os.path.exists(self.config_path):
             return {}
         try:
-            with open(self.config_path, "r", encoding="utf-8") as f:
+            with open(self.config_path, encoding="utf-8") as f:
                 return json.load(f)
         except json.JSONDecodeError:
             return {}
@@ -91,20 +91,16 @@ class SprawlConfig:
             with open(tmp_path, "w", encoding="utf-8") as f:
                 json.dump(config_data, f, indent=4)
             os.replace(tmp_path, self.config_path)
-        except Exception as e:
+        except Exception:
             if os.path.exists(tmp_path):
-                try:
+                with contextlib.suppress(OSError):
                     os.remove(tmp_path)
-                except OSError:
-                    pass
             raise
 
     @classmethod
     def from_env(cls) -> "SprawlConfig":
         """Factory constructor — creates a config instance driven entirely by environment."""
-        return cls(
-            test_mode=os.environ.get("SPRAWL_TEST_MODE") == "1"
-        )
+        return cls(test_mode=os.environ.get("SPRAWL_TEST_MODE") == "1")
 
 
 def create_config(test_mode: bool = False) -> SprawlConfig:

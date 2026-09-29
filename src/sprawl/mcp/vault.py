@@ -3,10 +3,10 @@
 Global vault access limited to configured vault_path. Pure stdlib + rich.
 """
 
+import json
 import os
 import sys
-import json
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 
 class MCPError(Exception):
@@ -28,23 +28,24 @@ class VaultManager:
         """Resolves relative path and ensures it stays within vault root."""
         # Normalize note names if they don't have .md extension
         if not rel_path.endswith(".md") and not os.path.isdir(os.path.join(self.root, rel_path)):
-             rel_path += ".md"
-             
+            rel_path += ".md"
+
         abs_path = os.path.abspath(os.path.join(self.root, rel_path))
         real_path = os.path.realpath(abs_path)
         real_root = os.path.realpath(self.root)
-        
+
         # Enforce strict directory boundary — prevent sibling-directory prefix escapes
         if real_path != real_root and not real_path.startswith(real_root + os.sep):
-            raise MCPError(-32602, f"Security Violation: Path '{rel_path}' resolves outside vault root.")
+            raise MCPError(
+                -32602, f"Security Violation: Path '{rel_path}' resolves outside vault root."
+            )
         return real_path
-
 
     def read_note(self, path: str) -> str:
         safe_path = self._get_safe_path(path)
         if not os.path.isfile(safe_path):
             raise MCPError(-32602, f"Note not found: {path}")
-        with open(safe_path, "r", encoding="utf-8", errors="ignore") as f:
+        with open(safe_path, encoding="utf-8", errors="ignore") as f:
             return f.read()
 
     def write_note(self, path: str, content: str) -> str:
@@ -54,11 +55,11 @@ class VaultManager:
             f.write(content)
         return f"Successfully wrote to {path}"
 
-    def list_notes(self, path: str = ".") -> List[str]:
+    def list_notes(self, path: str = ".") -> list[str]:
         safe_path = self._get_safe_path(path)
         if not os.path.isdir(safe_path):
             raise MCPError(-32602, f"Directory not found: {path}")
-        
+
         items = []
         for item in os.listdir(safe_path):
             if item.startswith("."):
@@ -66,11 +67,11 @@ class VaultManager:
             items.append(item)
         return sorted(items)
 
-    def search_notes(self, query: str) -> List[Dict[str, str]]:
+    def search_notes(self, query: str) -> list[dict[str, str]]:
         """Simple keyword search across notes."""
         results = []
         query = query.lower()
-        for root, dirs, files in os.walk(self.root):
+        for root, _dirs, files in os.walk(self.root):
             if ".obsidian" in root:
                 continue
             for file in files:
@@ -78,13 +79,17 @@ class VaultManager:
                     path = os.path.join(root, file)
                     rel_path = os.path.relpath(path, self.root)
                     try:
-                        with open(path, "r", encoding="utf-8", errors="ignore") as f:
+                        with open(path, encoding="utf-8", errors="ignore") as f:
                             content = f.read()
                             if query in content.lower() or query in file.lower():
-                                results.append({
-                                    "path": rel_path,
-                                    "preview": content[:200] + "..." if len(content) > 200 else content
-                                })
+                                results.append(
+                                    {
+                                        "path": rel_path,
+                                        "preview": content[:200] + "..."
+                                        if len(content) > 200
+                                        else content,
+                                    }
+                                )
                     except OSError:
                         continue
         return results
@@ -102,14 +107,14 @@ class MCPServer:
             "search_notes": self._tool_search_notes,
         }
 
-    def _tool_read_note(self, arguments: Dict[str, Any]) -> Dict[str, Any]:
+    def _tool_read_note(self, arguments: dict[str, Any]) -> dict[str, Any]:
         path = arguments.get("path")
         if not path:
             raise MCPError(-32602, "Missing 'path' argument.")
         content = self.vault.read_note(path)
         return {"content": [{"type": "text", "text": content}]}
 
-    def _tool_write_note(self, arguments: Dict[str, Any]) -> Dict[str, Any]:
+    def _tool_write_note(self, arguments: dict[str, Any]) -> dict[str, Any]:
         path = arguments.get("path")
         content = arguments.get("content")
         if not path or content is None:
@@ -117,12 +122,12 @@ class MCPServer:
         result = self.vault.write_note(path, content)
         return {"content": [{"type": "text", "text": result}]}
 
-    def _tool_list_notes(self, arguments: Dict[str, Any]) -> Dict[str, Any]:
+    def _tool_list_notes(self, arguments: dict[str, Any]) -> dict[str, Any]:
         path = arguments.get("path", ".")
         items = self.vault.list_notes(path)
         return {"content": [{"type": "text", "text": "\n".join(items)}]}
 
-    def _tool_search_notes(self, arguments: Dict[str, Any]) -> Dict[str, Any]:
+    def _tool_search_notes(self, arguments: dict[str, Any]) -> dict[str, Any]:
         query = arguments.get("query")
         if not query:
             raise MCPError(-32602, "Missing 'query' argument.")
@@ -145,7 +150,7 @@ class MCPServer:
             except Exception as e:
                 self.send_error(None, -32603, f"Internal error: {str(e)}")
 
-    def handle_request(self, request: Dict[str, Any]) -> Optional[Dict[str, Any]]:
+    def handle_request(self, request: dict[str, Any]) -> dict[str, Any] | None:
         msg_id = request.get("id")
         method = request.get("method")
         params = request.get("params", {})
@@ -157,10 +162,10 @@ class MCPServer:
                 "result": {
                     "protocolVersion": "2024-11-05",
                     "capabilities": {},
-                    "serverInfo": {"name": "sprawl-vault", "version": "1.0.0"}
-                }
+                    "serverInfo": {"name": "sprawl-vault", "version": "1.0.0"},
+                },
             }
-        
+
         if method == "notifications/initialized":
             return None
 
@@ -175,27 +180,37 @@ class MCPServer:
                             "description": "Read the content of a note from the Obsidian vault.",
                             "inputSchema": {
                                 "type": "object",
-                                "properties": {"path": {"type": "string", "description": "Relative path to the note (e.g. 'Work/Meeting.md' or 'ProjectX')"}},
-                                "required": ["path"]
-                            }
+                                "properties": {
+                                    "path": {
+                                        "type": "string",
+                                        "description": "Relative path to the note (e.g. 'Work/Meeting.md' or 'ProjectX')",
+                                    }
+                                },
+                                "required": ["path"],
+                            },
                         },
                         {
                             "name": "write_note",
                             "description": "Create or update a note in the Obsidian vault.",
                             "inputSchema": {
                                 "type": "object",
-                                "properties": {"path": {"type": "string"}, "content": {"type": "string"}},
-                                "required": ["path", "content"]
-                            }
+                                "properties": {
+                                    "path": {"type": "string"},
+                                    "content": {"type": "string"},
+                                },
+                                "required": ["path", "content"],
+                            },
                         },
                         {
                             "name": "list_notes",
                             "description": "List notes and folders in the vault.",
                             "inputSchema": {
                                 "type": "object",
-                                "properties": {"path": {"type": "string", "description": "Subfolder to list"}},
-                                "required": []
-                            }
+                                "properties": {
+                                    "path": {"type": "string", "description": "Subfolder to list"}
+                                },
+                                "required": [],
+                            },
                         },
                         {
                             "name": "search_notes",
@@ -203,11 +218,11 @@ class MCPServer:
                             "inputSchema": {
                                 "type": "object",
                                 "properties": {"query": {"type": "string"}},
-                                "required": ["query"]
-                            }
-                        }
+                                "required": ["query"],
+                            },
+                        },
                     ]
-                }
+                },
             }
 
         if method == "tools/call":
@@ -221,29 +236,25 @@ class MCPServer:
                     return {
                         "jsonrpc": "2.0",
                         "id": msg_id,
-                        "error": {"code": e.code, "message": e.message, "data": e.data}
+                        "error": {"code": e.code, "message": e.message, "data": e.data},
                     }
                 except Exception as e:
                     return {
                         "jsonrpc": "2.0",
                         "id": msg_id,
-                        "error": {"code": -32603, "message": str(e)}
+                        "error": {"code": -32603, "message": str(e)},
                     }
             else:
                 return {
                     "jsonrpc": "2.0",
                     "id": msg_id,
-                    "error": {"code": -32601, "message": f"Tool not found: {tool_name}"}
+                    "error": {"code": -32601, "message": f"Tool not found: {tool_name}"},
                 }
 
         return None
 
     def send_error(self, msg_id: Any, code: int, message: str):
-        response = {
-            "jsonrpc": "2.0",
-            "id": msg_id,
-            "error": {"code": code, "message": message}
-        }
+        response = {"jsonrpc": "2.0", "id": msg_id, "error": {"code": code, "message": message}}
         sys.stdout.write(json.dumps(response) + "\n")
         sys.stdout.flush()
 
@@ -252,7 +263,7 @@ if __name__ == "__main__":
     if len(sys.argv) < 2:
         print("Usage: python vault.py <vault_path>", file=sys.stderr)
         sys.exit(1)
-    
+
     root = sys.argv[1]
     try:
         mgr = VaultManager(root)

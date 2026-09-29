@@ -5,8 +5,8 @@ structured mode. All modules import from here instead of utils.py.
 Single dependency: rich>=13.0.0.
 """
 
-import json
 import contextlib
+import json
 import sys
 from typing import Any
 
@@ -33,17 +33,18 @@ console = Console(theme=SDS_THEME, legacy_windows=False if sys.platform == "win3
 # ---------------------------------------------------------------------------
 
 _LOG_STYLES: dict[str, dict[str, str]] = {
-    "debug":   {"prefix": "[~]", "style": "debug"},
-    "info":    {"prefix": "[*]", "style": "accent"},
+    "debug": {"prefix": "[~]", "style": "debug"},
+    "info": {"prefix": "[*]", "style": "accent"},
     "success": {"prefix": "[✓]", "style": "success"},
     "warning": {"prefix": "[!]", "style": "warning"},
-    "error":   {"prefix": "[X]", "style": "error"},
+    "error": {"prefix": "[X]", "style": "error"},
 }
 
 
 # ---------------------------------------------------------------------------
 # Core Output Engine
 # ---------------------------------------------------------------------------
+
 
 def _emit(
     level: str,
@@ -77,7 +78,9 @@ def _emit(
     elif level == "error":
         text = f"[bold error]{message}[/bold error]\n\n[dim]Tip: run [accent]sprawl doctor[/accent] to diagnose environment issues.[/dim]"
         console.print()
-        console.print(Panel(text, title="[error]Sprawl Execution Error[/error]", border_style="error"))
+        console.print(
+            Panel(text, title="[error]Sprawl Execution Error[/error]", border_style="error")
+        )
         console.print()
     else:
         msg_style = "info" if level != "debug" else "debug"
@@ -93,6 +96,7 @@ def _emit(
 # Public API — Drop-in replacements for old utils.print_* functions
 # ---------------------------------------------------------------------------
 
+
 @contextlib.contextmanager
 def operation_spinner(message: str) -> Any:
     """Context manager for a rich spinner during long operations."""
@@ -104,6 +108,7 @@ def operation_spinner(message: str) -> Any:
 
     with console.status(f"[accent]{message}[/accent]", spinner="dots"):
         yield
+
 
 def print_debug(msg: str, context: dict[str, Any] | None = None) -> None:
     """Prints a debug-level message (only visible in verbose mode).
@@ -154,4 +159,3 @@ def print_error(msg: str, context: dict[str, Any] | None = None) -> None:
         context: Optional structured context fields.
     """
     _emit("error", msg, context)
-

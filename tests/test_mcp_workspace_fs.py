@@ -101,6 +101,34 @@ class TestMCPServer(unittest.TestCase):
         resp = self.server.handle_request(req)
         self.assertEqual(resp["result"]["content"][0]["text"], "content")
 
+    def test_cli_mounts_access(self):
+        mount_dir = os.path.join(self.test_dir, "external_mount")
+        os.makedirs(mount_dir)
+        test_file = os.path.join(mount_dir, "mounted.txt")
+        with open(test_file, "w") as f:
+            f.write("from external mount")
+
+        fs_with_mount = WorkspaceFS(self.test_dir, cli_mounts={"ext": mount_dir})
+        content = fs_with_mount.read_file("@ext/mounted.txt")
+        self.assertEqual(content, "from external mount")
+
+        # Test writing via mount
+        fs_with_mount.write_file("@ext/written.txt", "written content")
+        with open(os.path.join(mount_dir, "written.txt")) as f:
+            self.assertEqual(f.read(), "written content")
+
+    def test_cli_mounts_tools_list(self):
+        mount_dir = os.path.join(self.test_dir, "external_mount")
+        os.makedirs(mount_dir)
+        fs = WorkspaceFS(self.test_dir, cli_mounts={"ext_lib": mount_dir})
+        server = MCPServer(fs)
+
+        req = {"jsonrpc": "2.0", "id": 10, "method": "tools/list"}
+        resp = server.handle_request(req)
+        tools = resp["result"]["tools"]
+        read_file_tool = next(t for t in tools if t["name"] == "read_file")
+        self.assertIn("@ext_lib", read_file_tool["description"])
+
 
 if __name__ == "__main__":
     unittest.main()

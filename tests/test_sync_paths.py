@@ -118,6 +118,9 @@ workflows:
         with open(os.path.join(ws_path, "mcp_config.json")) as f:
             mcp_data = json.load(f)
             self.assertIn("sprawl-workspace-fs", mcp_data["mcpServers"])
+            args = mcp_data["mcpServers"]["sprawl-workspace-fs"]["args"]
+            self.assertIn("--mount", args)
+            self.assertIn(f"my_custom_mount={os.path.abspath('/tmp/custom_mount')}", args)
 
         # 5. Verify Hidden Directory Containment (rules, skills, workflows strictly inside .agents/)
         self.assertTrue(os.path.exists(os.path.join(local_agents_dir, "rules", "engineering.md")))

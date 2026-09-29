@@ -12,6 +12,7 @@ def generate_mcp_config(
     local_agents_dir: str,
     venv_python: str,
     vault_path: str | None = None,
+    allowed_mounts: dict[str, str] | None = None,
 ) -> None:
     """Generates a standardized mcp_config.json for the workspace.
 
@@ -22,13 +23,19 @@ def generate_mcp_config(
         local_agents_dir: Path to the local .agents/ directory.
         venv_python: Path to the workspace virtual environment python.
         vault_path: Optional path to the global Obsidian vault.
+        allowed_mounts: Optional dictionary mapping mount aliases to target paths.
     """
     mcp_config = {"mcpServers": {}}
 
     # 1. Inject Workspace Filesystem (The Hard Fence)
+    args = ["-m", "sprawl.mcp.workspace_fs", os.path.abspath(app_dir)]
+    if allowed_mounts:
+        for alias, target_path in sorted(allowed_mounts.items()):
+            args.extend(["--mount", f"{alias}={os.path.abspath(os.path.expanduser(target_path))}"])
+
     mcp_config["mcpServers"]["sprawl-workspace-fs"] = {
         "command": sys.executable,
-        "args": ["-m", "sprawl.mcp.workspace_fs", os.path.abspath(app_dir)],
+        "args": args,
     }
 
     # 2. Inject Vault (Global Knowledge)

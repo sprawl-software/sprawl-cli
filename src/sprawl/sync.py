@@ -243,6 +243,17 @@ def _sync_app_directory_impl(app_dir: str, local_agents_dir: str, manifest_path:
                             f"Error removing deprecated workspace-root file {old_file}: {e}"
                         )
 
+    allowed_mounts = {}
+    config_path = os.path.join(local_agents_dir, "sprawl-config.json")
+    if os.path.exists(config_path):
+        try:
+            with open(config_path, encoding="utf-8") as f:
+                cfg = json.load(f)
+                allowed_mounts = cfg.get("allowed_mounts", {})
+        except Exception as e:
+            if config.verbose:
+                print_status(f"Error loading sprawl-config.json: {e}")
+
     agents_md_path = os.path.join(app_dir, "AGENTS.md")
     if config.verbose and config.dry_run:
         print_status("DRY RUN: Would generate AGENTS.md registry mapping.")
@@ -259,17 +270,6 @@ def _sync_app_directory_impl(app_dir: str, local_agents_dir: str, manifest_path:
                     except Exception as e:
                         print_warning(f"Failed to read persona file {persona_path}: {e}")
 
-        allowed_mounts = {}
-        config_path = os.path.join(local_agents_dir, "sprawl-config.json")
-        if os.path.exists(config_path):
-            try:
-                with open(config_path, encoding="utf-8") as f:
-                    cfg = json.load(f)
-                    allowed_mounts = cfg.get("allowed_mounts", {})
-            except Exception as e:
-                if config.verbose:
-                    print_status(f"Error loading sprawl-config.json: {e}")
-
         generate_agents_md(
             agents_md_path, reqs, app_dir, persona_content, allowed_mounts=allowed_mounts
         )
@@ -283,7 +283,13 @@ def _sync_app_directory_impl(app_dir: str, local_agents_dir: str, manifest_path:
         print_status("DRY RUN: Would generate mcp_config.json registry.")
     elif not config.dry_run:
         generate_mcp_config(
-            mcp_config_path, reqs, app_dir, local_agents_dir, venv_python, config.vault_path
+            mcp_config_path,
+            reqs,
+            app_dir,
+            local_agents_dir,
+            venv_python,
+            config.vault_path,
+            allowed_mounts=allowed_mounts,
         )
         # Double-check JSON structure validity
         try:

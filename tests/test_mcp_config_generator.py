@@ -54,6 +54,34 @@ class TestMCPConfigGenerator(unittest.TestCase):
             config["mcpServers"]["sprawl-vault"]["args"],
         )
 
+    def test_generate_with_allowed_mounts(self):
+        reqs = {"molecules": []}
+        app_dir = "/my/app"
+        allowed_mounts = {
+            "shared_lib": "/path/to/shared",
+            "assets": "/path/to/assets",
+        }
+
+        generate_mcp_config(
+            self.output_path,
+            reqs,
+            app_dir,
+            self.local_agents_dir,
+            self.venv_python,
+            allowed_mounts=allowed_mounts,
+        )
+
+        with open(self.output_path) as f:
+            config = json.load(f)
+
+        args = config["mcpServers"]["sprawl-workspace-fs"]["args"]
+        self.assertIn("-m", args)
+        self.assertIn("sprawl.mcp.workspace_fs", args)
+        self.assertIn(os.path.abspath(app_dir), args)
+        self.assertIn("--mount", args)
+        self.assertIn(f"assets={os.path.abspath('/path/to/assets')}", args)
+        self.assertIn(f"shared_lib={os.path.abspath('/path/to/shared')}", args)
+
 
 if __name__ == "__main__":
     unittest.main()

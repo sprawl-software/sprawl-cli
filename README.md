@@ -49,12 +49,18 @@ Sprawl CLI is the local-first, zero-dependency engine that locks this down at th
 **Linux & macOS:**
 ```bash
 # Automated bootstrap with pipx isolation
+curl -sL https://sprawl.software/install.sh | bash
+
+# Fallback via GitHub raw:
 curl -sL https://raw.githubusercontent.com/sprawl-software/sprawl-cli/main/install.sh | bash
 ```
 
 **Windows (PowerShell 5.1+ / 7+):**
 ```powershell
 # Native PowerShell bootstrap with pipx isolation
+irm https://sprawl.software/install.ps1 | iex
+
+# Fallback via GitHub raw:
 irm https://raw.githubusercontent.com/sprawl-software/sprawl-cli/main/install.ps1 | iex
 ```
 

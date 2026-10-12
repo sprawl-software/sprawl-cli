@@ -5,9 +5,12 @@ License text copyright (c) 2017 MariaDB Corporation Ab, All Rights Reserved.
 
 Parameters
 
-Licensor: Younes Baghor / BrainBlend AI
+Licensor: WebWizArt.be BV (Kruibeke, Belgium, BE0554.726.964), trading as Sprawl Software
 Licensed Work: Sprawl CLI and associated libraries (the "Software").
-Change Date: May 7, 2030
+               The Licensed Work is (c) 2026 WebWizArt.be BV.
+Change Date: Four years from the date the specific version of the Licensed Work
+             was first publicly released. Versions first released before
+             version 2.0.4 keep a Change Date of May 7, 2030.
 Change License: Apache License, Version 2.0, as published by the Apache Software Foundation (https://www.apache.org/licenses/LICENSE-2.0).
 
 Additional Use Grant:

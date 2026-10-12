@@ -272,22 +272,17 @@ The engine automatically applies the `persona-` prefix, converts the string to s
 
 ---
 
-## ⚖️ License & Open Core Model
+## ⚖️ License
 
-The Atomic Agentic Fabric operates on an **Open Core** business model:
+Sprawl CLI is source-available under the **Business Source License 1.1 (BSL)**. Licensor: WebWizArt.be BV (trading as Sprawl Software).
 
-- **Sprawl CLI (Source-Available):** The core orchestration engine and CLI tooling are licensed under the **Business Source License 1.1 (BSL)**. It is free for individuals and small teams, but requires an Enterprise/Partner license for large-scale commercial deployments or agency reselling.
-- **Sprawl Enterprise SaaS (Proprietary):** Advanced capabilities—such as role-based access control (RBAC), multi-tenant DNA registries, fleet management, SOC2/GDPR compliance telemetry, and cloud-hosted dashboards—are proprietary and require an Enterprise commercial license.
+- **Free production use:** individuals, and organizations with no more than 5 people, under €200,000 annual revenue and under €200,000 outside funding.
+- **Non-production use** (evaluation, testing, development) is free for everyone.
+- **Commercial License:** required for production use by organizations above those limits.
+- **Partner License:** required for agencies, consultancies and integrators deploying Sprawl for their clients.
+- **Change Date:** each version converts to Apache License 2.0 four years after its first public release.
 
----
-
-## 🏢 Enterprise & Consulting
-
-The Atomic Agentic Fabric and Sprawl CLI are built on an Open Core model, but implementing an enterprise-grade agentic architecture requires precision, security, and strategic DNA mapping.
-
-If you are a CTO, Engineering Leader, or SOC Analyst looking to productionize AI agents without incurring massive semantic debt, we offer premium consulting and custom integration pipelines.
-
-**[Book a Consulting Call ->](https://brainblendai.com)**
+See the root [LICENSE](../../LICENSE) for the full text. Commercial and partner inquiries: younes@sprawl.software.
 
 ---
 

@@ -1,13 +1,13 @@
 <div align="center">
 
-<img src="https://sprawl.software/assets/sprawl-logo-emerald (3).svg" alt="Sprawl.software" width="480"> 
+<img src="https://sprawl.software/assets/sprawl-logo-emerald (3).svg" alt="Sprawl.software" width="480">
 
-**Developer infrastructure for <>/br
-AI agent containment, telemetry, and workspace governance.**</br>
+**Developer AI governance:<br>
+GitOps rule management and multi-IDE consistency for AI coding agents.**<br>
 
 # Sprawl CLI
 
-The workspace sandbox and context governance engine.
+One source of truth for the rules, skills, and boundaries your AI coding agents follow.
 
 [![License: BSL-1.1](https://img.shields.io/badge/License-BSL--1.1-00FFCC.svg)](LICENSE)
 [![Python 3.10+](https://img.shields.io/badge/Python-3.10%2B-00FFCC.svg)](https://python.org)
@@ -22,25 +22,26 @@ The workspace sandbox and context governance engine.
 
 ## The Problem
 
-AI coding agents (Cursor, Claude Code, Copilot, RooCode, Antigravity) operate unconstrained on developer workstations:
+AI coding agents (Cursor, Claude Code, Copilot, RooCode, Antigravity) each read their own configuration files, and teams end up with:
 
-- **They read everything** — parent directories, `~/.ssh`, `.env` files, corporate credentials
-- **They burn tokens** — stuffing context windows with `node_modules`, build caches, and irrelevant fixtures
-- **They fragment rules** — scattering `.cursorrules`, `.windsurfrules`, `.clinerules` across every repo
-- **They block enterprise adoption** — CISOs restrict AI tools because they lack containment and audit trails
+- **Fragmented rules:** `.cursorrules`, `.windsurfrules`, `.clinerules`, and `CLAUDE.md` scattered across every repository, each slightly different.
+- **Configuration drift:** a rule updated in one repo never reaches the other forty.
+- **Wasted context:** agents load `node_modules`, build caches, and irrelevant files into their context window.
+- **No audit trail:** security and platform teams cannot see which rules each team's agents actually run with.
 
 ## The Solution
 
-Sprawl CLI is the local-first, zero-dependency engine that locks this down at the workstation boundary.
+Sprawl CLI keeps agent rules in Git and compiles them into every editor's native format, locally, with no cloud service.
 
+| Capability | How |
+| :--- | :--- |
+| **GitOps Rule Sync** | Rules, skills, and personas live in a Git registry. `sprawl ws push` updates every tracked repository. |
+| **Universal IDE Binding** | One manifest compiles to native settings for Cursor, VS Code, IntelliJ, Claude, Gemini, and Copilot. |
+| **Drift Detection** | `sprawl diff` shows where a workspace has moved away from the central registry. |
+| **Directory-Scoped MCP File Access** | The bundled MCP file server only serves the workspace and explicitly mounted directories. |
+| **Local-Only** | No accounts, no telemetry, no network calls except the `git` operations you run. |
 
-| Capability                | How                                                                                                |
-| ------------------------- | -------------------------------------------------------------------------------------------------- |
-| **Filesystem Sandboxing** | Directory-locked MCP servers block path traversal in <2ms                                          |
-| **Universal IDE Binding** | Single manifest compiles to native settings for Cursor, VS Code, IntelliJ, Claude, Gemini, Copilot |
-| **GitOps Rule Sync**      | Rules, skills, personas version-controlled in Git. Drift detection built in.                       |
-| **Stealth Isolation**     | Agents operate under constraints they cannot see or modify                                         |
-| **Zero Cloud Dependency** | 100% local. Zero telemetry. Zero network calls.                                                    |
+> Sprawl is a governance and configuration tool. It is not an operating system sandbox and does not replace OS-level isolation.
 
 ## Quickstart
 
@@ -95,14 +96,14 @@ sprawl bind
 | `sprawl sync` | Pull DNA updates, provision venv, compile IDE bindings |
 | `sprawl bind` | Generate native config files for all active editors |
 | `sprawl add` | Inject rules, skills, or workflows from the registry |
-| `sprawl mount` | Grant agents secure access to external directories |
-| `sprawl status` | Inspect workspace identity, DNA health, and telemetry |
+| `sprawl mount` | Give agents scoped access to additional directories |
+| `sprawl status` | Inspect workspace identity and DNA health |
 | `sprawl diff` | Detect configuration drift against the central registry |
 | `sprawl doctor` | Run system-wide diagnostics |
 | `sprawl ws` | Manage all tracked workspaces from a single registry |
-| `sprawl demo` | Interactive sandbox demonstration |
+| `sprawl demo` | Interactive demonstration |
 | `sprawl man` | Offline terminal documentation |
-| `sprawl wipe` | Clean uninstall — zero configuration trail |
+| `sprawl wipe` | Clean uninstall with no configuration left behind |
 
 ## Architecture
 ```
@@ -114,12 +115,12 @@ sprawl bind
 │   └──────────────┘                         └─────────────┘      │
 │          │                                                      │
 │   ┌──────┴───────────────────────────────────────────────────┐  │
-│   │              SPRAWL SYSTEM BOUNDARY                      │  │
+│   │                    SPRAWL (LOCAL)                        │  │
 │   │                                                          │  │
 │   │  ┌───────────────────┐     ┌──────────────────────────┐  │  │
-│   │  │  STEALTH SANDBOX  │     │  SCOPED MCP SERVER       │  │  │
-│   │  │  ~/.sprawl/       │     │  Path traversal guard    │  │  │
-│   │  │  Hidden state     │     │  Directory-locked I/O    │  │  │
+│   │  │  RULE REGISTRY    │     │  SCOPED MCP FILE SERVER  │  │  │
+│   │  │  ~/.sprawl/ (Git) │     │  Path traversal guard    │  │  │
+│   │  │  Compiled per IDE │     │  Workspace + mounts only │  │  │
 │   │  └───────────────────┘     └──────────────────────────┘  │  │
 │   │                                                          │  │
 │   └──────────────────────────────────────────────────────────┘  │
@@ -140,11 +141,10 @@ sprawl bind
 ## Design Principles
 
 - **100% Local**: Runs entirely on your machine. No cloud, no accounts, zero telemetry.
-- **Cross-Platform**: First-class support across Linux, macOS, and Windows 10/11.
-- **Stealth Injection**: Agents operate under containment constraints they cannot see or modify.
+- **Cross-Platform**: Linux, macOS, and Windows 10/11.
 - **Agnostic Outputs**: One manifest compiles to all editors. Switch tools without reconfiguring.
-- **Zero Heavy Dependencies**: Pure Python standard library + Rich. Sub-100ms boot.
-- **Standard Library Only**: No dependency bloat. Auditable in 48 hours.
+- **Minimal Dependencies**: Python standard library plus Rich. Sub-100ms boot.
+- **Auditable**: Small, readable codebase.
 
 ## Development & Testing
 
@@ -160,29 +160,20 @@ pip install -e ".[dev]"
 ```
 
 ### 2. Lint & Code Formatting (Ruff)
-Sprawl uses [Ruff](https://astral.sh/ruff) to enforce fast, consistent code style, import sorting, and quality standards:
 
 ```bash
-# Check code quality and imports
 ruff check src/ tests/
-
-# Verify formatting without modifying files
 ruff format --check src/ tests/
-
-# Auto-fix safe lint rules and format code
-ruff check --fix src/ tests/
-ruff format src/ tests/
 ```
 
 ### 3. Run Unit & Integration Tests
-Execute the full test suite using `pytest`:
 
 ```bash
 pytest
 ```
 
 ### 4. Run E2E Integration Suite (Smoke Test)
-Run the automated 26-scenario end-to-end sandbox verification:
+Run the automated 26-scenario end-to-end verification:
 
 ```bash
 python tests/qa_run_verifier.py --ci
@@ -194,7 +185,12 @@ Sprawl is in active private development. Contribution guidelines will be publish
 
 ## License
 
-Business Source License 1.1
-— Free for non-production use.
+Business Source License 1.1. See [LICENSE](LICENSE).
 
-Built with zero dependencies in Antwerp 🇧🇪 by Younes Baghor
+- Free for non-production use, and for production use by individuals and organisations with 5 people or fewer (see LICENSE for the exact thresholds).
+- Other production use requires a commercial license.
+- Agencies and consultants deploying Sprawl for clients require a Partner License.
+
+Contact: hello@sprawl.software
+
+Sprawl Software is a trading name of WebWizArt.be BV, Belgium.

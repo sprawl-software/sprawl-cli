@@ -92,6 +92,21 @@ bindings: []
     )
 
 
+def _resolve_dna_rule(candidates: list[str]) -> str:
+    """Returns the first candidate rule that exists in the active DNA rules folder.
+
+    Falls back to the first candidate when none exist (or the DNA is not
+    installed yet), so the manifest still records the intended rule.
+    """
+    from ..utils import get_active_dna_context
+
+    rules_dir = os.path.join(get_active_dna_context(), "rules")
+    for name in candidates:
+        if os.path.exists(os.path.join(rules_dir, name)):
+            return name
+    return candidates[0]
+
+
 def cmd_graft() -> None:
     """Surgical Injection Protocol: Stitches Sprawl DNA onto an existing project."""
     cwd = os.getcwd()
@@ -133,11 +148,13 @@ def cmd_graft() -> None:
         if os.path.exists(os.path.join(cwd, "requirements.txt")) or os.path.exists(
             os.path.join(cwd, "pyproject.toml")
         ):
-            discovered_artifacts["rules"].append("python.md")
+            discovered_artifacts["rules"].append(_resolve_dna_rule(["python.md"]))
         if os.path.exists(os.path.join(cwd, "package.json")):
-            discovered_artifacts["rules"].append("web-dev.md")
+            discovered_artifacts["rules"].append(
+                _resolve_dna_rule(["web_development.md", "web-dev.md", "react_best_practices.md"])
+            )
         if os.path.exists(os.path.join(cwd, "Cargo.toml")):
-            discovered_artifacts["rules"].append("wasm.md")
+            discovered_artifacts["rules"].append(_resolve_dna_rule(["wasm.md"]))
 
         if not discovered_artifacts["rules"]:
             discovered_artifacts["rules"].append("engineering.md")  # absolute fallback

@@ -84,7 +84,7 @@ sprawl ls
 
 Add your required tech stack rules and architectural personas:
 ```powershell
-sprawl add python web-dev persona-master-engineer
+sprawl add python web_development persona-master-engineer
 ```
 
 ---

@@ -1,10 +1,10 @@
 # Sprawl CLI — Comprehensive QA & Integration Execution Log
 
-* **Execution Date:** 2026-09-29 20:42:55 UTC
+* **Execution Date:** 2026-10-12 21:30:59 UTC
 * **Local Python Version:** 3.12.3
-* **Workspace Root:** `/home/w3bwizart/Development/sprawl-cli`
-* **Sandbox Directory:** `/home/w3bwizart/Development/sprawl-cli/qa_sandbox`
-* **Test Mode Home:** `/tmp/.sprawl_test`
+* **Workspace Root:** `/home/w3bwizart/Development/SPRAWL.software/sprawl-cli`
+* **Sandbox Directory:** `/home/w3bwizart/Development/SPRAWL.software/sprawl-cli/qa_sandbox`
+* **Test Mode Home:** `/home/w3bwizart/.sprawl_test`
 
 ---
 
@@ -12,12 +12,12 @@
 
 * **Description:** Verify the dynamically extracted version matches 2.0.2.
 * **Command:** `sprawl --version` (cwd: `qa_sandbox`)
-* **Execution Time:** `58ms`
+* **Execution Time:** `60ms`
 * **Status:** **`PASS`** (Expected Code: `0`, Got: `0`)
 
 ### Standard Output (stdout):
 ```text
-[*] Sprawl Orchestrator 2.0.3 (Atomic Agentic Fabric)
+[*] Sprawl Orchestrator 2.0.4 (Atomic Agentic Fabric)
 ```
 
 ---
@@ -26,7 +26,7 @@
 
 * **Description:** Check the offline AAF manuals output.
 * **Command:** `sprawl man` (cwd: `qa_sandbox`)
-* **Execution Time:** `95ms`
+* **Execution Time:** `115ms`
 * **Status:** **`PASS`** (Expected Code: `0`, Got: `0`)
 
 ### Standard Output (stdout):
@@ -426,32 +426,24 @@ your global DNA context.
                                                                                 
 ---                                                                             
                                                                                 
-## ⚖️ License & Open Core Model                                                 
+## ⚖️ License                                                                   
                                                                                 
-The Atomic Agentic Fabric operates on an **Open Core** business model:          
+Sprawl CLI is source-available under the **Business Source License 1.1 (BSL)**. 
+Licensor: WebWizArt.be BV (trading as Sprawl Software).                         
                                                                                 
-- **Sprawl CLI (Source-Available):** The core orchestration engine and CLI      
-tooling are licensed under the **Business Source License 1.1 (BSL)**. It is free
-for individuals and small teams, but requires an Enterprise/Partner license for 
-large-scale commercial deployments or agency reselling.                         
-- **Sprawl Enterprise SaaS (Proprietary):** Advanced capabilities—such as       
-role-based access control (RBAC), multi-tenant DNA registries, fleet management,
-SOC2/GDPR compliance telemetry, and cloud-hosted dashboards—are proprietary and 
-require an Enterprise commercial license.                                       
+- **Free production use:** individuals, and organizations with no more than 5   
+people, under €200,000 annual revenue and under €200,000 outside funding.       
+- **Non-production use** (evaluation, testing, development) is free for         
+everyone.                                                                       
+- **Commercial License:** required for production use by organizations above    
+those limits.                                                                   
+- **Partner License:** required for agencies, consultancies and integrators     
+deploying Sprawl for their clients.                                             
+- **Change Date:** each version converts to Apache License 2.0 four years after 
+its first public release.                                                       
                                                                                 
----                                                                             
-                                                                                
-## 🏢 Enterprise & Consulting                                                   
-                                                                                
-The Atomic Agentic Fabric and Sprawl CLI are built on an Open Core model, but   
-implementing an enterprise-grade agentic architecture requires precision,       
-security, and strategic DNA mapping.                                            
-                                                                                
-If you are a CTO, Engineering Leader, or SOC Analyst looking to productionize AI
-agents without incurring massive semantic debt, we offer premium consulting and 
-custom integration pipelines.                                                   
-                                                                                
-**[Book a Consulting Call ->](https://brainblendai.com)**                       
+See the root [LICENSE](../../LICENSE) for the full text. Commercial and partner 
+inquiries: younes@sprawl.software.                                              
                                                                                 
 ---                                                                             
                                                                                 
@@ -473,22 +465,22 @@ python3 -m unittest discover -s tests
 
 * **Description:** Clones the Sovereign DNA template repo into the isolated core directory (~/.sprawl_test/core).
 * **Command:** `sprawl init https://github.com/sprawl-software/atomic-agentic-fabric-demo-dna.git` (cwd: `qa_sandbox`)
-* **Execution Time:** `1755ms`
+* **Execution Time:** `1146ms`
 * **Status:** **`PASS`** (Expected Code: `0`, Got: `0`)
 
 ### Standard Output (stdout):
 ```text
 [*] Initializing Sprawl Hub from 
 https://github.com/sprawl-software/atomic-agentic-fabric-demo-dna.git into 
-/tmp/Documents/Sprawl_Test...
-[*] Cloning Global DNA to /tmp/.sprawl_test/core...
-[*] Creating Workspace Hub at /tmp/Documents/Sprawl_Test...
+/home/w3bwizart/Documents/Sprawl_Test...
+[*] Cloning Global DNA to /home/w3bwizart/.sprawl_test/core...
+[*] Creating Workspace Hub at /home/w3bwizart/Documents/Sprawl_Test...
 [*] Initialization complete. Ensure ~/.local/bin is in your PATH.
 ```
 
 ### Error Output (stderr):
 ```text
-Cloning into '/tmp/.sprawl_test/core'...
+Cloning into '/home/w3bwizart/.sprawl_test/core'...
 ```
 
 ---
@@ -497,19 +489,20 @@ Cloning into '/tmp/.sprawl_test/core'...
 
 * **Description:** Clones an alternative DNA repository using a custom alias.
 * **Command:** `sprawl fetch-dna https://github.com/sprawl-software/atomic-agentic-fabric-demo-dna.git alt_dna` (cwd: `qa_sandbox`)
-* **Execution Time:** `1582ms`
+* **Execution Time:** `1202ms`
 * **Status:** **`PASS`** (Expected Code: `0`, Got: `0`)
 
 ### Standard Output (stdout):
 ```text
-[*] Fetching DNA context 'alt_dna' to /tmp/.sprawl_test/dna/alt_dna...
+[*] Fetching DNA context 'alt_dna' to 
+/home/w3bwizart/.sprawl_test/dna/alt_dna...
 [*] Running Zero-Trust validation on DNA...
 [*] DNA Validation passed.
 ```
 
 ### Error Output (stderr):
 ```text
-Cloning into '/tmp/.sprawl_test/dna/alt_dna'...
+Cloning into '/home/w3bwizart/.sprawl_test/dna/alt_dna'...
 ```
 
 ---
@@ -518,18 +511,18 @@ Cloning into '/tmp/.sprawl_test/dna/alt_dna'...
 
 * **Description:** Verify both core and alt_dna exist in the registry.
 * **Command:** `sprawl dna list` (cwd: `qa_sandbox`)
-* **Execution Time:** `64ms`
+* **Execution Time:** `65ms`
 * **Status:** **`PASS`** (Expected Code: `0`, Got: `0`)
 
 ### Standard Output (stdout):
 ```text
-Registered DNA Sources                      
-┏━━━━━━━━┳━━━━━━━━━━┳━━━━━━━━━━━┳━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┓
-┃ Status ┃ Alias    ┃ Type      ┃ Path                          ┃
-┡━━━━━━━━╇━━━━━━━━━━╇━━━━━━━━━━━╇━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┩
-│   ●    │ @global  │ Primary   │ /tmp/.sprawl_test/core        │
-│   ●    │ @alt_dna │ Secondary │ /tmp/.sprawl_test/dna/alt_dna │
-└────────┴──────────┴───────────┴───────────────────────────────┘
+Registered DNA Sources                           
+┏━━━━━━━━┳━━━━━━━━━━┳━━━━━━━━━━━┳━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┓
+┃ Status ┃ Alias    ┃ Type      ┃ Path                                     ┃
+┡━━━━━━━━╇━━━━━━━━━━╇━━━━━━━━━━━╇━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┩
+│   ●    │ @global  │ Primary   │ /home/w3bwizart/.sprawl_test/core        │
+│   ●    │ @alt_dna │ Secondary │ /home/w3bwizart/.sprawl_test/dna/alt_dna │
+└────────┴──────────┴───────────┴──────────────────────────────────────────┘
 ```
 
 ---
@@ -538,12 +531,12 @@ Registered DNA Sources
 
 * **Description:** Display the hierarchical tree of the active core DNA structure.
 * **Command:** `sprawl dna inspect` (cwd: `qa_sandbox`)
-* **Execution Time:** `64ms`
+* **Execution Time:** `72ms`
 * **Status:** **`PASS`** (Expected Code: `0`, Got: `0`)
 
 ### Standard Output (stdout):
 ```text
-🧬 Global DNA Registry (/tmp/.sprawl_test/core)
+🧬 Global DNA Registry (/home/w3bwizart/.sprawl_test/core)
 ┣━━ Rules
 ┃   ┣━━ demo_security.md
 ┃   ┗━━ python_stdlib_only.md
@@ -562,7 +555,7 @@ Registered DNA Sources
 
 * **Description:** Test Git pull synchronization on the active DNA template.
 * **Command:** `sprawl dna update` (cwd: `qa_sandbox`)
-* **Execution Time:** `1027ms`
+* **Execution Time:** `849ms`
 * **Status:** **`PASS`** (Expected Code: `0`, Got: `0`)
 
 ### Standard Output (stdout):
@@ -583,13 +576,13 @@ From https://github.com/sprawl-software/atomic-agentic-fabric-demo-dna
 
 * **Description:** Test the auto-updater sequence without modifying path targets.
 * **Command:** `sprawl update --dry-run` (cwd: `qa_sandbox`)
-* **Execution Time:** `65ms`
+* **Execution Time:** `57ms`
 * **Status:** **`PASS`** (Expected Code: `0`, Got: `0`)
 
 ### Standard Output (stdout):
 ```text
 [*] Initiating Sprawl Update Sequence...
-[*] Updating Global DNA at /tmp/.sprawl_test/core...
+[*] Updating Global DNA at /home/w3bwizart/.sprawl_test/core...
 [*] Production/release installation detected. Installing update from GitHub...
 [*] Update Sequence complete.
 ```
@@ -600,7 +593,7 @@ From https://github.com/sprawl-software/atomic-agentic-fabric-demo-dna
 
 * **Description:** Scaffolds a fresh sandbox workspace configuration.
 * **Command:** `sprawl create qa_workspace` (cwd: `qa_sandbox`)
-* **Execution Time:** `69ms`
+* **Execution Time:** `80ms`
 * **Status:** **`PASS`** (Expected Code: `0`, Got: `0`)
 
 ### Standard Output (stdout):
@@ -608,7 +601,9 @@ From https://github.com/sprawl-software/atomic-agentic-fabric-demo-dna
 ╭────────────────────────── Workspace Initialization ──────────────────────────╮
 │ ✔ Workspace Created                                                          │
 │ • Name: qa_workspace                                                         │
-│ • Path: /home/w3bwizart/Development/sprawl-cli/qa_sandbox/qa_workspace       │
+│ • Path:                                                                      │
+│ /home/w3bwizart/Development/SPRAWL.software/sprawl-cli/qa_sandbox/qa_workspa │
+│ ce                                                                           │
 │ • DNA Binding: @core                                                         │
 │                                                                              │
 │ • Run sprawl bind inside to select rules bindings for your IDEs/agents.      │
@@ -622,7 +617,7 @@ From https://github.com/sprawl-software/atomic-agentic-fabric-demo-dna
 
 * **Description:** Confirm the newly created workspace is tracked.
 * **Command:** `sprawl ws list` (cwd: `qa_sandbox`)
-* **Execution Time:** `68ms`
+* **Execution Time:** `76ms`
 * **Status:** **`PASS`** (Expected Code: `0`, Got: `0`)
 
 ### Standard Output (stdout):
@@ -641,14 +636,17 @@ Tracked Workspaces
 
 * **Description:** Synchronize active DNA parameters and initialize sandbox virtualenvs.
 * **Command:** `sprawl sync` (cwd: `qa_workspace`)
-* **Execution Time:** `1307ms`
+* **Execution Time:** `1580ms`
 * **Status:** **`PASS`** (Expected Code: `0`, Got: `0`)
 
 ### Standard Output (stdout):
 ```text
-[*] Syncing /home/w3bwizart/Development/sprawl-cli/qa_sandbox/qa_workspace...
+[*] Syncing 
+/home/w3bwizart/Development/SPRAWL.software/sprawl-cli/qa_sandbox/qa_workspace..
+.
 [*] Provisioning sandboxed virtual environment at 
-/home/w3bwizart/Development/sprawl-cli/qa_sandbox/qa_workspace/.agents/.venv...
+/home/w3bwizart/Development/SPRAWL.software/sprawl-cli/qa_sandbox/qa_workspace/.
+agents/.venv...
 [*] Generating IDE & Agent bindings (standard mode)...
   [-] Antigravity MCP Schemas: Removed → sprawl-workspace-fs
   [-] Antigravity MCP Schemas: Removed → sprawl-vault
@@ -670,18 +668,18 @@ Bindings are present, to configure you bindings run sprawl bind.
 
 * **Description:** Verify workspace stats and virtualenv health.
 * **Command:** `sprawl status` (cwd: `qa_workspace`)
-* **Execution Time:** `58ms`
+* **Execution Time:** `70ms`
 * **Status:** **`PASS`** (Expected Code: `0`, Got: `0`)
 
 ### Standard Output (stdout):
 ```text
 ╭───────────────────────────── Workspace Identity ─────────────────────────────╮
 │  Workspace             qa_workspace                                          │
-│  Path                  /home/w3bwizart/Development/sprawl-cli/qa_sandbox/q…  │
+│  Path                  /home/w3bwizart/Development/SPRAWL.software/sprawl-…  │
 │  DNA Binding           @global/core (default)                                │
 │  Active Model          Not set                                               │
 │  Venv                  ● Healthy (Python 3.12.3)                             │
-│  Last Sync             2026-09-29T20:43:01.979620+00:00                      │
+│  Last Sync             2026-10-12T21:31:04.337470+00:00                      │
 ╰──────────────────────────────────────────────────────────────────────────────╯
 ╭─────────────────────────────── DNA Artifacts ────────────────────────────────╮
 │ ┏━━━━━━━━━━━━━━━━┳━━━━━━━━━━━━━━━━━━━━━━┳━━━━━━━━━━━━━━━━━━━━━━━━━━━━┓       │
@@ -700,7 +698,7 @@ Bindings are present, to configure you bindings run sprawl bind.
 
 * **Description:** Generate rules files (.cursorrules, .windsurfrules, gemini.json) for all adapters.
 * **Command:** `sprawl bind --all` (cwd: `qa_workspace`)
-* **Execution Time:** `63ms`
+* **Execution Time:** `56ms`
 * **Status:** **`PASS`** (Expected Code: `0`, Got: `0`)
 
 ### Standard Output (stdout):
@@ -732,14 +730,16 @@ Bindings are present, to configure you bindings run sprawl bind.
 
 * **Description:** Mount an external folder for agent workspace access.
 * **Command:** `sprawl mount add /tmp --alias test_tmp` (cwd: `qa_workspace`)
-* **Execution Time:** `95ms`
+* **Execution Time:** `109ms`
 * **Status:** **`PASS`** (Expected Code: `0`, Got: `0`)
 
 ### Standard Output (stdout):
 ```text
 [*] Added workspace mount: test_tmp → /tmp
 [*] Synchronizing workspace configurations...
-[*] Syncing /home/w3bwizart/Development/sprawl-cli/qa_sandbox/qa_workspace...
+[*] Syncing 
+/home/w3bwizart/Development/SPRAWL.software/sprawl-cli/qa_sandbox/qa_workspace..
+.
 [*] Generating IDE & Agent bindings (standard mode)...
   ○ Claude Code Binding: already exists (use --force to overwrite)
   ○ RooCode/Cline Binding: already exists (use --force to overwrite)
@@ -775,7 +775,7 @@ Bindings are present, to configure you bindings run sprawl bind.
 
 * **Description:** Verify our test_tmp mount mapping.
 * **Command:** `sprawl mount list` (cwd: `qa_workspace`)
-* **Execution Time:** `54ms`
+* **Execution Time:** `62ms`
 * **Status:** **`PASS`** (Expected Code: `0`, Got: `0`)
 
 ### Standard Output (stdout):
@@ -793,14 +793,16 @@ Bindings are present, to configure you bindings run sprawl bind.
 
 * **Description:** Safely delete the configured mount.
 * **Command:** `sprawl mount remove test_tmp` (cwd: `qa_workspace`)
-* **Execution Time:** `91ms`
+* **Execution Time:** `108ms`
 * **Status:** **`PASS`** (Expected Code: `0`, Got: `0`)
 
 ### Standard Output (stdout):
 ```text
 [*] Removed workspace mount: test_tmp (was mapping to /tmp)
 [*] Synchronizing workspace configurations...
-[*] Syncing /home/w3bwizart/Development/sprawl-cli/qa_sandbox/qa_workspace...
+[*] Syncing 
+/home/w3bwizart/Development/SPRAWL.software/sprawl-cli/qa_sandbox/qa_workspace..
+.
 [*] Generating IDE & Agent bindings (standard mode)...
   ○ Claude Code Binding: already exists (use --force to overwrite)
   ○ RooCode/Cline Binding: already exists (use --force to overwrite)
@@ -836,7 +838,7 @@ Bindings are present, to configure you bindings run sprawl bind.
 
 * **Description:** Scan and print all available artifacts.
 * **Command:** `sprawl ls` (cwd: `qa_workspace`)
-* **Execution Time:** `53ms`
+* **Execution Time:** `79ms`
 * **Status:** **`PASS`** (Expected Code: `0`, Got: `0`)
 
 ### Standard Output (stdout):
@@ -847,10 +849,10 @@ Bindings are present, to configure you bindings run sprawl bind.
 │   • @global (Default Sprawl Hub DNA)                                         │
 │   • @alt_dna                                                                 │
 │                                                                              │
-│ Active Context: /tmp/.sprawl_test/core                                       │
+│ Active Context: /home/w3bwizart/.sprawl_test/core                            │
 ╰──────────────────────────────────────────────────────────────────────────────╯
 
-🧬 Active DNA Artifacts (/tmp/.sprawl_test/core)
+🧬 Active DNA Artifacts (/home/w3bwizart/.sprawl_test/core)
 ┣━━ Personas
 ┃   ┣━━ persona-demo_engineer
 ┃   ┗━━ persona-senior_python_architect
@@ -870,14 +872,14 @@ Bindings are present, to configure you bindings run sprawl bind.
 
 * **Description:** Scaffold a new persona template file inside global DNA.
 * **Command:** `sprawl scaffold persona verification-squad` (cwd: `qa_workspace`)
-* **Execution Time:** `54ms`
+* **Execution Time:** `62ms`
 * **Status:** **`PASS`** (Expected Code: `0`, Got: `0`)
 
 ### Standard Output (stdout):
 ```text
 [*] Persona Scaffolded successfully: 'persona-verification-squad'
 [*] Generated boilerplate at 
-/tmp/.sprawl_test/core/skills/persona-verification-squad/SKILL.md
+/home/w3bwizart/.sprawl_test/core/skills/persona-verification-squad/SKILL.md
 ```
 
 ---
@@ -886,7 +888,7 @@ Bindings are present, to configure you bindings run sprawl bind.
 
 * **Description:** Incorporate persona-demo_engineer dependency inside local manifest.
 * **Command:** `sprawl add persona-demo_engineer` (cwd: `qa_workspace`)
-* **Execution Time:** `94ms`
+* **Execution Time:** `110ms`
 * **Status:** **`PASS`** (Expected Code: `0`, Got: `0`)
 
 ### Standard Output (stdout):
@@ -894,7 +896,9 @@ Bindings are present, to configure you bindings run sprawl bind.
 [*] Resolving dependency: 'persona-demo_engineer' into 
 [*] Modifying sprawl_manifest.yml...
 [*] Injecting DNA...
-[*] Syncing /home/w3bwizart/Development/sprawl-cli/qa_sandbox/qa_workspace...
+[*] Syncing 
+/home/w3bwizart/Development/SPRAWL.software/sprawl-cli/qa_sandbox/qa_workspace..
+.
 [*] Generating IDE & Agent bindings (standard mode)...
   ○ Claude Code Binding: already exists (use --force to overwrite)
   ○ RooCode/Cline Binding: already exists (use --force to overwrite)
@@ -932,14 +936,16 @@ Bindings are present, to configure you bindings run sprawl bind.
 
 * **Description:** Safely strip dependencies and trigger workspace manifest cleanups.
 * **Command:** `sprawl rm persona-demo_engineer` (cwd: `qa_workspace`)
-* **Execution Time:** `90ms`
+* **Execution Time:** `93ms`
 * **Status:** **`PASS`** (Expected Code: `0`, Got: `0`)
 
 ### Standard Output (stdout):
 ```text
 [*] Removing dependency: 'persona-demo_engineer'
 [*] Manifest updated. Triggering synchronization cleanup...
-[*] Syncing /home/w3bwizart/Development/sprawl-cli/qa_sandbox/qa_workspace...
+[*] Syncing 
+/home/w3bwizart/Development/SPRAWL.software/sprawl-cli/qa_sandbox/qa_workspace..
+.
 [*] [Pruned] persona-demo_engineer removed from local skills/
 [*] Generating IDE & Agent bindings (standard mode)...
   ○ Claude Code Binding: already exists (use --force to overwrite)
@@ -976,7 +982,7 @@ Bindings are present, to configure you bindings run sprawl bind.
 
 * **Description:** Verify that all required tool and folder assertions pass.
 * **Command:** `sprawl doctor` (cwd: `qa_workspace`)
-* **Execution Time:** `55ms`
+* **Execution Time:** `59ms`
 * **Status:** **`PASS`** (Expected Code: `0`, Got: `0`)
 
 ### Standard Output (stdout):
@@ -998,9 +1004,9 @@ Diagnostic Summary
 │ Git             │ ✔ PASS │ Installed (/usr/bin/git)                          │
 │ Node/NPM        │ ⚠ WARN │ Not Found (Optional for TS/JS skills)             │
 │ Rust/Cargo      │ ⚠ WARN │ Not Found (Optional for Rust skills)              │
-│ Global DNA      │ ✔ PASS │ Initialized at /tmp/.sprawl_test/core             │
+│ Global DNA      │ ✔ PASS │ Initialized at /home/w3bwizart/.sprawl_test/core  │
 │ Local Workspace │ ✔ PASS │ Active at                                         │
-│                 │        │ /home/w3bwizart/Development/sprawl-cli/qa_sandbo… │
+│                 │        │ /home/w3bwizart/Development/SPRAWL.software/spra… │
 └─────────────────┴────────┴───────────────────────────────────────────────────┘
 
 ╭──────────────────────────────────────────────────────────────────────────────╮
@@ -1015,7 +1021,7 @@ Diagnostic Summary
 
 * **Description:** Compare active local overrides against the original DNA blueprint.
 * **Command:** `sprawl diff` (cwd: `qa_workspace`)
-* **Execution Time:** `59ms`
+* **Execution Time:** `67ms`
 * **Status:** **`PASS`** (Expected Code: `0`, Got: `0`)
 
 ### Standard Output (stdout):
@@ -1034,7 +1040,7 @@ Comparing local DNA drift against @core...
 
 * **Description:** Run E2E demo execution walkthrough non-interactively.
 * **Command:** `sprawl demo 1` (cwd: `qa_sandbox`)
-* **Execution Time:** `5042ms`
+* **Execution Time:** `5436ms`
 * **Status:** **`PASS`** (Expected Code: `0`, Got: `0`)
 
 ### Standard Output (stdout):
@@ -1042,18 +1048,18 @@ Comparing local DNA drift against @core...
 [*] Starting Demo: Cross-Team Scaffolding
 [*] Ensuring clean test environment...
 [*] Nuking all testmode artifacts...
-[*] [-] Deleted /tmp/.sprawl_test/core
-[*] [-] Deleted /tmp/Documents/Sprawl_Test
-[*] [-] Deleted /tmp/.sprawl_test/config.json
+[*] [-] Deleted /home/w3bwizart/.sprawl_test/core
+[*] [-] Deleted /home/w3bwizart/Documents/Sprawl_Test
+[*] [-] Deleted /home/w3bwizart/.sprawl_test/config.json
 [*] Testmode environment cleanly destroyed.
 [*] Generating Transient Dummy DNA...
 [*] Initializing Central Hub...
-[*] Initializing Sprawl Hub from file:///tmp/sprawl_dummy_dna_zukc_8ls into 
-/tmp/Documents/Sprawl_Test...
-[*] Cloning Global DNA to /tmp/.sprawl_test/core...
-[*] Creating Workspace Hub at /tmp/Documents/Sprawl_Test...
+[*] Initializing Sprawl Hub from file:///tmp/sprawl_dummy_dna_qec2vefj into 
+/home/w3bwizart/Documents/Sprawl_Test...
+[*] Cloning Global DNA to /home/w3bwizart/.sprawl_test/core...
+[*] Creating Workspace Hub at /home/w3bwizart/Documents/Sprawl_Test...
 [*] Initialization complete. Ensure ~/.local/bin is in your PATH.
-[*] Isolating demo workspaces in /tmp/sprawl_demo_h9_nw7k2...
+[*] Isolating demo workspaces in /tmp/sprawl_demo_d7c3uyej...
 
 =========================================
    TEAM 1: DOTNET-SQUAD
@@ -1062,7 +1068,7 @@ Comparing local DNA drift against @core...
 ╭────────────────────────── Workspace Initialization ──────────────────────────╮
 │ ✔ Workspace Created                                                          │
 │ • Name: dotnet-squad                                                         │
-│ • Path: /tmp/sprawl_demo_h9_nw7k2/dotnet-squad                               │
+│ • Path: /tmp/sprawl_demo_d7c3uyej/dotnet-squad                               │
 │ • DNA Binding: @core                                                         │
 │                                                                              │
 │ • Run sprawl bind inside to select rules bindings for your IDEs/agents.      │
@@ -1073,9 +1079,9 @@ Comparing local DNA drift against @core...
 [*] Resolving dependency: 'ci_cd_azure.yml' into 
 [*] Modifying sprawl_manifest.yml...
 [*] Injecting DNA...
-[*] Syncing /tmp/sprawl_demo_h9_nw7k2/dotnet-squad...
+[*] Syncing /tmp/sprawl_demo_d7c3uyej/dotnet-squad...
 [*] Provisioning sandboxed virtual environment at 
-/tmp/sprawl_demo_h9_nw7k2/dotnet-squad/.agents/.venv...
+/tmp/sprawl_demo_d7c3uyej/dotnet-squad/.agents/.venv...
 [*] Generating IDE & Agent bindings (standard mode)...
   [-] Antigravity MCP Schemas: Removed → sprawl-workspace-fs
   [-] Antigravity MCP Schemas: Removed → sprawl-vault
@@ -1107,7 +1113,7 @@ Bindings are present, to configure you bindings run sprawl bind.
 ╭────────────────────────── Workspace Initialization ──────────────────────────╮
 │ ✔ Workspace Created                                                          │
 │ • Name: web-squad                                                            │
-│ • Path: /tmp/sprawl_demo_h9_nw7k2/web-squad                                  │
+│ • Path: /tmp/sprawl_demo_d7c3uyej/web-squad                                  │
 │ • DNA Binding: @core                                                         │
 │                                                                              │
 │ • Run sprawl bind inside to select rules bindings for your IDEs/agents.      │
@@ -1118,9 +1124,9 @@ Bindings are present, to configure you bindings run sprawl bind.
 [*] Resolving dependency: 'vercel_production_deployment.yml' into 
 [*] Modifying sprawl_manifest.yml...
 [*] Injecting DNA...
-[*] Syncing /tmp/sprawl_demo_h9_nw7k2/web-squad...
+[*] Syncing /tmp/sprawl_demo_d7c3uyej/web-squad...
 [*] Provisioning sandboxed virtual environment at 
-/tmp/sprawl_demo_h9_nw7k2/web-squad/.agents/.venv...
+/tmp/sprawl_demo_d7c3uyej/web-squad/.agents/.venv...
 [*] Generating IDE & Agent bindings (standard mode)...
   [-] Antigravity MCP Schemas: Removed → sprawl-workspace-fs
   [-] Antigravity MCP Schemas: Removed → sprawl-vault
@@ -1152,7 +1158,7 @@ Bindings are present, to configure you bindings run sprawl bind.
 ╭────────────────────────── Workspace Initialization ──────────────────────────╮
 │ ✔ Workspace Created                                                          │
 │ • Name: sales-squad                                                          │
-│ • Path: /tmp/sprawl_demo_h9_nw7k2/sales-squad                                │
+│ • Path: /tmp/sprawl_demo_d7c3uyej/sales-squad                                │
 │ • DNA Binding: @core                                                         │
 │                                                                              │
 │ • Run sprawl bind inside to select rules bindings for your IDEs/agents.      │
@@ -1163,9 +1169,9 @@ Bindings are present, to configure you bindings run sprawl bind.
 [*] Resolving dependency: 'lead_generation.yml' into 
 [*] Modifying sprawl_manifest.yml...
 [*] Injecting DNA...
-[*] Syncing /tmp/sprawl_demo_h9_nw7k2/sales-squad...
+[*] Syncing /tmp/sprawl_demo_d7c3uyej/sales-squad...
 [*] Provisioning sandboxed virtual environment at 
-/tmp/sprawl_demo_h9_nw7k2/sales-squad/.agents/.venv...
+/tmp/sprawl_demo_d7c3uyej/sales-squad/.agents/.venv...
 [*] Generating IDE & Agent bindings (standard mode)...
   [-] Antigravity MCP Schemas: Removed → sprawl-workspace-fs
   [-] Antigravity MCP Schemas: Removed → sprawl-vault
@@ -1197,15 +1203,15 @@ Bindings are present, to configure you bindings run sprawl bind.
 ╭────────────────────────── Workspace Initialization ──────────────────────────╮
 │ ✔ Workspace Created                                                          │
 │ • Name: legacy-squad                                                         │
-│ • Path: /tmp/sprawl_demo_h9_nw7k2/legacy-squad                               │
+│ • Path: /tmp/sprawl_demo_d7c3uyej/legacy-squad                               │
 │ • DNA Binding: @core                                                         │
 │                                                                              │
 │ • Run sprawl bind inside to select rules bindings for your IDEs/agents.      │
 │ • Run sprawl sync inside to orchestrate.                                     │
 ╰──────────────────────────────────────────────────────────────────────────────╯
-[*] Syncing /tmp/sprawl_demo_h9_nw7k2/legacy-squad...
+[*] Syncing /tmp/sprawl_demo_d7c3uyej/legacy-squad...
 [*] Provisioning sandboxed virtual environment at 
-/tmp/sprawl_demo_h9_nw7k2/legacy-squad/.agents/.venv...
+/tmp/sprawl_demo_d7c3uyej/legacy-squad/.agents/.venv...
 [*] Generating IDE & Agent bindings (standard mode)...
   [-] Antigravity MCP Schemas: Removed → sprawl-workspace-fs
   [-] Antigravity MCP Schemas: Removed → sprawl-vault
@@ -1233,7 +1239,7 @@ Demo artifacts are automatically cleaned up on exit.
 
 ### Error Output (stderr):
 ```text
-Cloning into '/tmp/.sprawl_test/core'...
+Cloning into '/home/w3bwizart/.sprawl_test/core'...
 ```
 
 ---
@@ -1242,18 +1248,18 @@ Cloning into '/tmp/.sprawl_test/core'...
 
 * **Description:** Delete the directories generated by the demo walkthrough.
 * **Command:** `sprawl clean-demo` (cwd: `qa_sandbox`)
-* **Execution Time:** `55ms`
+* **Execution Time:** `57ms`
 * **Status:** **`PASS`** (Expected Code: `0`, Got: `0`)
 
 ### Standard Output (stdout):
 ```text
 [!] WARNING: No sprawl_demo directory found at 
-/home/w3bwizart/Development/sprawl-cli/qa_sandbox/sprawl_demo.
+/home/w3bwizart/Development/SPRAWL.software/sprawl-cli/qa_sandbox/sprawl_demo.
 [*] Triggering testmode artifact cleanup...
 [*] Nuking all testmode artifacts...
-[*] [-] Deleted /tmp/.sprawl_test/core
-[*] [-] Deleted /tmp/Documents/Sprawl_Test
-[*] [-] Deleted /tmp/.sprawl_test/config.json
+[*] [-] Deleted /home/w3bwizart/.sprawl_test/core
+[*] [-] Deleted /home/w3bwizart/Documents/Sprawl_Test
+[*] [-] Deleted /home/w3bwizart/.sprawl_test/config.json
 [*] Testmode environment cleanly destroyed.
 ```
 
@@ -1263,7 +1269,7 @@ Cloning into '/tmp/.sprawl_test/core'...
 
 * **Description:** Destroys all isolated directories.
 * **Command:** `sprawl clean-test` (cwd: `qa_sandbox`)
-* **Execution Time:** `54ms`
+* **Execution Time:** `51ms`
 * **Status:** **`PASS`** (Expected Code: `0`, Got: `0`)
 
 ### Standard Output (stdout):
@@ -1278,21 +1284,24 @@ Cloning into '/tmp/.sprawl_test/core'...
 
 * **Description:** Erase all configurations and trace marks from the system completely.
 * **Command:** `sprawl wipe --force` (cwd: `qa_workspace`)
-* **Execution Time:** `63ms`
+* **Execution Time:** `68ms`
 * **Status:** **`PASS`** (Expected Code: `0`, Got: `0`)
 
 ### Standard Output (stdout):
 ```text
 !!! NUCLEAR WIPE INITIATED !!!
 Will destroy local workspace: 
-/home/w3bwizart/Development/sprawl-cli/qa_sandbox/qa_workspace/.agents
-Will destroy global DNA registry & configuration: /tmp/.sprawl_test
+/home/w3bwizart/Development/SPRAWL.software/sprawl-cli/qa_sandbox/qa_workspace/.
+agents
+Will destroy global DNA registry & configuration: /home/w3bwizart/.sprawl_test
 Note: To completely uninstall the CLI tool itself, run: pipx uninstall 
 sprawl-cli
 [*] Deregistered workspace 'qa_workspace' from global tracking.
 [*] Destroyed local workspace: 
-/home/w3bwizart/Development/sprawl-cli/qa_sandbox/qa_workspace/.agents
-[*] Destroyed global DNA registry and configuration: /tmp/.sprawl_test
+/home/w3bwizart/Development/SPRAWL.software/sprawl-cli/qa_sandbox/qa_workspace/.
+agents
+[*] Destroyed global DNA registry and configuration: 
+/home/w3bwizart/.sprawl_test
 
 ✔ Sprawl traces have been wiped.
 ```

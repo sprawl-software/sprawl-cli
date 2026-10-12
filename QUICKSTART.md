@@ -37,7 +37,7 @@ Search your available DNA registry and inject the rules and skills you need for 
 
 ```bash
 sprawl ls
-sprawl add python web-dev persona-master-engineer
+sprawl add python web_development persona-master-engineer
 ```
 
 *This automatically updates your `.agents/sprawl_manifest.yml`.*

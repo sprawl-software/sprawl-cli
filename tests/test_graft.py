@@ -82,6 +82,47 @@ class TestGraftHarvesting(unittest.TestCase):
         finally:
             shutil.rmtree(global_dna, ignore_errors=True)
 
+    @patch("src.sprawl.utils.get_active_dna_context")
+    def test_graft_package_json_defaults_to_web_development(self, mock_get_dna):
+        """package.json maps to web_development.md, never the non-existent web-dev.md."""
+        global_dna = tempfile.mkdtemp()
+        os.makedirs(os.path.join(global_dna, "rules"))
+        mock_get_dna.return_value = global_dna
+        os.remove(self.cursorrules)
+        shutil.rmtree(os.path.join(self.test_dir, ".github"))
+        with open(os.path.join(self.test_dir, "package.json"), "w") as f:
+            f.write("{}")
+
+        try:
+            cmd_graft()
+            manifest_path = os.path.join(self.test_dir, ".agents", "sprawl_manifest.yml")
+            reqs = parse_sprawl_manifest(manifest_path)
+            self.assertIn("web_development.md", reqs["rules"])
+            self.assertNotIn("web-dev.md", reqs["rules"])
+        finally:
+            shutil.rmtree(global_dna, ignore_errors=True)
+
+    @patch("src.sprawl.utils.get_active_dna_context")
+    def test_graft_package_json_prefers_existing_dna_rule(self, mock_get_dna):
+        """When only an alternative web rule exists in the DNA, graft picks that one."""
+        global_dna = tempfile.mkdtemp()
+        os.makedirs(os.path.join(global_dna, "rules"))
+        with open(os.path.join(global_dna, "rules", "react_best_practices.md"), "w") as f:
+            f.write("# React")
+        mock_get_dna.return_value = global_dna
+        os.remove(self.cursorrules)
+        shutil.rmtree(os.path.join(self.test_dir, ".github"))
+        with open(os.path.join(self.test_dir, "package.json"), "w") as f:
+            f.write("{}")
+
+        try:
+            cmd_graft()
+            manifest_path = os.path.join(self.test_dir, ".agents", "sprawl_manifest.yml")
+            reqs = parse_sprawl_manifest(manifest_path)
+            self.assertIn("react_best_practices.md", reqs["rules"])
+        finally:
+            shutil.rmtree(global_dna, ignore_errors=True)
+
 
 if __name__ == "__main__":
     unittest.main()

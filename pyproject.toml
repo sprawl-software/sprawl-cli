@@ -4,10 +4,10 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "sprawl-cli"
-version = "2.0.3"
-description = "Sprawl CLI Orchestrator - A single-pane Zero-Trust Agentic Fabric execution utility"
+version = "2.0.4"
+description = "Sprawl CLI - GitOps rule management and multi-IDE consistency for AI coding agents"
 authors = [
-    { name = "Younes Baghor", email = "younes@brainblendai.com" }
+    { name = "WebWizArt.be BV (Sprawl Software)", email = "younes@sprawl.software" }
 ]
 readme = "README.md"
 requires-python = ">=3.10"
@@ -20,7 +20,7 @@ classifiers = [
     "Operating System :: OS Independent",
 ]
 license = { text = "BSL-1.1" }
-keywords = ["sandbox", "agentic", "fabric", "mcp", "security", "governance"]
+keywords = ["agentic", "governance", "gitops", "mcp", "ai-rules", "developer-tools"]
 
 [project.optional-dependencies]
 dev = [

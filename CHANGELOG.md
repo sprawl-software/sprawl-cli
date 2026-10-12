@@ -7,6 +7,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [2.0.4] - 2026-10-12
+
+### Changed
+- **License:** Licensor is now WebWizArt.be BV (trading as Sprawl Software). The Change Date is now rolling: each version converts to Apache 2.0 four years after its first public release. Versions before 2.0.4 keep the Change Date of May 7, 2030.
+- **Positioning:** README and package metadata describe Sprawl as GitOps rule management and multi-IDE consistency for AI coding agents. Removed "sandbox" wording; Sprawl is not an OS-level sandbox. The MCP feature is documented as directory-scoped file access.
+- **Package README:** Removed the Enterprise SaaS feature list (not shipped) and the third-party consulting link. The license section now matches the root README.
+- **Metadata:** Author and contact updated to WebWizArt.be BV / younes@sprawl.software.
+
+### Fixed
+- **`sprawl graft` web heuristic:** Repos with `package.json` were assigned `web-dev.md`, which does not exist in the default DNA. Graft now selects the first existing rule from `web_development.md`, `web-dev.md`, `react_best_practices.md` in the active DNA, defaulting to `web_development.md`.
+
+---
+
 ## [2.0.0-rc.1] - 2026-07-03
 
 ### Added

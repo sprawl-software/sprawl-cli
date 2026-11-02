@@ -10,6 +10,7 @@ from pathlib import Path
 from tempfile import TemporaryDirectory
 
 from sprawl.analyzers.context import (
+    _read_bounded_text,
     analyze_mcp_json,
     analyze_rule_text,
     analyze_skill_text,
@@ -109,6 +110,34 @@ class TestTokenSizeAuditor(unittest.TestCase):
             self.assertEqual(by_path[".windsurfrules"].zero_hop_tokens, base_tokens)
             self.assertIn("duplicate file", by_path[".windsurfrules"].note)
 
+    def test_symlink_containment_and_circular_loop_safety(self) -> None:
+        with TemporaryDirectory() as outer_tmp:
+            outer = Path(outer_tmp)
+            secret_file = outer / "external_secret.txt"
+            secret_file.write_text("TOP_SECRET_CREDENTIAL_PAYLOAD", encoding="utf-8")
+
+            ws = outer / "workspace"
+            ws.mkdir()
+
+            # Out-of-bounds symlink pointing outside workspace
+            (ws / "CLAUDE.md").symlink_to(secret_file)
+
+            # Circular symlink loop: GEMINI.md <-> AGENTS.md
+            (ws / "GEMINI.md").symlink_to(ws / "AGENTS.md")
+            (ws / "AGENTS.md").symlink_to(ws / "GEMINI.md")
+
+            # Oversized / binary file safety in _read_bounded_text
+            small_file = ws / ".cursorrules"
+            small_file.write_text("Valid local rule", encoding="utf-8")
+            self.assertIsNone(_read_bounded_text(small_file, max_bytes=4))
+
+            report = scan_workspace_context(ws)
+            paths = {a.relative_path for a in report.artifacts}
+            self.assertNotIn("CLAUDE.md", paths)
+            self.assertNotIn("GEMINI.md", paths)
+            self.assertNotIn("AGENTS.md", paths)
+            self.assertIn(".cursorrules", paths)
+
     def test_scan_workspace_context_executes_under_100ms(self) -> None:
         with TemporaryDirectory() as tmp:
             ws = Path(tmp)
@@ -165,13 +194,29 @@ class TestTokenSizeAuditor(unittest.TestCase):
                 cmd_token_size(str(ws), detailed=False, max_tokens=5)
             self.assertIn("Context budget exceeded", str(ctx.exception))
 
+            # Non-existent directory raises SprawlError
+            with self.assertRaises(SprawlError):
+                cmd_token_size(str(ws / "nonexistent_dir"))
+
     def test_cmd_token_size_detailed_and_json_output(self) -> None:
         with TemporaryDirectory() as tmp:
             ws = Path(tmp)
             (ws / "AGENTS.md").write_text("# Manifest\n", encoding="utf-8")
+            rules_dir = ws / ".agents" / "rules"
+            rules_dir.mkdir(parents=True)
+            (rules_dir / "python.md").write_text(
+                "---\nalwaysApply: false\n---\nUse strict typing.\n", encoding="utf-8"
+            )
             mcp_metric = analyze_mcp_json("mcp_config.json", "{invalid json")
             self.assertEqual(mcp_metric.note, "invalid JSON schema")
 
+            # Rich detailed table rendering (json_logging=False)
+            config.json_logging = False
+            rich_buf = io.StringIO()
+            with contextlib.redirect_stdout(rich_buf):
+                cmd_token_size(str(ws), detailed=True)
+
+            # Structured JSON rendering (json_logging=True)
             config.json_logging = True
             json_buf = io.StringIO()
             with contextlib.redirect_stdout(json_buf):

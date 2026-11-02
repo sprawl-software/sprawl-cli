@@ -10,6 +10,8 @@ from pathlib import Path
 
 from ..validation import parse_yaml_frontmatter
 
+MAX_CONTEXT_FILE_BYTES = 10_485_760  # 10 MB safety ceiling
+
 _TOKEN_RE = re.compile(r"\w+|[^\w\s]")
 _LAYER_ORDER = ("manifest", "rule", "skill", "mcp")
 _MANIFEST_CANDIDATES = (
@@ -187,14 +189,52 @@ def build_context_report(
     )
 
 
+def _resolve_within_allowed_bounds(path: Path, workspace_root: Path) -> Path | None:
+    """Resolves path safely, rejecting circular symlinks and out-of-bounds targets."""
+    try:
+        resolved = path.resolve()
+        if not resolved.is_file():
+            return None
+        ws_bound = workspace_root.resolve()
+        core_bound = (Path.home() / ".sprawl" / "core").resolve()
+    except (OSError, RuntimeError):
+        return None
+
+    if resolved.is_relative_to(ws_bound) or resolved.is_relative_to(core_bound):
+        return resolved
+    return None
+
+
+def _read_bounded_text(
+    path: Path, max_bytes: int = MAX_CONTEXT_FILE_BYTES
+) -> tuple[str, int] | None:
+    """Reads UTF-8 text only if the file size does not exceed max_bytes."""
+    try:
+        byte_size = path.stat().st_size
+        if byte_size > max_bytes:
+            return None
+        text = path.read_text(encoding="utf-8")
+    except (OSError, UnicodeDecodeError):
+        return None
+    return text, len(text.encode("utf-8"))
+
+
 def _evaluate_manifest(
-    candidate: Path, rel_path: str, seen_realpaths: dict[Path, str]
-) -> ContextArtifactMetric:
+    candidate: Path,
+    rel_path: str,
+    workspace_dir: Path,
+    seen_realpaths: dict[Path, str],
+) -> ContextArtifactMetric | None:
     """Evaluates a single root or IDE manifest, deduplicating symlinks to canonical files."""
+    resolved = _resolve_within_allowed_bounds(candidate, workspace_dir)
+    if resolved is None:
+        return None
+    read_result = _read_bounded_text(resolved)
+    if read_result is None:
+        return None
+
+    content, bytes_size = read_result
     is_link = candidate.is_symlink()
-    resolved = candidate.resolve()
-    content = candidate.read_text(encoding="utf-8", errors="replace")
-    bytes_size = len(content.encode("utf-8"))
 
     if is_link and resolved in seen_realpaths:
         target_name = seen_realpaths[resolved]
@@ -228,8 +268,9 @@ def _collect_manifests(workspace_dir: Path) -> list[ContextArtifactMetric]:
     metrics: list[ContextArtifactMetric] = []
     for rel_path in _MANIFEST_CANDIDATES:
         candidate = workspace_dir / rel_path
-        if candidate.is_file():
-            metrics.append(_evaluate_manifest(candidate, rel_path, seen_realpaths))
+        metric = _evaluate_manifest(candidate, rel_path, workspace_dir, seen_realpaths)
+        if metric is not None:
+            metrics.append(metric)
     return metrics
 
 
@@ -249,10 +290,11 @@ def _collect_rules(workspace_dir: Path) -> list[ContextArtifactMetric]:
         return []
     metrics: list[ContextArtifactMetric] = []
     for rule_path in sorted(rules_dir.glob("*.md")):
-        if rule_path.is_file():
+        resolved = _resolve_within_allowed_bounds(rule_path, workspace_dir)
+        read_result = _read_bounded_text(resolved) if resolved is not None else None
+        if read_result is not None:
             rel = rule_path.relative_to(workspace_dir).as_posix()
-            text = rule_path.read_text(encoding="utf-8", errors="replace")
-            metrics.append(analyze_rule_text(rel, text))
+            metrics.append(analyze_rule_text(rel, read_result[0]))
     return metrics
 
 
@@ -263,10 +305,11 @@ def _collect_skills(workspace_dir: Path) -> list[ContextArtifactMetric]:
         return []
     metrics: list[ContextArtifactMetric] = []
     for skill_path in sorted(skills_dir.glob("*/SKILL.md")):
-        if skill_path.is_file():
+        resolved = _resolve_within_allowed_bounds(skill_path, workspace_dir)
+        read_result = _read_bounded_text(resolved) if resolved is not None else None
+        if read_result is not None:
             rel = skill_path.relative_to(workspace_dir).as_posix()
-            text = skill_path.read_text(encoding="utf-8", errors="replace")
-            metrics.append(analyze_skill_text(rel, text))
+            metrics.append(analyze_skill_text(rel, read_result[0]))
     return metrics
 
 
@@ -276,14 +319,13 @@ def _collect_mcp_configs(workspace_dir: Path) -> list[ContextArtifactMetric]:
     metrics: list[ContextArtifactMetric] = []
     for rel_path in _MCP_CANDIDATES:
         candidate = workspace_dir / rel_path
-        if not candidate.is_file():
+        resolved = _resolve_within_allowed_bounds(candidate, workspace_dir)
+        if resolved is None or resolved in seen_realpaths:
             continue
-        resolved = candidate.resolve()
-        if resolved in seen_realpaths:
-            continue
-        seen_realpaths.add(resolved)
-        text = candidate.read_text(encoding="utf-8", errors="replace")
-        metrics.append(analyze_mcp_json(rel_path, text))
+        read_result = _read_bounded_text(resolved)
+        if read_result is not None:
+            seen_realpaths.add(resolved)
+            metrics.append(analyze_mcp_json(rel_path, read_result[0]))
     return metrics
 
 

@@ -12,13 +12,14 @@ BASE_IGNORE_TARGETS: tuple[str, ...] = (
     ".agentignore",
     ".ignore",
 )
-ADAPTER_IGNORE_MAP: dict[str, str] = {
-    "cursor": ".cursorignore",
-    "claude-code": ".claudeignore",
-    "windsurf": ".codeiumignore",
-    "cline-roo": ".rooignore",
-    "gemini-cli": ".geminiignore",
-    "aider": ".aiderignore",
+ADAPTER_IGNORE_MAP: dict[str, tuple[str, ...]] = {
+    "cursor": (".cursorignore",),
+    "claude-code": (".claudeignore",),
+    "windsurf": (".codeiumignore", ".windsurfignore"),
+    "cline-roo": (".rooignore", ".clineignore"),
+    "gemini-cli": (".geminiignore",),
+    "intellij": (".aiignore",),
+    "aider": (".aiderignore",),
 }
 ALL_IGNORE_TARGETS: tuple[str, ...] = (
     ".agentignore",
@@ -26,8 +27,11 @@ ALL_IGNORE_TARGETS: tuple[str, ...] = (
     ".cursorignore",
     ".claudeignore",
     ".codeiumignore",
+    ".windsurfignore",
     ".rooignore",
+    ".clineignore",
     ".geminiignore",
+    ".aiignore",
     ".aiderignore",
 )
 IGNORE_TARGETS: tuple[str, ...] = ALL_IGNORE_TARGETS
@@ -96,9 +100,9 @@ def resolve_ignore_targets(workspace_dir: Path, all_targets: bool = False) -> tu
         return ALL_IGNORE_TARGETS
 
     bound_files = [
-        ADAPTER_IGNORE_MAP[adapter]
+        target_file
         for adapter in _read_manifest_bindings(workspace_dir)
-        if adapter in ADAPTER_IGNORE_MAP
+        for target_file in ADAPTER_IGNORE_MAP.get(adapter, ())
     ]
     existing_files = [target for target in ALL_IGNORE_TARGETS if (workspace_dir / target).is_file()]
     combined = (*BASE_IGNORE_TARGETS, *bound_files, *existing_files)

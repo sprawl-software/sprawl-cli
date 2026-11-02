@@ -93,7 +93,7 @@ def analyze_rule_text(relative_path: str, content: str) -> ContextArtifactMetric
             bytes_size=bytes_size,
             zero_hop_tokens=tokens,
             progressive_tokens=0,
-            note="always-on",
+            note="always-on (loaded every turn)",
         )
     return ContextArtifactMetric(
         layer="rule",
@@ -101,7 +101,7 @@ def analyze_rule_text(relative_path: str, content: str) -> ContextArtifactMetric
         bytes_size=bytes_size,
         zero_hop_tokens=0,
         progressive_tokens=tokens,
-        note="path/model-scoped",
+        note="on-demand (loaded when relevant)",
     )
 
 
@@ -119,7 +119,7 @@ def analyze_skill_text(relative_path: str, content: str) -> ContextArtifactMetri
         bytes_size=bytes_size,
         zero_hop_tokens=zero_hop,
         progressive_tokens=progressive,
-        note="catalog header + lazy body",
+        note="index on Turn 1 + body on-demand",
     )
 
 
@@ -210,7 +210,7 @@ def _evaluate_manifest(
 
     is_first = len(seen_realpaths) == 0
     seen_realpaths.setdefault(resolved, rel_path)
-    note = "canonical root manifest" if is_first else "physical file (duplicate overhead)"
+    note = "canonical root manifest" if is_first else "duplicate file (use sprawl bind symlink)"
     return ContextArtifactMetric(
         layer="manifest",
         relative_path=rel_path,

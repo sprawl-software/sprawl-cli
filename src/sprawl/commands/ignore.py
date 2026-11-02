@@ -171,16 +171,32 @@ _ACTION_DISPATCH = {
 }
 
 
+def _resolve_ignore_args(
+    action: str,
+    target_dir: str | None,
+    positional_dir: str | None = None,
+) -> tuple[str, Path]:
+    """Resolve action name and workspace path from positional or flag arguments."""
+    if action in _ACTION_DISPATCH:
+        return action, _resolve_workspace_path(target_dir or positional_dir)
+
+    candidate_path = Path(action)
+    if candidate_path.is_dir():
+        return "sync", candidate_path.resolve()
+
+    raise SprawlError(
+        f"Unknown ignore action or missing directory: '{action}'. "
+        "Expected 'detect', 'sync', or 'check'."
+    )
+
+
 def cmd_ignore(
     action: str = "sync",
     target_dir: str | None = None,
     all_targets: bool = False,
+    positional_dir: str | None = None,
 ) -> None:
-    """Entrypoint for `sprawl ignore [detect|sync|check] [--path DIR] [--all]`."""
-    workspace_path = _resolve_workspace_path(target_dir)
-    handler = _ACTION_DISPATCH.get(action)
-    if handler is None:
-        raise SprawlError(
-            f"Unknown ignore action: '{action}'. Expected 'detect', 'sync', or 'check'."
-        )
+    """Entrypoint for `sprawl ignore [detect|sync|check] [DIR] [--path DIR] [--all]`."""
+    resolved_action, workspace_path = _resolve_ignore_args(action, target_dir, positional_dir)
+    handler = _ACTION_DISPATCH[resolved_action]
     handler(workspace_path, all_targets)

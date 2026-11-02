@@ -53,7 +53,7 @@ class TestTokenSizeAuditor(unittest.TestCase):
         self.assertEqual(m_always.layer, "rule")
         self.assertGreater(m_always.zero_hop_tokens, 10)
         self.assertEqual(m_always.progressive_tokens, 0)
-        self.assertEqual(m_always.note, "always-on")
+        self.assertEqual(m_always.note, "always-on (loaded every turn)")
 
         scoped_rule = (
             "---\n"
@@ -66,7 +66,7 @@ class TestTokenSizeAuditor(unittest.TestCase):
         m_scoped = analyze_rule_text(".agents/rules/python.md", scoped_rule)
         self.assertEqual(m_scoped.zero_hop_tokens, 0)
         self.assertGreater(m_scoped.progressive_tokens, 10)
-        self.assertEqual(m_scoped.note, "path/model-scoped")
+        self.assertEqual(m_scoped.note, "on-demand (loaded when relevant)")
 
     def test_analyze_skill_text_splits_catalog_header_and_body(self) -> None:
         skill_md = (
@@ -82,6 +82,7 @@ class TestTokenSizeAuditor(unittest.TestCase):
         self.assertGreater(metric.zero_hop_tokens, 0)
         self.assertLess(metric.zero_hop_tokens, 30)
         self.assertGreater(metric.progressive_tokens, 150)
+        self.assertEqual(metric.note, "index on Turn 1 + body on-demand")
 
     def test_symlinked_ide_bindings_add_zero_duplicate_tokens(self) -> None:
         with TemporaryDirectory() as tmp:
@@ -106,7 +107,7 @@ class TestTokenSizeAuditor(unittest.TestCase):
             self.assertTrue(by_path[".cursorrules"].is_symlink)
             self.assertEqual(by_path["CLAUDE.md"].zero_hop_tokens, 0)
             self.assertEqual(by_path[".windsurfrules"].zero_hop_tokens, base_tokens)
-            self.assertIn("duplicate overhead", by_path[".windsurfrules"].note)
+            self.assertIn("duplicate file", by_path[".windsurfrules"].note)
 
     def test_scan_workspace_context_executes_under_100ms(self) -> None:
         with TemporaryDirectory() as tmp:

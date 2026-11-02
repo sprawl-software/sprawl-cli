@@ -3,6 +3,7 @@
 import contextlib
 import io
 import json
+import os
 from pathlib import Path
 import tempfile
 import unittest
@@ -147,34 +148,44 @@ class TestSprawlIgnore(unittest.TestCase):
             self.assertFalse((ws_path / ".claudeignore").exists())
 
     def test_bound_workspace_syncs_base_plus_bound_ide_targets(self) -> None:
-        """Verify workspace with bindings: [cursor, claude-code] syncs 4 target files."""
+        """Verify workspace with multi-file and single-file adapter bindings syncs all mapped files."""
         with tempfile.TemporaryDirectory() as tmp_dir:
             ws_path = Path(tmp_dir)
             agents_dir = ws_path / ".agents"
             agents_dir.mkdir()
             (agents_dir / "sprawl_manifest.yml").write_text(
-                "dna: core\nbindings: [cursor, claude-code]\n",
+                "dna: core\nbindings: [cursor, claude-code, windsurf, cline-roo, intellij]\n",
                 encoding="utf-8",
             )
 
             resolved = resolve_ignore_targets(ws_path)
             self.assertEqual(
                 resolved,
-                (".agentignore", ".ignore", ".cursorignore", ".claudeignore"),
+                (
+                    ".agentignore",
+                    ".ignore",
+                    ".cursorignore",
+                    ".claudeignore",
+                    ".codeiumignore",
+                    ".windsurfignore",
+                    ".rooignore",
+                    ".clineignore",
+                    ".aiignore",
+                ),
             )
 
             report = sync_workspace_ignores(ws_path)
-            self.assertEqual(len(report.targets), 4)
+            self.assertEqual(len(report.targets), 9)
             for target_name in resolved:
                 self.assertTrue((ws_path / target_name).is_file())
-            self.assertFalse((ws_path / ".codeiumignore").exists())
+            self.assertFalse((ws_path / ".aiderignore").exists())
 
-    def test_all_targets_flag_syncs_all_eight_ide_targets(self) -> None:
-        """Verify all_targets=True (--all) syncs all 8 supported IDE ignore files."""
+    def test_all_targets_flag_syncs_all_eleven_ide_targets(self) -> None:
+        """Verify all_targets=True (--all) syncs all 11 supported IDE ignore files."""
         with tempfile.TemporaryDirectory() as tmp_dir:
             ws_path = Path(tmp_dir)
             report = sync_workspace_ignores(ws_path, all_targets=True)
-            self.assertEqual(len(report.targets), 8)
+            self.assertEqual(len(report.targets), 11)
             self.assertEqual(
                 tuple(t.target_file for t in report.targets),
                 ALL_IGNORE_TARGETS,
@@ -199,7 +210,6 @@ class TestSprawlIgnore(unittest.TestCase):
             )
 
             report = sync_workspace_ignores(ws_path)
-            # Active targets: .agentignore, .ignore, plus pre-existing .cursorignore and .claudeignore
             self.assertEqual(
                 tuple(t.target_file for t in report.targets),
                 (".agentignore", ".ignore", ".cursorignore", ".claudeignore"),
@@ -248,8 +258,8 @@ class TestSprawlIgnore(unittest.TestCase):
 
             self.assertEqual(agent_file.read_text(encoding="utf-8"), tampered)
 
-    def test_cmd_ignore_json_and_dry_run_modes(self) -> None:
-        """Verify --dry-run writes zero files, --json outputs valid JSON, and --all parses cleanly."""
+    def test_cmd_ignore_cwd_positional_json_and_dry_run_modes(self) -> None:
+        """Verify CWD default, positional directory, --dry-run, --json, and --all modes."""
         with tempfile.TemporaryDirectory() as tmp_dir:
             ws_path = Path(tmp_dir)
             (ws_path / "go.mod").write_text("module example.com/m\n", encoding="utf-8")
@@ -265,22 +275,36 @@ class TestSprawlIgnore(unittest.TestCase):
             self.assertEqual(payload["action"], "sync")
             self.assertTrue(payload["dry_run"])
             self.assertEqual(payload["detected_stacks"], ["base", "go"])
-            self.assertEqual(len(payload["targets"]), 8)
+            self.assertEqual(len(payload["targets"]), 11)
             for target_name in ALL_IGNORE_TARGETS:
                 self.assertFalse((ws_path / target_name).exists())
 
-            detect_buf = io.StringIO()
-            with contextlib.redirect_stdout(detect_buf):
-                cmd_ignore("detect", str(ws_path))
-            detect_payload = json.loads(detect_buf.getvalue().strip())
-            self.assertEqual(detect_payload["action"], "detect")
-            self.assertEqual(detect_payload["detected_stacks"], ["base", "go"])
+            # Positional directory as first arg (`sprawl ignore /path/to/ws`)
+            pos_buf = io.StringIO()
+            with contextlib.redirect_stdout(pos_buf):
+                cmd_ignore(str(ws_path))
+            pos_payload = json.loads(pos_buf.getvalue().strip())
+            self.assertEqual(pos_payload["action"], "sync")
+            self.assertEqual(Path(pos_payload["workspace_dir"]), ws_path.resolve())
+
+            # Default CWD (`sprawl ignore` with no args inside workspace folder)
+            orig_cwd = os.getcwd()
+            try:
+                os.chdir(ws_path)
+                cwd_buf = io.StringIO()
+                with contextlib.redirect_stdout(cwd_buf):
+                    cmd_ignore()
+                cwd_payload = json.loads(cwd_buf.getvalue().strip())
+                self.assertEqual(cwd_payload["action"], "sync")
+                self.assertEqual(Path(cwd_payload["workspace_dir"]), ws_path.resolve())
+            finally:
+                os.chdir(orig_cwd)
 
             parser = get_parser()
-            parsed = parser.parse_args(["ignore", "sync", "--path", str(ws_path), "--all"])
+            parsed = parser.parse_args(["ignore", "sync", str(ws_path), "--all"])
             self.assertEqual(parsed.command, "ignore")
             self.assertEqual(parsed.ignore_action, "sync")
-            self.assertEqual(parsed.target_dir, str(ws_path))
+            self.assertEqual(parsed.positional_dir, str(ws_path))
             self.assertTrue(parsed.all)
 
             self.assertEqual(extract_custom_section(None), ("", 0))

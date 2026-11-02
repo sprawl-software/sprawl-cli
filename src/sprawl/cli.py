@@ -325,9 +325,14 @@ def get_parser() -> argparse.ArgumentParser:
     ignore_parser.add_argument(
         "ignore_action",
         nargs="?",
-        choices=["detect", "sync", "check"],
         default="sync",
-        help="Action to perform: detect, sync (default), or check (CI drift gate).",
+        help="Action to perform: detect, sync (default), or check (CI drift gate), or target directory.",
+    )
+    ignore_parser.add_argument(
+        "positional_dir",
+        nargs="?",
+        default=None,
+        help="Optional target workspace directory (defaults to current directory).",
     )
     ignore_parser.add_argument(
         "--path",
@@ -664,6 +669,7 @@ def main() -> None:
             getattr(a, "ignore_action", "sync"),
             getattr(a, "target_dir", None),
             all_targets=getattr(a, "all", False),
+            positional_dir=getattr(a, "positional_dir", None),
         ),
         "test": handle_test_command,
     }

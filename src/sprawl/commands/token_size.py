@@ -7,8 +7,10 @@ import json
 import os
 from pathlib import Path
 
+from rich.console import Group
 from rich.panel import Panel
 from rich.table import Table
+from rich.text import Text
 
 from ..analyzers.context import ContextAuditReport, scan_workspace_context
 from ..config import config
@@ -23,15 +25,37 @@ _LAYER_LABELS = {
 }
 
 
+def _build_summary_banner(report: ContextAuditReport, max_tokens: int | None = None) -> Text:
+    """Builds the plain-English 3-bullet context budget summary below the layer table."""
+    banner = Text()
+    banner.append("\n• Unoptimized Peak Context: ", style="info")
+    banner.append(f"{report.peak_tokens:,} tokens", style="bold")
+    banner.append("  (if all rules & skills were loaded upfront)\n", style="dim")
+
+    banner.append("• Actual Turn-1 Prompt:     ", style="info")
+    banner.append(f"{report.zero_hop_tokens:,} tokens", style="bold warning")
+    banner.append("  (Always-On baseline injected on first message)\n", style="dim")
+
+    banner.append("• Context Saved (Lazy):     ", style="info")
+    banner.append(f"{report.progressive_tokens:,} tokens", style="bold success")
+    banner.append(
+        f"  ({report.pruned_ratio_pct}% reduction via On-Demand loading)",
+        style="success",
+    )
+    if max_tokens is not None:
+        banner.append(f"  [Budget Ceiling: {max_tokens:,} tokens]", style="accent")
+    return banner
+
+
 def _render_summary_table(report: ContextAuditReport, max_tokens: int | None = None) -> None:
-    """Renders the 4-layer Turn-1 Zero-Hop vs. Progressive summary table."""
+    """Renders the 4-layer Always-On (Turn 1) vs. Lazy-Loaded (On-Demand) summary table."""
     console.print()
     table = Table(show_header=True, border_style="#5D5CFF")
-    table.add_column("Context Layer", style="accent", width=34)
-    table.add_column("Files", justify="right", style="info", width=7)
-    table.add_column("Bytes", justify="right", style="info", width=10)
-    table.add_column("Turn-1 (Zero-Hop)", justify="right", style="warning", width=18)
-    table.add_column("On-Demand (Prog.)", justify="right", style="success", width=18)
+    table.add_column("Context Layer", style="accent")
+    table.add_column("Files", justify="right", style="info", no_wrap=True)
+    table.add_column("Bytes", justify="right", style="info", no_wrap=True)
+    table.add_column("Always-On Tokens (Turn 1)", justify="right", style="warning")
+    table.add_column("Lazy-Loaded Tokens (On-Demand)", justify="right", style="success")
 
     for row in report.layers:
         label = _LAYER_LABELS.get(row.layer, row.layer.capitalize())
@@ -54,34 +78,26 @@ def _render_summary_table(report: ContextAuditReport, max_tokens: int | None = N
         f"[bold]{report.progressive_tokens:,}[/bold]",
     )
 
-    budget_note = (
-        f" | Budget Ceiling: {max_tokens:,} tokens" if max_tokens is not None else ""
-    )
-    subtitle = (
-        f"[info]Turn-1 Baseline: [bold]{report.zero_hop_tokens:,}[/bold] tokens | "
-        f"Pruned via Progressive Disclosure: [bold success]{report.pruned_ratio_pct}%[/bold success] "
-        f"({report.progressive_tokens:,} / {report.peak_tokens:,} peak tokens) | "
-        f"{report.elapsed_ms:.1f}ms{budget_note}[/info]"
-    )
+    banner = _build_summary_banner(report, max_tokens=max_tokens)
     console.print(
         Panel(
-            table,
+            Group(table, banner),
             title=f"[bold accent]Context Pollution Audit ({os.path.basename(report.workspace_dir)})[/bold accent]",
-            subtitle=subtitle,
+            subtitle=f"[info]Scanned in {report.elapsed_ms:.1f}ms[/info]",
             border_style="#5D5CFF",
         )
     )
 
 
 def _render_detailed_table(report: ContextAuditReport) -> None:
-    """Renders per-artifact token breakdown sorted by total token weight."""
-    detail = Table(show_header=True, border_style="#5D5CFF")
-    detail.add_column("Layer", style="accent", width=10)
-    detail.add_column("Artifact Path", style="info")
-    detail.add_column("Bytes", justify="right", style="info", width=9)
-    detail.add_column("Zero-Hop", justify="right", style="warning", width=10)
-    detail.add_column("Progressive", justify="right", style="success", width=12)
-    detail.add_column("Loading Tier / Diagnostic", style="info")
+    """Renders per-artifact token breakdown sorted by total token weight without path truncation."""
+    detail = Table(show_header=True, border_style="#5D5CFF", expand=True)
+    detail.add_column("Layer", style="accent", no_wrap=True)
+    detail.add_column("Artifact Path", style="accent", ratio=3, min_width=24, overflow="fold")
+    detail.add_column("Bytes", justify="right", style="info", no_wrap=True)
+    detail.add_column("Always-On\nTokens", justify="right", style="warning")
+    detail.add_column("Lazy-Loaded\nTokens", justify="right", style="success")
+    detail.add_column("Loading Behavior", style="info", ratio=2, min_width=16)
 
     sorted_items = sorted(
         report.artifacts,

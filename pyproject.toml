@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "sprawl-cli"
-version = "2.0.4"
+version = "2.1.0"
 description = "Sprawl CLI - GitOps rule management and multi-IDE consistency for AI coding agents"
 authors = [
     { name = "WebWizArt.be BV (Sprawl Software)", email = "younes@sprawl.software" }

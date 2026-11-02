@@ -1,8 +1,8 @@
 """Canonical multi-IDE ignore shield compiler and non-destructive merger."""
 
+import time
 from dataclasses import dataclass
 from pathlib import Path
-import time
 
 from ..analyzers.stack import STACK_PROFILE_MAP, detect_workspace_stacks
 from ..exceptions import SprawlError
@@ -89,7 +89,11 @@ def _parse_bindings_value(raw_bindings: object) -> tuple[str, ...]:
     """Normalize parsed YAML bindings value (block list or flow list string)."""
     if isinstance(raw_bindings, list):
         return tuple(str(item).strip().strip("\"'") for item in raw_bindings if str(item).strip())
-    if isinstance(raw_bindings, str) and raw_bindings.startswith("[") and raw_bindings.endswith("]"):
+    if (
+        isinstance(raw_bindings, str)
+        and raw_bindings.startswith("[")
+        and raw_bindings.endswith("]")
+    ):
         inner = raw_bindings[1:-1].strip()
         if not inner:
             return ()
@@ -335,14 +339,11 @@ def _describe_sync_reason(
             f"preserved {preserved_count} custom)"
         )
     return (
-        f"updated managed block ({active_rules} managed rules, "
-        f"preserved {preserved_count} custom)"
+        f"updated managed block ({active_rules} managed rules, preserved {preserved_count} custom)"
     )
 
 
-def _determine_target_status(
-    existing: str | None, final_content: str, check_only: bool
-) -> str:
+def _determine_target_status(existing: str | None, final_content: str, check_only: bool) -> str:
     """Resolve the sync status string for a single target file."""
     if existing == final_content:
         return "unchanged"
@@ -371,9 +372,7 @@ def _process_single_target(
     if status in ("created", "updated") and not dry_run:
         _write_target_file(target_path, final_content, workspace_dir)
 
-    reason = _describe_sync_reason(
-        status, existing, active_rules, custom_count, detected_stacks
-    )
+    reason = _describe_sync_reason(status, existing, active_rules, custom_count, detected_stacks)
     return TargetIgnoreStatus(target_name, status, custom_count, reason=reason)
 
 

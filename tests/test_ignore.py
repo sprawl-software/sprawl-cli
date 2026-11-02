@@ -4,9 +4,9 @@ import contextlib
 import io
 import json
 import os
-from pathlib import Path
 import tempfile
 import unittest
+from pathlib import Path
 
 from sprawl.analyzers.stack import (
     STACK_PROFILE_MAP,

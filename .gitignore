@@ -92,12 +92,29 @@ web_modules/
 .yarn/
 .dummy_dna/
 
-# Agentic / Editor Specific Rules
+# Agentic / Editor Specific Rules & Ignore Shields
 .agent
+.agentignore
+.ignore
+.cursorignore
+.claudeignore
+.aiderignore
+.codeiumignore
+.windsurfignore
+.rooignore
+.clineignore
+.geminiignore
+.aiignore
 .gemini/
 .clinerules
 .cursorrules
 .windsurfrules
+.zedrules
+.jupyterrules
+.aiassistant/
+.opencode/
+CLAUDE.md
+GEMINI.md
 
 # Test and Cache folders
 .pytest_cache/

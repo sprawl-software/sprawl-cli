@@ -167,9 +167,7 @@ def _render_sync_report(report: IgnoreSyncReport, check_only: bool) -> None:
 
     _render_sync_table(report)
     if report.has_drift:
-        print_warning(
-            f"Ignore shield drift detected across workspace ({report.elapsed_ms:.2f}ms)."
-        )
+        print_warning(f"Ignore shield drift detected across workspace ({report.elapsed_ms:.2f}ms).")
         return
 
     mode_prefix = "\\[DRY-RUN] " if config.dry_run and not check_only else ""

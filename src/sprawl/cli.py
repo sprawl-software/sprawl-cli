@@ -21,6 +21,7 @@ from .commands import (
     cmd_doctor,
     cmd_fetch_dna,
     cmd_graft,
+    cmd_ignore,
     cmd_init,
     cmd_list,
     cmd_man,
@@ -315,6 +316,25 @@ def get_parser() -> argparse.ArgumentParser:
     )
     status_parser.add_argument("target_dir", nargs="?", default=None, help="Target workspace path.")
 
+    # ignore
+    ignore_parser = subparsers.add_parser(
+        "ignore",
+        help="Compiles stack-aware multi-IDE ignore shields (.agentignore, .cursorignore, .claudeignore, .aiderignore, .ignore).",
+    )
+    ignore_parser.add_argument(
+        "ignore_action",
+        nargs="?",
+        choices=["detect", "sync", "check"],
+        default="sync",
+        help="Action to perform: detect, sync (default), or check (CI drift gate).",
+    )
+    ignore_parser.add_argument(
+        "--path",
+        dest="target_dir",
+        default=None,
+        help="Optional target workspace directory (defaults to current directory).",
+    )
+
     if os.environ.get("SPRAWL_DEV") == "1":
         subparsers.add_parser("test", help="Runs the test suite (Dev only).")
 
@@ -381,6 +401,7 @@ def print_help() -> None:
     t_workspace.add_row("mount add <PATH>", "Mounts a directory for sandboxed MCP server access.")
     t_workspace.add_row("mount remove <ALIAS>", "Removes an active directory mount.")
     t_workspace.add_row("mount list", "Lists all configured directory mounts.")
+    t_workspace.add_row("ignore [ACTION]", "Syncs stack-aware ignore shields across 5 IDE targets.")
 
     t_artifact = create_category_table()
     t_artifact.add_row("ls", "Scans the active DNA registry and lists all available artifacts.")
@@ -592,11 +613,14 @@ def main() -> None:
             local_only=getattr(a, "local_only", False),
         ),
         "mount": handle_mount_command,
+        "ignore": lambda a: cmd_ignore(
+            getattr(a, "ignore_action", "sync"), getattr(a, "target_dir", None)
+        ),
         "test": handle_test_command,
     }
 
     try:
-        if args.command not in ("init", "dna", "ws"):
+        if args.command not in ("init", "dna", "ws", "ignore"):
             from .registry import check_dna_staleness
 
             check_dna_staleness()

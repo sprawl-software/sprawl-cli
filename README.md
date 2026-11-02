@@ -95,6 +95,7 @@ sprawl bind
 | `sprawl graft` | Onboard an existing project without losing custom configs |
 | `sprawl sync` | Pull DNA updates, provision venv, compile IDE bindings |
 | `sprawl bind` | Generate native config files for all active editors |
+| `sprawl ignore` | Compile stack-aware ignore shields across 5 IDE targets (`.agentignore`, `.cursorignore`, `.claudeignore`, `.aiderignore`, `.ignore`) |
 | `sprawl add` | Inject rules, skills, or workflows from the registry |
 | `sprawl mount` | Give agents scoped access to additional directories |
 | `sprawl status` | Inspect workspace identity and DNA health |

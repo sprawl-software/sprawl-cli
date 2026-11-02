@@ -258,6 +258,48 @@ class TestSprawlIgnore(unittest.TestCase):
 
             self.assertEqual(agent_file.read_text(encoding="utf-8"), tampered)
 
+    def test_symlinked_ignore_file_rejected_with_sprawl_error(self) -> None:
+        """Verify symlinked .cursorignore -> external secret raises SprawlError without mutating target."""
+        with (
+            tempfile.TemporaryDirectory() as ws_tmp,
+            tempfile.TemporaryDirectory() as ext_tmp,
+        ):
+            ws_path = Path(ws_tmp)
+            secret_file = Path(ext_tmp) / "external_secret.txt"
+            secret_content = "SUPER_SECRET_PRIVATE_KEY=12345\n"
+            secret_file.write_text(secret_content, encoding="utf-8")
+
+            symlink_target = ws_path / ".cursorignore"
+            symlink_target.symlink_to(secret_file)
+
+            with self.assertRaises(SprawlError) as ctx:
+                sync_workspace_ignores(ws_path)
+
+            self.assertIn("symlinked ignore file", str(ctx.exception))
+            self.assertEqual(secret_file.read_text(encoding="utf-8"), secret_content)
+            self.assertFalse((ws_path / ".agentignore").exists())
+
+    def test_detect_rich_table_rendering_and_binary_file_guard(self) -> None:
+        """Verify non-JSON Rich table rendering for detect and binary ignore file rejection."""
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            ws_path = Path(tmp_dir)
+            (ws_path / "pyproject.toml").write_text("[project]\n", encoding="utf-8")
+            (ws_path / "Dockerfile").write_text("FROM scratch\n", encoding="utf-8")
+
+            config.json_logging = False
+            config.dry_run = True
+            cmd_ignore("detect", str(ws_path))
+            cmd_ignore("sync", str(ws_path))
+
+            # Verify invalid action raises SprawlError
+            with self.assertRaises(SprawlError):
+                cmd_ignore("not_an_action_or_dir")
+
+            # Verify binary non-UTF8 ignore file raises SprawlError
+            (ws_path / ".agentignore").write_bytes(b"\xff\xfe\x00\x80invalid_utf8")
+            with self.assertRaises(SprawlError):
+                sync_workspace_ignores(ws_path)
+
     def test_cmd_ignore_cwd_positional_json_and_dry_run_modes(self) -> None:
         """Verify CWD default, positional directory, --dry-run, --json, and --all modes."""
         with tempfile.TemporaryDirectory() as tmp_dir:

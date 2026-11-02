@@ -37,6 +37,7 @@ ALL_IGNORE_TARGETS: tuple[str, ...] = (
 IGNORE_TARGETS: tuple[str, ...] = ALL_IGNORE_TARGETS
 MANAGED_HEADER = "# === SPRAWL GOVERNED IGNORE SHIELD (DO NOT EDIT ABOVE CUSTOM SEPARATOR) ==="
 CUSTOM_SEPARATOR = "# === CUSTOM WORKSPACE IGNORES ==="
+MAX_IGNORE_FILE_BYTES = 1_048_576
 
 
 @dataclass(frozen=True)
@@ -68,6 +69,18 @@ def _count_active_rules(lines: list[str]) -> int:
     return sum(1 for line in lines if line.strip() and not line.strip().startswith("#"))
 
 
+def _validate_ignore_target(target_path: Path, workspace_root: Path) -> None:
+    """Reject symlinked ignore files and paths escaping workspace_root."""
+    if target_path.is_symlink():
+        raise SprawlError(
+            f"Security violation: refusing to read or write symlinked ignore file '{target_path.name}'."
+        )
+    if not target_path.resolve().is_relative_to(workspace_root.resolve()):
+        raise SprawlError(
+            f"Security violation: ignore target '{target_path.name}' resolves outside workspace."
+        )
+
+
 def _parse_bindings_value(raw_bindings: object) -> tuple[str, ...]:
     """Normalize parsed YAML bindings value (block list or flow list string)."""
     if isinstance(raw_bindings, list):
@@ -80,14 +93,25 @@ def _parse_bindings_value(raw_bindings: object) -> tuple[str, ...]:
     return ()
 
 
+def _read_safe_manifest_text(manifest_path: Path, workspace_dir: Path) -> str | None:
+    """Safely read manifest file if contained within workspace_dir and within size limits."""
+    if manifest_path.is_symlink() or not manifest_path.is_file():
+        return None
+    if not manifest_path.resolve().is_relative_to(workspace_dir.resolve()):
+        return None
+    try:
+        if manifest_path.stat().st_size > MAX_IGNORE_FILE_BYTES:
+            return None
+        return manifest_path.read_text(encoding="utf-8")
+    except (OSError, UnicodeDecodeError):
+        return None
+
+
 def _read_manifest_bindings(workspace_dir: Path) -> tuple[str, ...]:
     """Read active IDE adapter bindings from .agents/sprawl_manifest.yml if present."""
     manifest_path = workspace_dir / ".agents" / "sprawl_manifest.yml"
-    if not manifest_path.is_file():
-        return ()
-    try:
-        raw_text = manifest_path.read_text(encoding="utf-8")
-    except OSError:
+    raw_text = _read_safe_manifest_text(manifest_path, workspace_dir)
+    if raw_text is None:
         return ()
     wrapped = raw_text if raw_text.startswith("---") else f"---\n{raw_text}\n---"
     parsed = parse_yaml_frontmatter(wrapped)
@@ -104,7 +128,11 @@ def resolve_ignore_targets(workspace_dir: Path, all_targets: bool = False) -> tu
         for adapter in _read_manifest_bindings(workspace_dir)
         for target_file in ADAPTER_IGNORE_MAP.get(adapter, ())
     ]
-    existing_files = [target for target in ALL_IGNORE_TARGETS if (workspace_dir / target).is_file()]
+    existing_files = [
+        target
+        for target in ALL_IGNORE_TARGETS
+        if (workspace_dir / target).is_file() or (workspace_dir / target).is_symlink()
+    ]
     combined = (*BASE_IGNORE_TARGETS, *bound_files, *existing_files)
     return tuple(dict.fromkeys(combined))
 
@@ -225,18 +253,24 @@ def merge_ignore_content(managed_block: str, existing_content: str | None) -> tu
     return _format_merged_block(managed_block, custom_section, custom_count)
 
 
-def _read_existing_target(target_path: Path) -> str | None:
-    """Read an existing ignore target file if present on disk."""
+def _read_existing_target(target_path: Path, workspace_root: Path) -> str | None:
+    """Validate and read an existing ignore target file if present on disk."""
+    _validate_ignore_target(target_path, workspace_root)
     if not target_path.is_file():
         return None
     try:
+        if target_path.stat().st_size > MAX_IGNORE_FILE_BYTES:
+            raise SprawlError(
+                f"Ignore file '{target_path.name}' exceeds {MAX_IGNORE_FILE_BYTES} byte limit."
+            )
         return target_path.read_text(encoding="utf-8")
-    except OSError as exc:
+    except (OSError, UnicodeDecodeError) as exc:
         raise SprawlError(f"Failed to read '{target_path}': {exc}") from exc
 
 
-def _write_target_file(target_path: Path, content: str) -> None:
-    """Write compiled ignore content to disk."""
+def _write_target_file(target_path: Path, content: str, workspace_root: Path) -> None:
+    """Validate and write compiled ignore content to disk."""
+    _validate_ignore_target(target_path, workspace_root)
     try:
         target_path.write_text(content, encoding="utf-8")
     except OSError as exc:
@@ -252,7 +286,7 @@ def _collect_workspace_custom_section(
     candidates = tuple(dict.fromkeys((*targets, *ALL_IGNORE_TARGETS)))
     sections: list[str] = []
     for target_name in candidates:
-        existing = _read_existing_target(workspace_dir / target_name)
+        existing = _read_existing_target(workspace_dir / target_name, workspace_dir)
         if existing is not None:
             section_text, _ = extract_custom_section(existing, managed_patterns)
             if section_text:
@@ -270,7 +304,7 @@ def _process_single_target(
 ) -> TargetIgnoreStatus:
     """Evaluate and optionally write a single ignore target file."""
     target_path = workspace_dir / target_name
-    existing = _read_existing_target(target_path)
+    existing = _read_existing_target(target_path, workspace_dir)
 
     if existing == final_content:
         return TargetIgnoreStatus(target_name, "unchanged", custom_count)
@@ -280,7 +314,7 @@ def _process_single_target(
 
     status = "created" if existing is None else "updated"
     if not dry_run:
-        _write_target_file(target_path, final_content)
+        _write_target_file(target_path, final_content, workspace_dir)
     return TargetIgnoreStatus(target_name, status, custom_count)
 
 

@@ -340,6 +340,19 @@ def _describe_sync_reason(
     )
 
 
+def _determine_target_status(
+    existing: str | None, final_content: str, check_only: bool
+) -> str:
+    """Resolve the sync status string for a single target file."""
+    if existing == final_content:
+        return "unchanged"
+    if check_only:
+        return "drifted"
+    if existing is None:
+        return "created"
+    return "updated"
+
+
 def _process_single_target(
     workspace_dir: Path,
     target_name: str,
@@ -353,15 +366,10 @@ def _process_single_target(
     """Evaluate and optionally write a single ignore target file."""
     target_path = workspace_dir / target_name
     existing = _read_existing_target(target_path, workspace_dir)
+    status = _determine_target_status(existing, final_content, check_only)
 
-    if existing == final_content:
-        status = "unchanged"
-    elif check_only:
-        status = "drifted"
-    else:
-        status = "created" if existing is None else "updated"
-        if not dry_run:
-            _write_target_file(target_path, final_content, workspace_dir)
+    if status in ("created", "updated") and not dry_run:
+        _write_target_file(target_path, final_content, workspace_dir)
 
     reason = _describe_sync_reason(
         status, existing, active_rules, custom_count, detected_stacks

@@ -226,6 +226,7 @@ The newly updated Sprawl Engine possesses the following state-of-the-art native 
 - **Diagnostics & Telemetry**:
   - `sprawl doctor`: Validates global Sprawl Hub integrity, CLI configuration, and dependency health.
   - `sprawl status`: Displays real-time Rich panel telemetry of the active workspace, indicating drift, bindings, and manifest state.
+  - `sprawl token-size` (alias `sprawl context`): Statically audits Turn-1 zero-hop baseline vs. progressive on-demand context token weight across manifests, rules, skills, and MCP server schemas (`--detailed`, `--max-tokens`).
   - `sprawl diff`: Visually contrasts the local workspace `.agents/` directory against the upstream DNA source to detect drift or uncommitted mutations.
 ### 🛡️ Sprawl Shell (The Agent Simulator)
 

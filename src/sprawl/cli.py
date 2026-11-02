@@ -30,6 +30,7 @@ from .commands import (
     cmd_shell,
     cmd_status,
     cmd_sync,
+    cmd_token_size,
     cmd_update,
     cmd_wipe,
 )
@@ -335,6 +336,31 @@ def get_parser() -> argparse.ArgumentParser:
         help="Optional target workspace directory (defaults to current directory).",
     )
 
+    # token-size (alias: context)
+    token_parser = subparsers.add_parser(
+        "token-size",
+        aliases=["context"],
+        help="Statically audits Turn-1 zero-hop vs. progressive context token overhead (<100ms).",
+    )
+    token_parser.add_argument(
+        "target_dir",
+        nargs="?",
+        default=None,
+        help="Optional workspace path to audit (defaults to current directory).",
+    )
+    token_parser.add_argument(
+        "--detailed",
+        action="store_true",
+        default=False,
+        help="Show per-file token breakdown sorted by token weight.",
+    )
+    token_parser.add_argument(
+        "--max-tokens",
+        type=int,
+        default=None,
+        help="CI/CD gate: fail with exit code 1 if Turn-1 zero-hop tokens exceed this ceiling.",
+    )
+
     if os.environ.get("SPRAWL_DEV") == "1":
         subparsers.add_parser("test", help="Runs the test suite (Dev only).")
 
@@ -417,6 +443,9 @@ def print_help() -> None:
 
     t_diag = create_category_table()
     t_diag.add_row("status", "Displays workspace status: DNA, artifacts, venv health.")
+    t_diag.add_row(
+        "token-size [dir]", "Audits Turn-1 zero-hop vs. progressive context token weight."
+    )
     t_diag.add_row("diff [dir]", "Visualizes local DNA drift against upstream registry.")
     t_diag.add_row("demo [ID]", "Interactive native demonstration engine.")
     t_diag.add_row(
@@ -606,6 +635,16 @@ def main() -> None:
         "man": lambda a: cmd_man(),
         "doctor": lambda a: cmd_doctor(),
         "status": lambda a: cmd_status(getattr(a, "target_dir", None)),
+        "token-size": lambda a: cmd_token_size(
+            getattr(a, "target_dir", None),
+            detailed=getattr(a, "detailed", False),
+            max_tokens=getattr(a, "max_tokens", None),
+        ),
+        "context": lambda a: cmd_token_size(
+            getattr(a, "target_dir", None),
+            detailed=getattr(a, "detailed", False),
+            max_tokens=getattr(a, "max_tokens", None),
+        ),
         "demo": lambda a: cmd_demo(a.name),
         "wipe": lambda a: cmd_wipe(
             a.target_dir,
@@ -620,7 +659,7 @@ def main() -> None:
     }
 
     try:
-        if args.command not in ("init", "dna", "ws", "ignore"):
+        if args.command not in ("init", "dna", "ws", "ignore", "token-size", "context"):
             from .registry import check_dna_staleness
 
             check_dna_staleness()

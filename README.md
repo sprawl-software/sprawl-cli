@@ -99,6 +99,7 @@ sprawl bind
 | `sprawl add` | Inject rules, skills, or workflows from the registry |
 | `sprawl mount` | Give agents scoped access to additional directories |
 | `sprawl status` | Inspect workspace identity and DNA health |
+| `sprawl token-size` | Statically audit Turn-1 zero-hop vs. progressive context token weight |
 | `sprawl diff` | Detect configuration drift against the central registry |
 | `sprawl doctor` | Run system-wide diagnostics |
 | `sprawl ws` | Manage all tracked workspaces from a single registry |

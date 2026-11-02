@@ -30,6 +30,7 @@ class TestTokenSizeAuditor(unittest.TestCase):
         config.json_logging = False
 
     def test_estimate_tokens_deterministic_and_accurate(self) -> None:
+        """Verify stdlib BPE approximation is deterministic and within expected token bounds."""
         self.assertEqual(estimate_tokens(""), 0)
         self.assertEqual(estimate_tokens("   \n\t  "), 0)
 
@@ -43,6 +44,7 @@ class TestTokenSizeAuditor(unittest.TestCase):
         self.assertGreater(estimate_tokens(code_snippet), 8)
 
     def test_analyze_rule_text_zero_hop_vs_progressive(self) -> None:
+        """Verify alwaysApply rules count toward Always-On (Turn 1) vs scoped rules in Lazy-Loaded."""
         always_rule = (
             "---\n"
             "name: Security Rule\n"
@@ -70,6 +72,7 @@ class TestTokenSizeAuditor(unittest.TestCase):
         self.assertEqual(m_scoped.note, "on-demand (loaded when relevant)")
 
     def test_analyze_skill_text_splits_catalog_header_and_body(self) -> None:
+        """Verify SKILL.md splits frontmatter catalog header (Turn 1) from markdown body (On-Demand)."""
         skill_md = (
             "---\n"
             "name: sec-auditor\n"
@@ -86,6 +89,7 @@ class TestTokenSizeAuditor(unittest.TestCase):
         self.assertEqual(metric.note, "index on Turn 1 + body on-demand")
 
     def test_symlinked_ide_bindings_add_zero_duplicate_tokens(self) -> None:
+        """Verify symlinked IDE bindings add 0 duplicate tokens while physical copies flag overhead."""
         with TemporaryDirectory() as tmp:
             ws = Path(tmp)
             agents_text = "# Canonical AGENTS Manifest\n" + ("Follow strict ReAct loops. " * 15)
@@ -111,6 +115,7 @@ class TestTokenSizeAuditor(unittest.TestCase):
             self.assertIn("duplicate file", by_path[".windsurfrules"].note)
 
     def test_symlink_containment_and_circular_loop_safety(self) -> None:
+        """Verify out-of-bounds symlinks, circular symlink loops, and oversized files are skipped."""
         with TemporaryDirectory() as outer_tmp:
             outer = Path(outer_tmp)
             secret_file = outer / "external_secret.txt"
@@ -139,6 +144,7 @@ class TestTokenSizeAuditor(unittest.TestCase):
             self.assertIn(".cursorrules", paths)
 
     def test_scan_workspace_context_executes_under_100ms(self) -> None:
+        """Verify 4-layer workspace context scan completes in under 100ms with accurate ratios."""
         with TemporaryDirectory() as tmp:
             ws = Path(tmp)
             (ws / "AGENTS.md").write_text("# Root Agent Manifest\nCore rules.\n", encoding="utf-8")
@@ -178,6 +184,7 @@ class TestTokenSizeAuditor(unittest.TestCase):
             self.assertGreater(report.pruned_ratio_pct, 50.0)
 
     def test_cmd_token_size_max_tokens_gate_passes_and_fails(self) -> None:
+        """Verify --max-tokens CI budget gate passes under limit and raises SprawlError above limit."""
         with TemporaryDirectory() as tmp:
             ws = Path(tmp)
             (ws / "AGENTS.md").write_text(
@@ -190,7 +197,7 @@ class TestTokenSizeAuditor(unittest.TestCase):
                 cmd_token_size(str(ws), detailed=False, max_tokens=50000)
 
             # Low budget raises SprawlError
-            with self.assertRaises(SprawlError) as ctx:
+            with contextlib.redirect_stdout(buf), self.assertRaises(SprawlError) as ctx:
                 cmd_token_size(str(ws), detailed=False, max_tokens=5)
             self.assertIn("Context budget exceeded", str(ctx.exception))
 
@@ -199,6 +206,7 @@ class TestTokenSizeAuditor(unittest.TestCase):
                 cmd_token_size(str(ws / "nonexistent_dir"))
 
     def test_cmd_token_size_detailed_and_json_output(self) -> None:
+        """Verify --detailed Rich rendering and --json structured output schema."""
         with TemporaryDirectory() as tmp:
             ws = Path(tmp)
             (ws / "AGENTS.md").write_text("# Manifest\n", encoding="utf-8")
@@ -229,6 +237,7 @@ class TestTokenSizeAuditor(unittest.TestCase):
             self.assertEqual(len(payload["layers"]), 4)
 
     def test_cli_context_alias_routes_to_token_size(self) -> None:
+        """Verify sprawl context alias accepts --detailed and --max-tokens flags."""
         parser = get_parser()
         args = parser.parse_args(["context", "--detailed", "--max-tokens", "4096"])
         self.assertIn(args.command, ("token-size", "context"))

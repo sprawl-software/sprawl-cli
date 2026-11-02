@@ -247,13 +247,14 @@ class TestSprawlIgnore(unittest.TestCase):
             (ws_path / "Cargo.toml").write_text("[package]\n", encoding="utf-8")
             sync_workspace_ignores(ws_path)
 
-            cmd_ignore("check", str(ws_path))
+            with contextlib.redirect_stdout(io.StringIO()):
+                cmd_ignore("check", str(ws_path))
 
             agent_file = ws_path / ".agentignore"
             tampered = "# Tampered header\n"
             agent_file.write_text(tampered, encoding="utf-8")
 
-            with self.assertRaises(SprawlError):
+            with contextlib.redirect_stdout(io.StringIO()), self.assertRaises(SprawlError):
                 cmd_ignore("check", str(ws_path))
 
             self.assertEqual(agent_file.read_text(encoding="utf-8"), tampered)
@@ -288,8 +289,11 @@ class TestSprawlIgnore(unittest.TestCase):
 
             config.json_logging = False
             config.dry_run = True
-            cmd_ignore("detect", str(ws_path))
-            cmd_ignore("sync", str(ws_path))
+            rich_out = io.StringIO()
+            with contextlib.redirect_stdout(rich_out):
+                cmd_ignore("detect", str(ws_path))
+                cmd_ignore("sync", str(ws_path))
+            self.assertIn("Detected Workspace Stacks", rich_out.getvalue())
 
             # Verify invalid action raises SprawlError
             with self.assertRaises(SprawlError):

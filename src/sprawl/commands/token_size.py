@@ -54,8 +54,8 @@ def _render_summary_table(report: ContextAuditReport, max_tokens: int | None = N
     table.add_column("Context Layer", style="accent")
     table.add_column("Files", justify="right", style="info", no_wrap=True)
     table.add_column("Bytes", justify="right", style="info", no_wrap=True)
-    table.add_column("Always-On Tokens (Turn 1)", justify="right", style="warning")
-    table.add_column("Lazy-Loaded Tokens (On-Demand)", justify="right", style="success")
+    table.add_column("Always-On Tokens\n(Turn 1)", justify="right", style="warning")
+    table.add_column("Lazy-Loaded Tokens\n(On-Demand)", justify="right", style="success")
 
     for row in report.layers:
         label = _LAYER_LABELS.get(row.layer, row.layer.capitalize())

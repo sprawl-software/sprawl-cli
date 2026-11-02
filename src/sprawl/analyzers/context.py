@@ -189,6 +189,36 @@ def build_context_report(
     )
 
 
+def _hint_for_artifact(item: ContextArtifactMetric) -> str | None:
+    """Returns a concrete optimization hint for a single high-cost Turn-1 artifact."""
+    if item.layer == "manifest" and "duplicate file" in item.note:
+        return (
+            f"Duplicate File: '{item.relative_path}' is a physical copy "
+            f"(+{item.zero_hop_tokens:,} Always-On tokens). Replace with a symlink "
+            f"or run 'sprawl bind --force' to save {item.zero_hop_tokens:,} tokens on every turn."
+        )
+    if item.layer == "rule" and item.zero_hop_tokens >= 500:
+        return (
+            f"Heavy Always-On Rule: '{item.relative_path}' injects "
+            f"+{item.zero_hop_tokens:,} tokens on every turn ('alwaysApply: true'). "
+            f"Set 'alwaysApply: false' in its frontmatter to load it On-Demand."
+        )
+    if item.layer == "manifest" and not item.is_symlink and item.zero_hop_tokens >= 3500:
+        return (
+            f"Large Root Manifest: '{item.relative_path}' consumes "
+            f"{item.zero_hop_tokens:,} Turn-1 tokens. Move domain-specific sections "
+            f"into '.agents/rules/' (with 'alwaysApply: false') or '.agents/skills/'."
+        )
+    return None
+
+
+def build_optimization_hints(report: ContextAuditReport) -> tuple[str, ...]:
+    """Generates actionable recommendations for reducing Turn-1 Always-On token bloat."""
+    ranked = sorted(report.artifacts, key=lambda a: a.zero_hop_tokens, reverse=True)
+    hints = [_hint_for_artifact(item) for item in ranked]
+    return tuple(h for h in hints if h is not None)
+
+
 def _resolve_within_allowed_bounds(path: Path, workspace_root: Path) -> Path | None:
     """Resolves path safely, rejecting circular symlinks and out-of-bounds targets."""
     try:

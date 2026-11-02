@@ -12,7 +12,11 @@ from rich.panel import Panel
 from rich.table import Table
 from rich.text import Text
 
-from ..analyzers.context import ContextAuditReport, scan_workspace_context
+from ..analyzers.context import (
+    ContextAuditReport,
+    build_optimization_hints,
+    scan_workspace_context,
+)
 from ..config import config
 from ..exceptions import SprawlError
 from ..output import console
@@ -25,25 +29,70 @@ _LAYER_LABELS = {
 }
 
 
+def _append_ci_gate_status(
+    banner: Text, report: ContextAuditReport, max_tokens: int | None
+) -> None:
+    """Appends the CI Budget Gate status or usage tip to the summary banner."""
+    if max_tokens is None:
+        banner.append(
+            "\n  Tip: Use 'sprawl context --max-tokens 15000' in CI/CD to fail Pull Requests "
+            "that bloat your team's Turn-1 prompt.",
+            style="dim",
+        )
+        return
+
+    banner.append("\n• CI Budget Gate:           ", style="info")
+    if report.zero_hop_tokens <= max_tokens:
+        banner.append(
+            f"PASS ({report.zero_hop_tokens:,} <= {max_tokens:,} max Always-On tokens)",
+            style="bold success",
+        )
+    else:
+        banner.append(
+            f"FAIL ({report.zero_hop_tokens:,} > {max_tokens:,} max Always-On tokens - "
+            "exits with code 1 to block bloated PRs)",
+            style="bold error",
+        )
+
+
+def _append_optimization_hints(banner: Text, report: ContextAuditReport) -> None:
+    """Appends up to 4 actionable Turn-1 token optimization hints when bloat is found."""
+    hints = build_optimization_hints(report)[:4]
+    if not hints:
+        return
+    banner.append("\n\nActionable Ways to Cut Turn-1 Tokens:\n", style="bold accent")
+    for idx, hint in enumerate(hints, start=1):
+        suffix = "\n" if idx < len(hints) else ""
+        banner.append(f"  {idx}. {hint}{suffix}", style="warning")
+
+
 def _build_summary_banner(report: ContextAuditReport, max_tokens: int | None = None) -> Text:
-    """Builds the plain-English 3-bullet context budget summary below the layer table."""
+    """Builds the plain-English context budget summary and optimization guidance."""
     banner = Text()
-    banner.append("\n• Unoptimized Peak Context: ", style="info")
+    banner.append("\n• What This Measures:       ", style="info")
+    banner.append(
+        "Hidden instructions (manifests, rules, skills, MCP schemas) auto-injected "
+        "into every AI chat turn before your code.\n",
+        style="dim",
+    )
+
+    banner.append("• Unoptimized Peak Context: ", style="info")
     banner.append(f"{report.peak_tokens:,} tokens", style="bold")
     banner.append("  (if all rules & skills were loaded upfront)\n", style="dim")
 
     banner.append("• Actual Turn-1 Prompt:     ", style="info")
     banner.append(f"{report.zero_hop_tokens:,} tokens", style="bold warning")
-    banner.append("  (Always-On baseline injected on first message)\n", style="dim")
+    banner.append("  (Always-On baseline billed on every message)\n", style="dim")
 
     banner.append("• Context Saved (Lazy):     ", style="info")
     banner.append(f"{report.progressive_tokens:,} tokens", style="bold success")
     banner.append(
-        f"  ({report.pruned_ratio_pct}% reduction via On-Demand loading)",
+        f"  ({report.pruned_ratio_pct}% kept out of Turn 1 via On-Demand loading)",
         style="success",
     )
-    if max_tokens is not None:
-        banner.append(f"  [Budget Ceiling: {max_tokens:,} tokens]", style="accent")
+
+    _append_ci_gate_status(banner, report, max_tokens)
+    _append_optimization_hints(banner, report)
     return banner
 
 
@@ -137,7 +186,9 @@ def cmd_token_size(
     report = scan_workspace_context(workspace_path)
 
     if config.json_logging:
-        print(json.dumps(dataclasses.asdict(report)))
+        payload = dataclasses.asdict(report)
+        payload["optimization_hints"] = list(build_optimization_hints(report))
+        print(json.dumps(payload))
     else:
         _render_summary_table(report, max_tokens=max_tokens)
         if detailed:

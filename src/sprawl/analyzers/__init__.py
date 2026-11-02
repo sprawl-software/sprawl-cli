@@ -8,6 +8,7 @@ from .context import (
     analyze_rule_text,
     analyze_skill_text,
     build_context_report,
+    build_optimization_hints,
     estimate_tokens,
     scan_workspace_context,
 )
@@ -35,6 +36,7 @@ __all__ = [
     "analyze_rule_text",
     "analyze_skill_text",
     "build_context_report",
+    "build_optimization_hints",
     "detect_stacks_from_entries",
     "detect_workspace_stacks",
     "estimate_tokens",

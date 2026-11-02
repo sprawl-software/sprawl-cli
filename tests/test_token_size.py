@@ -14,6 +14,7 @@ from sprawl.analyzers.context import (
     analyze_mcp_json,
     analyze_rule_text,
     analyze_skill_text,
+    build_optimization_hints,
     estimate_tokens,
     scan_workspace_context,
 )
@@ -30,7 +31,6 @@ class TestTokenSizeAuditor(unittest.TestCase):
         config.json_logging = False
 
     def test_estimate_tokens_deterministic_and_accurate(self) -> None:
-        """Verify stdlib BPE approximation is deterministic and within expected token bounds."""
         self.assertEqual(estimate_tokens(""), 0)
         self.assertEqual(estimate_tokens("   \n\t  "), 0)
 
@@ -44,7 +44,6 @@ class TestTokenSizeAuditor(unittest.TestCase):
         self.assertGreater(estimate_tokens(code_snippet), 8)
 
     def test_analyze_rule_text_zero_hop_vs_progressive(self) -> None:
-        """Verify alwaysApply rules count toward Always-On (Turn 1) vs scoped rules in Lazy-Loaded."""
         always_rule = (
             "---\n"
             "name: Security Rule\n"
@@ -72,7 +71,6 @@ class TestTokenSizeAuditor(unittest.TestCase):
         self.assertEqual(m_scoped.note, "on-demand (loaded when relevant)")
 
     def test_analyze_skill_text_splits_catalog_header_and_body(self) -> None:
-        """Verify SKILL.md splits frontmatter catalog header (Turn 1) from markdown body (On-Demand)."""
         skill_md = (
             "---\n"
             "name: sec-auditor\n"
@@ -88,11 +86,10 @@ class TestTokenSizeAuditor(unittest.TestCase):
         self.assertGreater(metric.progressive_tokens, 150)
         self.assertEqual(metric.note, "index on Turn 1 + body on-demand")
 
-    def test_symlinked_ide_bindings_add_zero_duplicate_tokens(self) -> None:
-        """Verify symlinked IDE bindings add 0 duplicate tokens while physical copies flag overhead."""
+    def test_symlinked_ide_bindings_and_optimization_hints(self) -> None:
         with TemporaryDirectory() as tmp:
             ws = Path(tmp)
-            agents_text = "# Canonical AGENTS Manifest\n" + ("Follow strict ReAct loops. " * 15)
+            agents_text = "# Canonical AGENTS Manifest\n" + ("Follow strict ReAct loops. " * 260)
             agents_file = ws / "AGENTS.md"
             agents_file.write_text(agents_text, encoding="utf-8")
 
@@ -103,19 +100,31 @@ class TestTokenSizeAuditor(unittest.TestCase):
             # Physical copy -> duplicate overhead counted
             (ws / ".windsurfrules").write_text(agents_text, encoding="utf-8")
 
+            # Heavy always-on rule (>= 500 tokens)
+            rules_dir = ws / ".agents" / "rules"
+            rules_dir.mkdir(parents=True)
+            (rules_dir / "heavy.md").write_text(
+                "---\nalwaysApply: true\n---\n" + ("Mandatory rule clause. " * 120),
+                encoding="utf-8",
+            )
+
             report = scan_workspace_context(ws)
             by_path = {a.relative_path: a for a in report.artifacts}
 
             base_tokens = by_path["AGENTS.md"].zero_hop_tokens
-            self.assertGreater(base_tokens, 40)
+            self.assertGreater(base_tokens, 1000)
             self.assertEqual(by_path[".cursorrules"].zero_hop_tokens, 0)
             self.assertTrue(by_path[".cursorrules"].is_symlink)
             self.assertEqual(by_path["CLAUDE.md"].zero_hop_tokens, 0)
             self.assertEqual(by_path[".windsurfrules"].zero_hop_tokens, base_tokens)
             self.assertIn("duplicate file", by_path[".windsurfrules"].note)
 
+            hints = build_optimization_hints(report)
+            joined_hints = "\n".join(hints)
+            self.assertIn("Duplicate File: '.windsurfrules'", joined_hints)
+            self.assertIn("Heavy Always-On Rule: '.agents/rules/heavy.md'", joined_hints)
+
     def test_symlink_containment_and_circular_loop_safety(self) -> None:
-        """Verify out-of-bounds symlinks, circular symlink loops, and oversized files are skipped."""
         with TemporaryDirectory() as outer_tmp:
             outer = Path(outer_tmp)
             secret_file = outer / "external_secret.txt"
@@ -144,7 +153,6 @@ class TestTokenSizeAuditor(unittest.TestCase):
             self.assertIn(".cursorrules", paths)
 
     def test_scan_workspace_context_executes_under_100ms(self) -> None:
-        """Verify 4-layer workspace context scan completes in under 100ms with accurate ratios."""
         with TemporaryDirectory() as tmp:
             ws = Path(tmp)
             (ws / "AGENTS.md").write_text("# Root Agent Manifest\nCore rules.\n", encoding="utf-8")
@@ -184,20 +192,20 @@ class TestTokenSizeAuditor(unittest.TestCase):
             self.assertGreater(report.pruned_ratio_pct, 50.0)
 
     def test_cmd_token_size_max_tokens_gate_passes_and_fails(self) -> None:
-        """Verify --max-tokens CI budget gate passes under limit and raises SprawlError above limit."""
         with TemporaryDirectory() as tmp:
             ws = Path(tmp)
             (ws / "AGENTS.md").write_text(
                 "# Workspace Manifest\n" + (" Mandatory governance invariant." * 20),
                 encoding="utf-8",
             )
-            # High budget passes
+            # High budget passes (capture Rich console file stream)
             buf = io.StringIO()
             with contextlib.redirect_stdout(buf):
                 cmd_token_size(str(ws), detailed=False, max_tokens=50000)
 
-            # Low budget raises SprawlError
-            with contextlib.redirect_stdout(buf), self.assertRaises(SprawlError) as ctx:
+            # Low budget raises SprawlError (also capture stdout so no Rich output leaks)
+            err_buf = io.StringIO()
+            with contextlib.redirect_stdout(err_buf), self.assertRaises(SprawlError) as ctx:
                 cmd_token_size(str(ws), detailed=False, max_tokens=5)
             self.assertIn("Context budget exceeded", str(ctx.exception))
 
@@ -206,10 +214,10 @@ class TestTokenSizeAuditor(unittest.TestCase):
                 cmd_token_size(str(ws / "nonexistent_dir"))
 
     def test_cmd_token_size_detailed_and_json_output(self) -> None:
-        """Verify --detailed Rich rendering and --json structured output schema."""
         with TemporaryDirectory() as tmp:
             ws = Path(tmp)
             (ws / "AGENTS.md").write_text("# Manifest\n", encoding="utf-8")
+            (ws / ".windsurfrules").write_text("# Duplicate\n", encoding="utf-8")
             rules_dir = ws / ".agents" / "rules"
             rules_dir.mkdir(parents=True)
             (rules_dir / "python.md").write_text(
@@ -233,11 +241,11 @@ class TestTokenSizeAuditor(unittest.TestCase):
             payload = json.loads(json_buf.getvalue().strip())
             self.assertIn("zero_hop_tokens", payload)
             self.assertIn("progressive_tokens", payload)
+            self.assertIn("optimization_hints", payload)
             self.assertIn("layers", payload)
             self.assertEqual(len(payload["layers"]), 4)
 
     def test_cli_context_alias_routes_to_token_size(self) -> None:
-        """Verify sprawl context alias accepts --detailed and --max-tokens flags."""
         parser = get_parser()
         args = parser.parse_args(["context", "--detailed", "--max-tokens", "4096"])
         self.assertIn(args.command, ("token-size", "context"))

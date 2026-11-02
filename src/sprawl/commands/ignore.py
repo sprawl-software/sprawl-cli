@@ -93,7 +93,7 @@ def _build_sync_json(report: IgnoreSyncReport, check_only: bool) -> dict[str, ob
 
 
 def _render_sync_table(report: IgnoreSyncReport) -> None:
-    """Render the Rich table summarizing all 5 IDE ignore target files."""
+    """Render the Rich table summarizing all active IDE ignore target files."""
     stacks_label = ", ".join(report.detected_stacks)
     table = Table(
         title=f"Sprawl Multi-IDE Ignore Shield ({stacks_label})",
@@ -125,29 +125,40 @@ def _render_sync_report(report: IgnoreSyncReport, check_only: bool) -> None:
 
     mode_prefix = "\\[DRY-RUN] " if config.dry_run and not check_only else ""
     stacks_str = ", ".join(report.detected_stacks)
+    target_count = len(report.targets)
     print_success(
-        f"{mode_prefix}Synchronized 5 IDE ignore targets for stacks "
+        f"{mode_prefix}Synchronized {target_count} IDE ignore targets for stacks "
         f"({stacks_str}) in {report.elapsed_ms:.2f}ms."
     )
 
 
-def _run_detect_action(workspace_path: Path) -> None:
+def _run_detect_action(workspace_path: Path, _all_targets: bool) -> None:
     """Execute the 'detect' subcommand."""
     result = detect_workspace_stacks(workspace_path)
     _render_detection(result, workspace_path)
 
 
-def _run_sync_action(workspace_path: Path) -> None:
+def _run_sync_action(workspace_path: Path, all_targets: bool) -> None:
     """Execute the 'sync' subcommand."""
     if config.dry_run and not config.json_logging:
         print_status(f"\\[DRY-RUN] Simulating ignore shield sync in '{workspace_path}'...")
-    report = sync_workspace_ignores(workspace_path, check_only=False, dry_run=config.dry_run)
+    report = sync_workspace_ignores(
+        workspace_path,
+        check_only=False,
+        dry_run=config.dry_run,
+        all_targets=all_targets,
+    )
     _render_sync_report(report, check_only=False)
 
 
-def _run_check_action(workspace_path: Path) -> None:
+def _run_check_action(workspace_path: Path, all_targets: bool) -> None:
     """Execute the 'check' subcommand and fail on drift."""
-    report = sync_workspace_ignores(workspace_path, check_only=True, dry_run=True)
+    report = sync_workspace_ignores(
+        workspace_path,
+        check_only=True,
+        dry_run=True,
+        all_targets=all_targets,
+    )
     _render_sync_report(report, check_only=True)
     if report.has_drift:
         raise SprawlError("Ignore shield drift detected. Run 'sprawl ignore sync' to remediate.")
@@ -160,12 +171,16 @@ _ACTION_DISPATCH = {
 }
 
 
-def cmd_ignore(action: str = "sync", target_dir: str | None = None) -> None:
-    """Entrypoint for `sprawl ignore [detect|sync|check] [--path DIR]`."""
+def cmd_ignore(
+    action: str = "sync",
+    target_dir: str | None = None,
+    all_targets: bool = False,
+) -> None:
+    """Entrypoint for `sprawl ignore [detect|sync|check] [--path DIR] [--all]`."""
     workspace_path = _resolve_workspace_path(target_dir)
     handler = _ACTION_DISPATCH.get(action)
     if handler is None:
         raise SprawlError(
             f"Unknown ignore action: '{action}'. Expected 'detect', 'sync', or 'check'."
         )
-    handler(workspace_path)
+    handler(workspace_path, all_targets)

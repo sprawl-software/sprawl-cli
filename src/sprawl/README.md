@@ -240,7 +240,7 @@ Because Sprawl enforces a strict "Clean Room" architecture, the dependencies, li
 
 *Think of it as `poetry shell` or `pipenv shell`, but seamlessly tied to your Atomic Agentic Fabric.*
 - `sprawl bind [--force]`: Manually generates Universal IDE/Agent Adapters (Antigravity, Cursor, RooCode, Windsurf) to bridge the `.agents/` Source of Truth to the editor's expected configuration paths.
-- `sprawl ignore [detect|sync|check] [--path DIR]`: Fingerprints active workspace stacks (`base`, `python`, `node`, `rust`, `go`, `vault`, `docker`) and non-destructively synchronizes ignore shields across `.agentignore`, `.cursorignore`, `.claudeignore`, `.aiderignore`, and `.ignore` while preserving custom rules below `# === CUSTOM WORKSPACE IGNORES ===`.
+- `sprawl ignore [detect|sync|check] [--path DIR] [--all]`: Fingerprints active workspace stacks (`base`, `python`, `node`, `rust`, `go`, `vault`, `docker`), harvests legacy custom rules across all existing ignore files, and non-destructively synchronizes `.agentignore`, `.ignore`, and bound IDE ignore files (or all 8 supported targets with `--all`) while preserving custom rules below `# === CUSTOM WORKSPACE IGNORES ===`.
 - `sprawl man`: Serves exactly this `README.md` block directly into your terminal.
 - `sprawl sync --dry-run`: Safety net parser. Identifies path structures and resolves arrays, but guarantees 0 files will be overwritten or cloned by operating purely in standard-out mode.
 - `sprawl sync --verbose`: Replaces silent executions with strict native logging, outputting exactly which rules, files, and symlink layers are actively shifting via Cyber-Brutalist color formatting.

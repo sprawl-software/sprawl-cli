@@ -16,18 +16,21 @@ from sprawl.commands.ignore import cmd_ignore
 from sprawl.config import config
 from sprawl.exceptions import SprawlError
 from sprawl.generators.ignore import (
+    ALL_IGNORE_TARGETS,
+    BASE_IGNORE_TARGETS,
     CUSTOM_SEPARATOR,
-    IGNORE_TARGETS,
     MANAGED_HEADER,
     compile_managed_block,
     extract_custom_section,
+    merge_custom_sections,
     merge_ignore_content,
+    resolve_ignore_targets,
     sync_workspace_ignores,
 )
 
 
 class TestSprawlIgnore(unittest.TestCase):
-    """Comprehensive in-process test suite for stack detection and multi-IDE ignore shields."""
+    """Comprehensive in-process test suite for 2-Tier stack-aware ignore shields."""
 
     def setUp(self) -> None:
         self._orig_dry_run = config.dry_run
@@ -109,7 +112,9 @@ class TestSprawlIgnore(unittest.TestCase):
 
     def test_merge_migrates_legacy_unmanaged_ignore_file(self) -> None:
         """Verify pre-existing .cursorignore rules without a separator are migrated safely."""
-        legacy_content = "# Hand-crafted cursor ignore\n.git/\nnode_modules/\nmy_private_notes/\n*.bak\n"
+        legacy_content = (
+            "# Hand-crafted cursor ignore\n.git/\nnode_modules/\nmy_private_notes/\n*.bak\n"
+        )
         managed = compile_managed_block(("base", "node"))
         merged, custom_count = merge_ignore_content(managed, legacy_content)
 
@@ -121,8 +126,8 @@ class TestSprawlIgnore(unittest.TestCase):
         self.assertIn("*.bak", custom_part)
         self.assertNotIn("node_modules/", custom_part)
 
-    def test_sync_generates_all_five_targets_under_30ms(self) -> None:
-        """Verify sync_workspace_ignores writes all 5 IDE targets identically in <30ms."""
+    def test_unbound_workspace_syncs_only_base_targets_under_30ms(self) -> None:
+        """Verify unbound workspace syncs only the 2 base files (.agentignore, .ignore) in <30ms."""
         with tempfile.TemporaryDirectory() as tmp_dir:
             ws_path = Path(tmp_dir)
             (ws_path / "pyproject.toml").write_text("[project]\nname='demo'\n", encoding="utf-8")
@@ -131,18 +136,89 @@ class TestSprawlIgnore(unittest.TestCase):
             self.assertEqual(report.detected_stacks, ("base", "python"))
             self.assertLess(report.elapsed_ms, 30.0)
             self.assertFalse(report.has_drift)
-            self.assertEqual(len(report.targets), 5)
+            self.assertEqual(
+                tuple(t.target_file for t in report.targets),
+                BASE_IGNORE_TARGETS,
+            )
 
-            contents: set[str] = set()
-            for target_name in IGNORE_TARGETS:
-                target_file = ws_path / target_name
-                self.assertTrue(target_file.is_file(), f"Missing {target_name}")
-                contents.add(target_file.read_text(encoding="utf-8"))
+            for target_name in BASE_IGNORE_TARGETS:
+                self.assertTrue((ws_path / target_name).is_file())
+            self.assertFalse((ws_path / ".cursorignore").exists())
+            self.assertFalse((ws_path / ".claudeignore").exists())
 
+    def test_bound_workspace_syncs_base_plus_bound_ide_targets(self) -> None:
+        """Verify workspace with bindings: [cursor, claude-code] syncs 4 target files."""
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            ws_path = Path(tmp_dir)
+            agents_dir = ws_path / ".agents"
+            agents_dir.mkdir()
+            (agents_dir / "sprawl_manifest.yml").write_text(
+                "dna: core\nbindings: [cursor, claude-code]\n",
+                encoding="utf-8",
+            )
+
+            resolved = resolve_ignore_targets(ws_path)
+            self.assertEqual(
+                resolved,
+                (".agentignore", ".ignore", ".cursorignore", ".claudeignore"),
+            )
+
+            report = sync_workspace_ignores(ws_path)
+            self.assertEqual(len(report.targets), 4)
+            for target_name in resolved:
+                self.assertTrue((ws_path / target_name).is_file())
+            self.assertFalse((ws_path / ".codeiumignore").exists())
+
+    def test_all_targets_flag_syncs_all_eight_ide_targets(self) -> None:
+        """Verify all_targets=True (--all) syncs all 8 supported IDE ignore files."""
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            ws_path = Path(tmp_dir)
+            report = sync_workspace_ignores(ws_path, all_targets=True)
+            self.assertEqual(len(report.targets), 8)
+            self.assertEqual(
+                tuple(t.target_file for t in report.targets),
+                ALL_IGNORE_TARGETS,
+            )
+            contents = {
+                (ws_path / target_name).read_text(encoding="utf-8")
+                for target_name in ALL_IGNORE_TARGETS
+            }
             self.assertEqual(len(contents), 1)
 
+    def test_cross_file_legacy_harvesting_unions_custom_rules(self) -> None:
+        """Verify distinct custom rules from .cursorignore and .claudeignore are harvested into .agentignore."""
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            ws_path = Path(tmp_dir)
+            (ws_path / ".cursorignore").write_text(
+                "# Cursor custom\n.git/\ncursor_only_secret/\nshared_dump.sql\n",
+                encoding="utf-8",
+            )
+            (ws_path / ".claudeignore").write_text(
+                "shared_dump.sql\nclaude_only_vault/\n",
+                encoding="utf-8",
+            )
+
+            report = sync_workspace_ignores(ws_path)
+            # Active targets: .agentignore, .ignore, plus pre-existing .cursorignore and .claudeignore
+            self.assertEqual(
+                tuple(t.target_file for t in report.targets),
+                (".agentignore", ".ignore", ".cursorignore", ".claudeignore"),
+            )
+            for target_status in report.targets:
+                self.assertEqual(target_status.preserved_custom_lines, 3)
+
+            agentignore_text = (ws_path / ".agentignore").read_text(encoding="utf-8")
+            _, _, custom_part = agentignore_text.partition(CUSTOM_SEPARATOR)
+            self.assertIn("cursor_only_secret/", custom_part)
+            self.assertIn("shared_dump.sql", custom_part)
+            self.assertIn("claude_only_vault/", custom_part)
+            self.assertEqual(
+                agentignore_text,
+                (ws_path / ".cursorignore").read_text(encoding="utf-8"),
+            )
+
     def test_sync_idempotent_second_run_unchanged(self) -> None:
-        """Verify running sync_workspace_ignores twice marks all 5 targets as unchanged."""
+        """Verify running sync_workspace_ignores twice marks all active targets as unchanged."""
         with tempfile.TemporaryDirectory() as tmp_dir:
             ws_path = Path(tmp_dir)
             (ws_path / "package.json").write_text("{}", encoding="utf-8")
@@ -161,22 +237,19 @@ class TestSprawlIgnore(unittest.TestCase):
             (ws_path / "Cargo.toml").write_text("[package]\n", encoding="utf-8")
             sync_workspace_ignores(ws_path)
 
-            # Confirm clean check passes without raising
             cmd_ignore("check", str(ws_path))
 
-            # Tamper with .claudeignore above the separator
-            claude_file = ws_path / ".claudeignore"
+            agent_file = ws_path / ".agentignore"
             tampered = "# Tampered header\n"
-            claude_file.write_text(tampered, encoding="utf-8")
+            agent_file.write_text(tampered, encoding="utf-8")
 
             with self.assertRaises(SprawlError):
                 cmd_ignore("check", str(ws_path))
 
-            # Ensure check mode did not overwrite the tampered file
-            self.assertEqual(claude_file.read_text(encoding="utf-8"), tampered)
+            self.assertEqual(agent_file.read_text(encoding="utf-8"), tampered)
 
     def test_cmd_ignore_json_and_dry_run_modes(self) -> None:
-        """Verify --dry-run writes zero files and --json outputs valid JSON payloads."""
+        """Verify --dry-run writes zero files, --json outputs valid JSON, and --all parses cleanly."""
         with tempfile.TemporaryDirectory() as tmp_dir:
             ws_path = Path(tmp_dir)
             (ws_path / "go.mod").write_text("module example.com/m\n", encoding="utf-8")
@@ -186,16 +259,16 @@ class TestSprawlIgnore(unittest.TestCase):
 
             stdout_buf = io.StringIO()
             with contextlib.redirect_stdout(stdout_buf):
-                cmd_ignore("sync", str(ws_path))
+                cmd_ignore("sync", str(ws_path), all_targets=True)
 
             payload = json.loads(stdout_buf.getvalue().strip())
             self.assertEqual(payload["action"], "sync")
             self.assertTrue(payload["dry_run"])
             self.assertEqual(payload["detected_stacks"], ["base", "go"])
-            for target_name in IGNORE_TARGETS:
+            self.assertEqual(len(payload["targets"]), 8)
+            for target_name in ALL_IGNORE_TARGETS:
                 self.assertFalse((ws_path / target_name).exists())
 
-            # Also verify detect action in JSON mode and CLI parser wiring
             detect_buf = io.StringIO()
             with contextlib.redirect_stdout(detect_buf):
                 cmd_ignore("detect", str(ws_path))
@@ -204,13 +277,14 @@ class TestSprawlIgnore(unittest.TestCase):
             self.assertEqual(detect_payload["detected_stacks"], ["base", "go"])
 
             parser = get_parser()
-            parsed = parser.parse_args(["ignore", "check", "--path", str(ws_path)])
+            parsed = parser.parse_args(["ignore", "sync", "--path", str(ws_path), "--all"])
             self.assertEqual(parsed.command, "ignore")
-            self.assertEqual(parsed.ignore_action, "check")
+            self.assertEqual(parsed.ignore_action, "sync")
             self.assertEqual(parsed.target_dir, str(ws_path))
+            self.assertTrue(parsed.all)
 
-            # Verify extract_custom_section on empty input and detect_workspace_stacks on valid dir
             self.assertEqual(extract_custom_section(None), ("", 0))
+            self.assertEqual(merge_custom_sections([]), ("", 0))
             self.assertEqual(detect_workspace_stacks(ws_path).detected_stacks, ("base", "go"))
 
 

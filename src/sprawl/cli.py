@@ -320,7 +320,7 @@ def get_parser() -> argparse.ArgumentParser:
     # ignore
     ignore_parser = subparsers.add_parser(
         "ignore",
-        help="Compiles stack-aware multi-IDE ignore shields (.agentignore, .cursorignore, .claudeignore, .aiderignore, .ignore).",
+        help="Compiles stack-aware multi-IDE ignore shields (.agentignore, .ignore, plus bound IDE ignore files).",
     )
     ignore_parser.add_argument(
         "ignore_action",
@@ -334,6 +334,12 @@ def get_parser() -> argparse.ArgumentParser:
         dest="target_dir",
         default=None,
         help="Optional target workspace directory (defaults to current directory).",
+    )
+    ignore_parser.add_argument(
+        "--all",
+        action="store_true",
+        default=False,
+        help="Sync all supported IDE ignore targets regardless of active bindings.",
     )
 
     # token-size (alias: context)
@@ -427,7 +433,9 @@ def print_help() -> None:
     t_workspace.add_row("mount add <PATH>", "Mounts a directory for sandboxed MCP server access.")
     t_workspace.add_row("mount remove <ALIAS>", "Removes an active directory mount.")
     t_workspace.add_row("mount list", "Lists all configured directory mounts.")
-    t_workspace.add_row("ignore [ACTION]", "Syncs stack-aware ignore shields across 5 IDE targets.")
+    t_workspace.add_row(
+        "ignore [ACTION]", "Syncs stack-aware ignore shields (.agentignore, .ignore, bound IDEs)."
+    )
 
     t_artifact = create_category_table()
     t_artifact.add_row("ls", "Scans the active DNA registry and lists all available artifacts.")
@@ -653,7 +661,9 @@ def main() -> None:
         ),
         "mount": handle_mount_command,
         "ignore": lambda a: cmd_ignore(
-            getattr(a, "ignore_action", "sync"), getattr(a, "target_dir", None)
+            getattr(a, "ignore_action", "sync"),
+            getattr(a, "target_dir", None),
+            all_targets=getattr(a, "all", False),
         ),
         "test": handle_test_command,
     }

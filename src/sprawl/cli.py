@@ -347,11 +347,11 @@ def get_parser() -> argparse.ArgumentParser:
         help="Sync all supported IDE ignore targets regardless of active bindings.",
     )
 
-    # token-size (alias: context)
+    # token-size
     token_parser = subparsers.add_parser(
         "token-size",
         aliases=["context"],
-        help="Statically audits Turn-1 zero-hop vs. progressive context token overhead (<100ms).",
+        help="Statically audits Turn-1 Always-On vs. Lazy-Loaded (On-Demand) context tokens (<100ms).",
     )
     token_parser.add_argument(
         "target_dir",
@@ -363,13 +363,13 @@ def get_parser() -> argparse.ArgumentParser:
         "--detailed",
         action="store_true",
         default=False,
-        help="Show per-file token breakdown sorted by token weight.",
+        help="Show per-file token breakdown and loading behavior sorted by token weight.",
     )
     token_parser.add_argument(
         "--max-tokens",
         type=int,
         default=None,
-        help="CI/CD gate: fail with exit code 1 if Turn-1 zero-hop tokens exceed this ceiling.",
+        help="CI/CD gate: fail with exit code 1 if Turn-1 Always-On tokens exceed this ceiling.",
     )
 
     if os.environ.get("SPRAWL_DEV") == "1":
@@ -404,12 +404,12 @@ def print_help() -> None:
     console.print(
         "[accent]================================================================[/accent]"
     )
-    console.print("\n[info]Usage:[/info] sprawl [accent]<command>[/accent] [args]\n")
+    console.print("\n[info]Usage:[/info] sprawl [accent]<command>[/accent] \\[args]\n")
 
     # Cognitive Journey Tables
     def create_category_table() -> Table:
         table = Table(show_header=False, box=None, padding=(0, 2))
-        table.add_column("Command", style="accent", width=22)
+        table.add_column("Command", style="accent", width=30, no_wrap=True)
         table.add_column("Description", style="info")
         return table
 
@@ -426,20 +426,33 @@ def print_help() -> None:
     t_workspace.add_row("ws list", "Lists all tracked workspaces.")
     t_workspace.add_row("ws remove <NAME>", "Deregisters a workspace from the tracking registry.")
     t_workspace.add_row(
-        "ws push [NAME]", "Syncs DNA updates to all or specific tracked workspaces."
+        "ws push \\[NAME]", "Syncs DNA updates to all or specific tracked workspaces."
     )
     t_workspace.add_row("graft", "Surgically stitch Sprawl DNA onto an existing legacy project.")
     t_workspace.add_row("sync", "Injects DNA locally and provisions sandboxes (.venv, npm, cargo).")
     t_workspace.add_row(
-        "bind",
+        "bind \\[--all | --force]",
         "Generates universal IDE/Agent bindings (Antigravity, Cursor, RooCode, Windsurf, Copilot).",
     )
-    t_workspace.add_row("shell [dir]", "Enters workspace-isolated subshell with activated .venv.")
+    t_workspace.add_row("shell \\[dir]", "Enters workspace-isolated subshell with activated .venv.")
     t_workspace.add_row("mount add <PATH>", "Mounts a directory for sandboxed MCP server access.")
     t_workspace.add_row("mount remove <ALIAS>", "Removes an active directory mount.")
     t_workspace.add_row("mount list", "Lists all configured directory mounts.")
     t_workspace.add_row(
-        "ignore [ACTION]", "Syncs stack-aware ignore shields (.agentignore, .ignore, bound IDEs)."
+        "ignore \\[dir]",
+        "Syncs stack-aware ignore shields (.agentignore, .ignore, plus bound IDEs).",
+    )
+    t_workspace.add_row(
+        "ignore --all \\[dir]",
+        "Syncs all 11 supported IDE ignore files regardless of active bindings.",
+    )
+    t_workspace.add_row(
+        "ignore detect \\[dir]",
+        "Scans workspace markers and shows exposed bloat/secret folders on disk.",
+    )
+    t_workspace.add_row(
+        "ignore check \\[dir]",
+        "CI/CD drift gate: verifies ignore shields are in sync (exits 1 on drift).",
     )
 
     t_artifact = create_category_table()
@@ -455,18 +468,27 @@ def print_help() -> None:
     )
 
     t_diag = create_category_table()
-    t_diag.add_row("status", "Displays workspace status: DNA, artifacts, venv health.")
+    t_diag.add_row("status \\[dir]", "Displays workspace status: DNA, artifacts, venv health.")
     t_diag.add_row(
-        "token-size [dir]", "Audits Turn-1 zero-hop vs. progressive context token weight."
+        "token-size \\[dir]",
+        "Audits Turn-1 Always-On vs. Lazy-Loaded (On-Demand) context tokens.",
     )
-    t_diag.add_row("diff [dir]", "Visualizes local DNA drift against upstream registry.")
-    t_diag.add_row("demo [ID]", "Interactive native demonstration engine.")
+    t_diag.add_row(
+        "token-size --detailed \\[dir]",
+        "Shows per-file token breakdown and loading behavior for all artifacts.",
+    )
+    t_diag.add_row(
+        "token-size --max-tokens <N>",
+        "CI/CD budget gate: fails (exit 1) if Turn-1 Always-On tokens exceed <N>.",
+    )
+    t_diag.add_row("diff \\[dir]", "Visualizes local DNA drift against upstream registry.")
+    t_diag.add_row("demo \\[ID]", "Interactive native demonstration engine.")
     t_diag.add_row(
         "clean-demo", "Destroys the local demo workspaces folder generated by sprawl demo."
     )
     t_diag.add_row("clean-test", "Destroys all sandboxed artifacts generated by --testmode.")
     t_diag.add_row("doctor", "Runs full system diagnostics.")
-    t_diag.add_row("wipe [dir]", "Nuclear removal of all Sprawl traces from system.")
+    t_diag.add_row("wipe \\[dir]", "Nuclear removal of all Sprawl traces from system.")
     t_diag.add_row("man", "Prints the comprehensive AAF manual and setup guide directly.")
     if os.environ.get("SPRAWL_DEV") == "1":
         t_diag.add_row("test", "Runs the test suite (Dev only).")

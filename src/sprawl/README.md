@@ -225,9 +225,9 @@ The newly updated Sprawl Engine possesses the following state-of-the-art native 
 - **Sandbox Eradication**: A dedicated `sprawl clean-test` command that surgically destroys the parallel test universe without risking active development paths.
 - **Diagnostics & Telemetry**:
   - `sprawl doctor`: Validates global Sprawl Hub integrity, CLI configuration, and dependency health.
-  - `sprawl status`: Displays real-time Rich panel telemetry of the active workspace, indicating drift, bindings, and manifest state.
-  - `sprawl token-size` (alias `sprawl context`): Statically audits Turn-1 zero-hop baseline vs. progressive on-demand context token weight across manifests, rules, skills, and MCP server schemas (`--detailed`, `--max-tokens`).
-  - `sprawl diff`: Visually contrasts the local workspace `.agents/` directory against the upstream DNA source to detect drift or uncommitted mutations.
+  - `sprawl status [dir]`: Displays real-time Rich panel telemetry of the active workspace, indicating drift, bindings, and manifest state.
+  - `sprawl token-size [dir] [--detailed] [--max-tokens <N>]`: Statically audits Turn-1 Always-On vs. Lazy-Loaded (On-Demand) context token weight across manifests, rules, skills, and MCP server schemas (`<100ms`), outputs actionable optimization hints, and enforces CI/CD token ceilings via `--max-tokens`.
+  - `sprawl diff [dir]`: Visually contrasts the local workspace `.agents/` directory against the upstream DNA source to detect drift or uncommitted mutations.
 ### 🛡️ Sprawl Shell (The Agent Simulator)
 
 `sprawl shell` is your **human bridge** into the AI's isolated execution environment. 
@@ -239,8 +239,8 @@ Because Sprawl enforces a strict "Clean Room" architecture, the dependencies, li
 - **Native Binaries:** If the DNA injected `pytest` or an MCP server, they aren't in your normal terminal. `sprawl shell` prepends the sandbox to your `$PATH` so you can run them natively.
 
 *Think of it as `poetry shell` or `pipenv shell`, but seamlessly tied to your Atomic Agentic Fabric.*
-- `sprawl bind [--force]`: Manually generates Universal IDE/Agent Adapters (Antigravity, Cursor, RooCode, Windsurf) to bridge the `.agents/` Source of Truth to the editor's expected configuration paths.
-- `sprawl ignore [detect|sync|check] [--path DIR] [--all]`: Fingerprints active workspace stacks (`base`, `python`, `node`, `rust`, `go`, `vault`, `docker`), harvests legacy custom rules across all existing ignore files, and non-destructively synchronizes `.agentignore`, `.ignore`, and bound IDE ignore files (or all 8 supported targets with `--all`) while preserving custom rules below `# === CUSTOM WORKSPACE IGNORES ===`.
+- `sprawl bind [--all | --only <LIST> | --force]`: Manually generates Universal IDE/Agent Adapters (Antigravity, Cursor, RooCode, Windsurf, Copilot, Claude Code) to bridge the `.agents/` Source of Truth to the editor's expected configuration paths.
+- `sprawl ignore [detect|sync|check] [dir] [--path <dir>] [--all]`: Fingerprints active workspace stacks (`base`, `python`, `node`, `rust`, `go`, `vault`, `docker`), diagnoses exposed bloat/secret directories on disk (`detect`), harvests legacy custom rules across all existing ignore files, and non-destructively synchronizes `.agentignore`, `.ignore`, and bound IDE ignore files (or all 11 supported targets with `--all`) while preserving custom rules below `# === CUSTOM WORKSPACE IGNORES ===`.
 - `sprawl man`: Serves exactly this `README.md` block directly into your terminal.
 - `sprawl sync --dry-run`: Safety net parser. Identifies path structures and resolves arrays, but guarantees 0 files will be overwritten or cloned by operating purely in standard-out mode.
 - `sprawl sync --verbose`: Replaces silent executions with strict native logging, outputting exactly which rules, files, and symlink layers are actively shifting via Cyber-Brutalist color formatting.

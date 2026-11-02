@@ -101,10 +101,15 @@ def _render_detection(result: StackDetectionResult, workspace_path: Path) -> Non
     )
     table = _build_detection_table(result)
     footer = Text.assemble(
-        ("\n" + _format_unchecked_stacks(result.detected_stacks) + "\n", "dim"),
-        ("Next Step: Run ", "info"),
-        ("'sprawl ignore'", "bold accent"),
-        (" to compile these rules into your workspace ignore files.", "info"),
+        ("\n" + _format_unchecked_stacks(result.detected_stacks) + "\n\n", "dim"),
+        ("Commands & Options:\n", "bold accent"),
+        ("  sprawl ignore [dir]          ", "accent"),
+        ("Sync .agentignore, .ignore + bound IDE ignore files\n", "info"),
+        ("  sprawl ignore --all [dir]    ", "accent"),
+        ("Sync all 11 supported IDE ignore files\n", "info"),
+        ("  sprawl ignore check [dir]    ", "accent"),
+        ("CI/CD gate: verify ignore files are in sync (exit 1 on drift)\n", "info"),
+        ("  Flags: --all | --path <dir> | --dry-run | --json", "dim"),
     )
     panel = Panel(
         Group(intro, table, footer),
@@ -176,6 +181,10 @@ def _render_sync_report(report: IgnoreSyncReport, check_only: bool) -> None:
     print_success(
         f"{mode_prefix}Synchronized {target_count} IDE ignore targets for stacks "
         f"({stacks_str}) in {report.elapsed_ms:.2f}ms."
+    )
+    console.print(
+        "[dim]  Commands: 'sprawl ignore detect \\[dir]' | 'sprawl ignore check \\[dir]' | "
+        "'sprawl ignore --all \\[dir]' | '--dry-run' | '--json'[/dim]"
     )
 
 

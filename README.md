@@ -95,11 +95,11 @@ sprawl bind
 | `sprawl graft` | Onboard an existing project without losing custom configs |
 | `sprawl sync` | Pull DNA updates, provision venv, compile IDE bindings |
 | `sprawl bind` | Generate native config files for all active editors |
-| `sprawl ignore` | Compile stack-aware ignore shields (`.agentignore`, `.ignore`, plus bound IDE ignore files) |
+| `sprawl ignore` | Compile stack-aware ignore shields (`[detect\|sync\|check] [--all]`) across up to 11 IDE targets |
 | `sprawl add` | Inject rules, skills, or workflows from the registry |
 | `sprawl mount` | Give agents scoped access to additional directories |
 | `sprawl status` | Inspect workspace identity and DNA health |
-| `sprawl token-size` | Statically audit Turn-1 zero-hop vs. progressive context token weight |
+| `sprawl token-size` | Statically audit Always-On (Turn 1) vs. Lazy-Loaded (On-Demand) context tokens (`[--detailed] [--max-tokens <N>]`) |
 | `sprawl diff` | Detect configuration drift against the central registry |
 | `sprawl doctor` | Run system-wide diagnostics |
 | `sprawl ws` | Manage all tracked workspaces from a single registry |

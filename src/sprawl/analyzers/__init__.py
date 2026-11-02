@@ -15,9 +15,11 @@ from .stack import (
     STACK_PROFILE_MAP,
     STACK_PROFILES,
     StackDetectionResult,
+    StackIgnoreProfile,
     StackProfile,
     detect_stacks_from_entries,
     detect_workspace_stacks,
+    find_matching_workspace_bloat,
 )
 
 __all__ = [
@@ -27,6 +29,7 @@ __all__ = [
     "STACK_PROFILE_MAP",
     "STACK_PROFILES",
     "StackDetectionResult",
+    "StackIgnoreProfile",
     "StackProfile",
     "analyze_mcp_json",
     "analyze_rule_text",
@@ -35,5 +38,6 @@ __all__ = [
     "detect_stacks_from_entries",
     "detect_workspace_stacks",
     "estimate_tokens",
+    "find_matching_workspace_bloat",
     "scan_workspace_context",
 ]

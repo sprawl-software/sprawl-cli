@@ -4,10 +4,14 @@ import json
 import os
 from pathlib import Path
 
+from rich.console import Group
+from rich.panel import Panel
 from rich.table import Table
+from rich.text import Text
 
 from ..analyzers.stack import (
     STACK_PROFILE_MAP,
+    STACK_PROFILES,
     StackDetectionResult,
     detect_workspace_stacks,
 )
@@ -36,40 +40,78 @@ def _resolve_workspace_path(target_dir: str | None) -> Path:
 def _format_markers(markers: tuple[str, ...]) -> str:
     """Format matched marker tuple for Rich table display."""
     if not markers:
-        return "[dim](always active)[/dim]"
-    return ", ".join(markers)
+        return "Always active (Git & Secrets)"
+    return f"Found: {', '.join(markers)}"
+
+
+def _format_exposed_paths(exposed: tuple[str, ...]) -> str:
+    """Format detected bloat or sensitive paths present on disk."""
+    if not exposed:
+        return "[dim]none currently on disk[/dim]"
+    return f"[bold #F59E0B]{', '.join(exposed)}[/bold #F59E0B]"
+
+
+def _build_detection_table(result: StackDetectionResult) -> Table:
+    """Build the 4-column Rich table for stack detection."""
+    table = Table(border_style="#5D5CFF", expand=True)
+    table.add_column("Stack Profile", style="accent")
+    table.add_column("Why Detected (Markers Found)", style="info")
+    table.add_column("Matching Paths in Repo")
+    table.add_column("Shield Rules", justify="right", style="info")
+
+    for stack_name in result.detected_stacks:
+        profile = STACK_PROFILE_MAP[stack_name]
+        markers = result.matched_markers.get(stack_name, ())
+        exposed = result.exposed_paths.get(stack_name, ())
+        table.add_row(
+            stack_name,
+            _format_markers(markers),
+            _format_exposed_paths(exposed),
+            f"{len(profile.ignore_patterns)} patterns",
+        )
+    return table
+
+
+def _format_unchecked_stacks(detected_stacks: tuple[str, ...]) -> str:
+    """Return a summary line of stack profiles not detected in the workspace."""
+    missing = [p.name for p in STACK_PROFILES if p.name not in detected_stacks]
+    if not missing:
+        return "All supported stack profiles detected in workspace."
+    return f"Not detected: {', '.join(missing)}"
 
 
 def _render_detection(result: StackDetectionResult, workspace_path: Path) -> None:
-    """Render stack detection output as JSON or a Rich terminal table."""
+    """Render stack detection output as JSON or a Rich terminal diagnostic panel."""
     if config.json_logging:
         payload = {
             "action": "detect",
             "workspace_dir": str(workspace_path),
             "detected_stacks": list(result.detected_stacks),
             "matched_markers": {k: list(v) for k, v in result.matched_markers.items()},
+            "exposed_paths": {k: list(v) for k, v in result.exposed_paths.items()},
         }
         print(json.dumps(payload))
         return
 
-    table = Table(
-        title=f"Detected Workspace Stacks ({workspace_path.name})",
+    intro = Text(
+        "Scanned workspace root for technology markers (pyproject.toml, package.json, "
+        "Cargo.toml, go.mod, .obsidian, Dockerfile) to determine which build caches, "
+        "secrets, and archives must be hidden from AI agents.\n",
+        style="info",
+    )
+    table = _build_detection_table(result)
+    footer = Text.assemble(
+        ("\n" + _format_unchecked_stacks(result.detected_stacks) + "\n", "dim"),
+        ("Next Step: Run ", "info"),
+        ("'sprawl ignore'", "bold accent"),
+        (" to compile these rules into your workspace ignore files.", "info"),
+    )
+    panel = Panel(
+        Group(intro, table, footer),
+        title=f"[bold accent]Workspace Ignore Diagnostic ({workspace_path.name})[/bold accent]",
         border_style="#5D5CFF",
     )
-    table.add_column("Stack", style="accent")
-    table.add_column("Matched Root Markers", style="info")
-    table.add_column("Patterns", justify="right")
-
-    for stack_name in result.detected_stacks:
-        profile = STACK_PROFILE_MAP[stack_name]
-        markers = result.matched_markers.get(stack_name, ())
-        table.add_row(
-            stack_name,
-            _format_markers(markers),
-            str(len(profile.ignore_patterns)),
-        )
-
-    console.print(table)
+    console.print(panel)
 
 
 def _build_sync_json(report: IgnoreSyncReport, check_only: bool) -> dict[str, object]:
@@ -86,6 +128,7 @@ def _build_sync_json(report: IgnoreSyncReport, check_only: bool) -> dict[str, ob
                 "target_file": target.target_file,
                 "status": target.status,
                 "preserved_custom_lines": target.preserved_custom_lines,
+                "reason": target.reason,
             }
             for target in report.targets
         ],
@@ -102,10 +145,16 @@ def _render_sync_table(report: IgnoreSyncReport) -> None:
     table.add_column("Target File", style="accent")
     table.add_column("Status")
     table.add_column("Custom Rules Preserved", justify="right", style="info")
+    table.add_column("Details / What Changed", style="info")
 
     for target in report.targets:
         badge = _STATUS_BADGES.get(target.status, target.status)
-        table.add_row(target.target_file, badge, str(target.preserved_custom_lines))
+        table.add_row(
+            target.target_file,
+            badge,
+            str(target.preserved_custom_lines),
+            target.reason,
+        )
 
     console.print(table)
 
@@ -161,7 +210,10 @@ def _run_check_action(workspace_path: Path, all_targets: bool) -> None:
     )
     _render_sync_report(report, check_only=True)
     if report.has_drift:
-        raise SprawlError("Ignore shield drift detected. Run 'sprawl ignore sync' to remediate.")
+        raise SprawlError(
+            "Ignore shield drift detected: one or more ignore files are missing or out of "
+            "sync with the workspace stack. Run 'sprawl ignore' to update them non-destructively."
+        )
 
 
 _ACTION_DISPATCH = {

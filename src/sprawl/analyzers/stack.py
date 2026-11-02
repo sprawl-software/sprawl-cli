@@ -1,6 +1,6 @@
 """Pure stack fingerprinting engine for workspace ignore shield generation."""
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path
 
 from ..exceptions import SprawlError
@@ -16,12 +16,16 @@ class StackProfile:
     ignore_patterns: tuple[str, ...]
 
 
+StackIgnoreProfile = StackProfile
+
+
 @dataclass(frozen=True)
 class StackDetectionResult:
     """Immutable result of workspace stack detection."""
 
     detected_stacks: tuple[str, ...]
     matched_markers: dict[str, tuple[str, ...]]
+    exposed_paths: dict[str, tuple[str, ...]] = field(default_factory=dict)
 
 
 STACK_PROFILES: tuple[StackProfile, ...] = (
@@ -139,6 +143,33 @@ STACK_PROFILES: tuple[StackProfile, ...] = (
 STACK_PROFILE_MAP: dict[str, StackProfile] = {p.name: p for p in STACK_PROFILES}
 
 
+def _extract_root_candidate(pattern: str) -> str | None:
+    """Extract a root entry name from an ignore pattern if unambiguous."""
+    if pattern.startswith("!"):
+        return None
+    cleaned = pattern.removeprefix("**/").removesuffix("/**").rstrip("/")
+    root_part = cleaned.split("/", 1)[0]
+    if not root_part or "*" in root_part:
+        return None
+    return root_part
+
+
+def find_matching_workspace_bloat(
+    entries: set[str] | frozenset[str], profile: StackProfile
+) -> tuple[str, ...]:
+    """Identify root-level bloat or sensitive paths from profile that exist in entries."""
+    candidates = [
+        cand
+        for pat in profile.ignore_patterns
+        if (cand := _extract_root_candidate(pat)) is not None and cand in entries
+    ]
+    if ".env.*" in profile.ignore_patterns:
+        candidates.extend(
+            sorted(e for e in entries if e.startswith(".env.") and e != ".env.example")
+        )
+    return tuple(dict.fromkeys(candidates))
+
+
 def _match_profile_markers(profile: StackProfile, entry_names: frozenset[str]) -> tuple[str, ...]:
     """Return the ordered subset of profile markers present in entry_names."""
     return tuple(marker for marker in profile.markers if marker in entry_names)
@@ -150,18 +181,24 @@ def detect_stacks_from_entries(entry_names: frozenset[str]) -> StackDetectionRes
     Always includes 'base' first, followed by matched profiles in deterministic
     catalog order.
     """
+    base_profile = STACK_PROFILE_MAP["base"]
     detected: list[str] = ["base"]
     matched_markers: dict[str, tuple[str, ...]] = {"base": ()}
+    exposed_paths: dict[str, tuple[str, ...]] = {
+        "base": find_matching_workspace_bloat(entry_names, base_profile)
+    }
 
     for profile in STACK_PROFILES[1:]:
         hits = _match_profile_markers(profile, entry_names)
         if hits:
             detected.append(profile.name)
             matched_markers[profile.name] = hits
+            exposed_paths[profile.name] = find_matching_workspace_bloat(entry_names, profile)
 
     return StackDetectionResult(
         detected_stacks=tuple(detected),
         matched_markers=matched_markers,
+        exposed_paths=exposed_paths,
     )
 
 

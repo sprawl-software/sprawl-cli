@@ -9,8 +9,10 @@ import tempfile
 import unittest
 
 from sprawl.analyzers.stack import (
+    STACK_PROFILE_MAP,
     detect_stacks_from_entries,
     detect_workspace_stacks,
+    find_matching_workspace_bloat,
 )
 from sprawl.cli import get_parser
 from sprawl.commands.ignore import cmd_ignore
@@ -43,21 +45,30 @@ class TestSprawlIgnore(unittest.TestCase):
         config.dry_run = self._orig_dry_run
         config.json_logging = self._orig_json_logging
 
-    def test_detect_stacks_pure_markers(self) -> None:
-        """Verify detect_stacks_from_entries detects all 7 profiles in deterministic order."""
+    def test_detect_stacks_pure_markers_and_bloat(self) -> None:
+        """Verify detect_stacks_from_entries detects all 7 profiles and exposed bloat paths."""
         empty_res = detect_stacks_from_entries(frozenset())
         self.assertEqual(empty_res.detected_stacks, ("base",))
         self.assertEqual(empty_res.matched_markers, {"base": ()})
+        self.assertEqual(empty_res.exposed_paths, {"base": ()})
 
         polyglot_entries = frozenset(
             {
+                ".git",
+                ".env",
+                ".env.local",
+                ".env.example",
                 "pyproject.toml",
                 "uv.lock",
+                ".venv",
+                ".ruff_cache",
                 "package.json",
+                "node_modules",
                 "Cargo.toml",
                 "go.mod",
                 "manifest.md",
                 ".obsidian",
+                "99_Archive",
                 "Dockerfile",
                 "README.md",
             }
@@ -68,11 +79,16 @@ class TestSprawlIgnore(unittest.TestCase):
             ("base", "python", "node", "rust", "go", "vault", "docker"),
         )
         self.assertEqual(res.matched_markers["python"], ("pyproject.toml", "uv.lock"))
-        self.assertEqual(res.matched_markers["node"], ("package.json",))
-        self.assertEqual(res.matched_markers["rust"], ("Cargo.toml",))
-        self.assertEqual(res.matched_markers["go"], ("go.mod",))
-        self.assertEqual(res.matched_markers["vault"], ("manifest.md", ".obsidian"))
-        self.assertEqual(res.matched_markers["docker"], ("Dockerfile",))
+        self.assertIn(".git", res.exposed_paths["base"])
+        self.assertIn(".env", res.exposed_paths["base"])
+        self.assertIn(".env.local", res.exposed_paths["base"])
+        self.assertNotIn(".env.example", res.exposed_paths["base"])
+        self.assertEqual(res.exposed_paths["python"], (".venv", ".ruff_cache"))
+        self.assertEqual(res.exposed_paths["node"], ("node_modules",))
+        self.assertEqual(
+            find_matching_workspace_bloat(polyglot_entries, STACK_PROFILE_MAP["vault"]),
+            (".obsidian",),
+        )
 
     def test_compile_managed_block_deterministic(self) -> None:
         """Verify identical output order and zero duplicate patterns across repeated calls."""
@@ -141,6 +157,7 @@ class TestSprawlIgnore(unittest.TestCase):
                 tuple(t.target_file for t in report.targets),
                 BASE_IGNORE_TARGETS,
             )
+            self.assertTrue(all("created new file" in t.reason for t in report.targets))
 
             for target_name in BASE_IGNORE_TARGETS:
                 self.assertTrue((ws_path / target_name).is_file())
@@ -214,6 +231,8 @@ class TestSprawlIgnore(unittest.TestCase):
                 tuple(t.target_file for t in report.targets),
                 (".agentignore", ".ignore", ".cursorignore", ".claudeignore"),
             )
+            status_map = {t.target_file: t for t in report.targets}
+            self.assertIn("upgraded legacy file", status_map[".cursorignore"].reason)
             for target_status in report.targets:
                 self.assertEqual(target_status.preserved_custom_lines, 3)
 
@@ -238,6 +257,7 @@ class TestSprawlIgnore(unittest.TestCase):
 
             second_report = sync_workspace_ignores(ws_path)
             self.assertTrue(all(t.status == "unchanged" for t in second_report.targets))
+            self.assertTrue(all("in sync" in t.reason for t in second_report.targets))
             self.assertFalse(second_report.has_drift)
 
     def test_check_mode_detects_drift_and_raises_sprawl_error(self) -> None:
@@ -250,14 +270,28 @@ class TestSprawlIgnore(unittest.TestCase):
             with contextlib.redirect_stdout(io.StringIO()):
                 cmd_ignore("check", str(ws_path))
 
+            # Case 1: Tamper with managed file while keeping MANAGED_HEADER
             agent_file = ws_path / ".agentignore"
-            tampered = "# Tampered header\n"
-            agent_file.write_text(tampered, encoding="utf-8")
+            tampered_managed = f"{MANAGED_HEADER}\n.git/\n{CUSTOM_SEPARATOR}\n"
+            agent_file.write_text(tampered_managed, encoding="utf-8")
 
-            with contextlib.redirect_stdout(io.StringIO()), self.assertRaises(SprawlError):
+            check_report = sync_workspace_ignores(ws_path, check_only=True, dry_run=True)
+            reasons = {t.target_file: t.reason for t in check_report.targets}
+            self.assertIn("out of sync: managed block differs", reasons[".agentignore"])
+
+            # Case 2: Unmanaged file without MANAGED_HEADER and missing .ignore
+            (ws_path / ".ignore").unlink()
+            agent_file.write_text("# Tampered header\ncustom_rule/\n", encoding="utf-8")
+
+            out_buf = io.StringIO()
+            with contextlib.redirect_stdout(out_buf), self.assertRaises(SprawlError) as ctx:
                 cmd_ignore("check", str(ws_path))
 
-            self.assertEqual(agent_file.read_text(encoding="utf-8"), tampered)
+            self.assertIn("one or more ignore files are missing or out of sync", str(ctx.exception))
+            rendered = out_buf.getvalue()
+            self.assertIn("unmanaged file: missing", rendered)
+            self.assertIn("Sprawl shield header", rendered)
+            self.assertIn("missing on disk", rendered)
 
     def test_symlinked_ignore_file_rejected_with_sprawl_error(self) -> None:
         """Verify symlinked .cursorignore -> external secret raises SprawlError without mutating target."""
@@ -281,25 +315,31 @@ class TestSprawlIgnore(unittest.TestCase):
             self.assertFalse((ws_path / ".agentignore").exists())
 
     def test_detect_rich_table_rendering_and_binary_file_guard(self) -> None:
-        """Verify non-JSON Rich table rendering for detect and binary ignore file rejection."""
+        """Verify non-JSON Rich diagnostic rendering for detect and binary ignore file rejection."""
         with tempfile.TemporaryDirectory() as tmp_dir:
             ws_path = Path(tmp_dir)
             (ws_path / "pyproject.toml").write_text("[project]\n", encoding="utf-8")
             (ws_path / "Dockerfile").write_text("FROM scratch\n", encoding="utf-8")
+            (ws_path / ".venv").mkdir()
+            (ws_path / ".env").write_text("SECRET=1\n", encoding="utf-8")
 
             config.json_logging = False
             config.dry_run = True
-            rich_out = io.StringIO()
-            with contextlib.redirect_stdout(rich_out):
+            rich_buf = io.StringIO()
+            with contextlib.redirect_stdout(rich_buf):
                 cmd_ignore("detect", str(ws_path))
                 cmd_ignore("sync", str(ws_path))
-            self.assertIn("Detected Workspace Stacks", rich_out.getvalue())
 
-            # Verify invalid action raises SprawlError
+            output_text = rich_buf.getvalue()
+            self.assertIn("Workspace Ignore Diagnostic", output_text)
+            self.assertIn("Always active", output_text)
+            self.assertIn("pyproject.toml", output_text)
+            self.assertIn(".venv", output_text)
+            self.assertIn("Not detected:", output_text)
+
             with self.assertRaises(SprawlError):
                 cmd_ignore("not_an_action_or_dir")
 
-            # Verify binary non-UTF8 ignore file raises SprawlError
             (ws_path / ".agentignore").write_bytes(b"\xff\xfe\x00\x80invalid_utf8")
             with self.assertRaises(SprawlError):
                 sync_workspace_ignores(ws_path)
@@ -322,10 +362,10 @@ class TestSprawlIgnore(unittest.TestCase):
             self.assertTrue(payload["dry_run"])
             self.assertEqual(payload["detected_stacks"], ["base", "go"])
             self.assertEqual(len(payload["targets"]), 11)
+            self.assertTrue(all("reason" in t for t in payload["targets"]))
             for target_name in ALL_IGNORE_TARGETS:
                 self.assertFalse((ws_path / target_name).exists())
 
-            # Positional directory as first arg (`sprawl ignore /path/to/ws`)
             pos_buf = io.StringIO()
             with contextlib.redirect_stdout(pos_buf):
                 cmd_ignore(str(ws_path))
@@ -333,7 +373,6 @@ class TestSprawlIgnore(unittest.TestCase):
             self.assertEqual(pos_payload["action"], "sync")
             self.assertEqual(Path(pos_payload["workspace_dir"]), ws_path.resolve())
 
-            # Default CWD (`sprawl ignore` with no args inside workspace folder)
             orig_cwd = os.getcwd()
             try:
                 os.chdir(ws_path)

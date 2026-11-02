@@ -47,6 +47,10 @@ class TargetIgnoreStatus:
     target_file: str
     status: str  # "created" | "updated" | "unchanged" | "drifted"
     preserved_custom_lines: int
+    reason: str = ""
+
+
+IgnoreTargetStatus = TargetIgnoreStatus
 
 
 @dataclass(frozen=True)
@@ -294,11 +298,55 @@ def _collect_workspace_custom_section(
     return merge_custom_sections(sections)
 
 
+def _describe_drifted_reason(
+    existing_text: str | None,
+    preserved_count: int,
+    detected_stacks: tuple[str, ...],
+) -> str:
+    """Build plain-English explanation for a drifted target in check mode."""
+    if existing_text is None:
+        return "missing on disk (run 'sprawl ignore' to create)"
+    if MANAGED_HEADER not in existing_text:
+        return (
+            f"unmanaged file: missing Sprawl shield header "
+            f"({preserved_count} existing rules will be preserved)"
+        )
+    stacks_label = ", ".join(detected_stacks)
+    return f"out of sync: managed block differs from detected ({stacks_label}) stack rules"
+
+
+def _describe_sync_reason(
+    status: str,
+    existing_text: str | None,
+    active_rules: int,
+    preserved_count: int,
+    detected_stacks: tuple[str, ...],
+) -> str:
+    """Build plain-English explanation for any target status."""
+    if status == "unchanged":
+        return f"in sync ({active_rules} managed rules active)"
+    if status == "drifted":
+        return _describe_drifted_reason(existing_text, preserved_count, detected_stacks)
+    if existing_text is None or status == "created":
+        return f"created new file ({active_rules} managed rules)"
+    if MANAGED_HEADER not in existing_text:
+        return (
+            f"upgraded legacy file (+{active_rules} managed rules, "
+            f"preserved {preserved_count} custom)"
+        )
+    return (
+        f"updated managed block ({active_rules} managed rules, "
+        f"preserved {preserved_count} custom)"
+    )
+
+
 def _process_single_target(
     workspace_dir: Path,
     target_name: str,
     final_content: str,
     custom_count: int,
+    active_rules: int,
+    detected_stacks: tuple[str, ...],
     check_only: bool,
     dry_run: bool,
 ) -> TargetIgnoreStatus:
@@ -307,15 +355,18 @@ def _process_single_target(
     existing = _read_existing_target(target_path, workspace_dir)
 
     if existing == final_content:
-        return TargetIgnoreStatus(target_name, "unchanged", custom_count)
+        status = "unchanged"
+    elif check_only:
+        status = "drifted"
+    else:
+        status = "created" if existing is None else "updated"
+        if not dry_run:
+            _write_target_file(target_path, final_content, workspace_dir)
 
-    if check_only:
-        return TargetIgnoreStatus(target_name, "drifted", custom_count)
-
-    status = "created" if existing is None else "updated"
-    if not dry_run:
-        _write_target_file(target_path, final_content, workspace_dir)
-    return TargetIgnoreStatus(target_name, status, custom_count)
+    reason = _describe_sync_reason(
+        status, existing, active_rules, custom_count, detected_stacks
+    )
+    return TargetIgnoreStatus(target_name, status, custom_count, reason=reason)
 
 
 def sync_workspace_ignores(
@@ -329,6 +380,7 @@ def sync_workspace_ignores(
     detection = detect_workspace_stacks(workspace_dir)
     managed_block = compile_managed_block(detection.detected_stacks)
     managed_patterns = _extract_patterns_from_block(managed_block)
+    active_rules = len(managed_patterns)
     targets = resolve_ignore_targets(workspace_dir, all_targets=all_targets)
 
     custom_section, custom_count = _collect_workspace_custom_section(
@@ -338,7 +390,14 @@ def sync_workspace_ignores(
 
     statuses = tuple(
         _process_single_target(
-            workspace_dir, target, final_content, custom_count, check_only, dry_run
+            workspace_dir,
+            target,
+            final_content,
+            custom_count,
+            active_rules,
+            detection.detected_stacks,
+            check_only,
+            dry_run,
         )
         for target in targets
     )

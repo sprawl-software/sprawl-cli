@@ -215,12 +215,18 @@ def cmd_graft() -> None:
 
     manifest_content = "\n".join(content_lines)
 
+    from pathlib import Path
+
+    from ..generators.ignore import sync_workspace_ignores
+
     if config.verbose and config.dry_run:
         print_status(f"DRY RUN: Would surgically graft sprawl_manifest.yml into {local_agents_dir}")
         print_status("Generated manifest:\n" + manifest_content)
+        sync_workspace_ignores(Path(cwd), dry_run=True)
     elif not config.dry_run:
         with open(manifest_path, "w", encoding="utf-8") as f:
             f.write(manifest_content)
+        sync_workspace_ignores(Path(cwd), dry_run=False)
         register_workspace(app_name, cwd)
         print_status(
             f"Successfully grafted sprawl_manifest.yml into {local_agents_dir}.\n"

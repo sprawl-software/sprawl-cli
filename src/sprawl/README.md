@@ -226,6 +226,7 @@ The newly updated Sprawl Engine possesses the following state-of-the-art native 
 - **Diagnostics & Telemetry**:
   - `sprawl doctor`: Validates global Sprawl Hub integrity, CLI configuration, and dependency health.
   - `sprawl status`: Displays real-time Rich panel telemetry of the active workspace, indicating drift, bindings, and manifest state.
+  - `sprawl token-size` (alias `sprawl context`): Statically audits Turn-1 zero-hop baseline vs. progressive on-demand context token weight across manifests, rules, skills, and MCP server schemas (`--detailed`, `--max-tokens`).
   - `sprawl diff`: Visually contrasts the local workspace `.agents/` directory against the upstream DNA source to detect drift or uncommitted mutations.
 ### 🛡️ Sprawl Shell (The Agent Simulator)
 
@@ -239,6 +240,7 @@ Because Sprawl enforces a strict "Clean Room" architecture, the dependencies, li
 
 *Think of it as `poetry shell` or `pipenv shell`, but seamlessly tied to your Atomic Agentic Fabric.*
 - `sprawl bind [--force]`: Manually generates Universal IDE/Agent Adapters (Antigravity, Cursor, RooCode, Windsurf) to bridge the `.agents/` Source of Truth to the editor's expected configuration paths.
+- `sprawl ignore [detect|sync|check] [--path DIR] [--all]`: Fingerprints active workspace stacks (`base`, `python`, `node`, `rust`, `go`, `vault`, `docker`), harvests legacy custom rules across all existing ignore files, and non-destructively synchronizes `.agentignore`, `.ignore`, and bound IDE ignore files (or all 8 supported targets with `--all`) while preserving custom rules below `# === CUSTOM WORKSPACE IGNORES ===`.
 - `sprawl man`: Serves exactly this `README.md` block directly into your terminal.
 - `sprawl sync --dry-run`: Safety net parser. Identifies path structures and resolves arrays, but guarantees 0 files will be overwritten or cloned by operating purely in standard-out mode.
 - `sprawl sync --verbose`: Replaces silent executions with strict native logging, outputting exactly which rules, files, and symlink layers are actively shifting via Cyber-Brutalist color formatting.

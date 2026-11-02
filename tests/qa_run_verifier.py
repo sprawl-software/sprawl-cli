@@ -273,6 +273,27 @@ def main():
             "expect_zero": True,
         },
         {
+            "name": "Sync Multi-IDE Ignore Shield",
+            "args": ["ignore"],
+            "cwd": os.path.join(SANDBOX_DIR, "qa_workspace"),
+            "desc": "Compile and synchronize stack-aware multi-IDE ignore shields.",
+            "expect_zero": True,
+        },
+        {
+            "name": "Verify Ignore Shield Drift Check",
+            "args": ["ignore", "check"],
+            "cwd": os.path.join(SANDBOX_DIR, "qa_workspace"),
+            "desc": "Verify all workspace ignore targets are in sync without drift.",
+            "expect_zero": True,
+        },
+        {
+            "name": "Audit Turn-1 Context Token Size",
+            "args": ["context", "--detailed"],
+            "cwd": os.path.join(SANDBOX_DIR, "qa_workspace"),
+            "desc": "Audit Turn-1 Always-On vs. Lazy-Loaded token footprint across 4 context layers.",
+            "expect_zero": True,
+        },
+        {
             "name": "Interactive Demo Run",
             "args": ["demo", "1"],
             "desc": "Run E2E demo execution walkthrough non-interactively.",

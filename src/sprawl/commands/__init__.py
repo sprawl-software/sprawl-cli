@@ -18,6 +18,7 @@ from .man import cmd_man
 from .shell import cmd_shell
 from .status import cmd_status
 from .sync_cmd import cmd_bind, cmd_sync
+from .token_size import cmd_token_size
 from .wipe import cmd_wipe
 from .workspace import cmd_create, cmd_graft
 
@@ -41,5 +42,6 @@ __all__ = [
     "cmd_doctor",
     "cmd_shell",
     "cmd_status",
+    "cmd_token_size",
     "cmd_wipe",
 ]

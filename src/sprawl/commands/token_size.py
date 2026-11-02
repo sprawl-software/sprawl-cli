@@ -100,7 +100,7 @@ def _render_summary_table(report: ContextAuditReport, max_tokens: int | None = N
     """Renders the 4-layer Always-On (Turn 1) vs. Lazy-Loaded (On-Demand) summary table."""
     console.print()
     table = Table(show_header=True, border_style="#5D5CFF")
-    table.add_column("Context Layer", style="accent")
+    table.add_column("Context Layer", style="accent", overflow="fold")
     table.add_column("Files", justify="right", style="info", no_wrap=True)
     table.add_column("Bytes", justify="right", style="info", no_wrap=True)
     table.add_column("Always-On Tokens\n(Turn 1)", justify="right", style="warning")

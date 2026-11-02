@@ -148,10 +148,9 @@ def _extract_root_candidate(pattern: str) -> str | None:
     if pattern.startswith("!"):
         return None
     cleaned = pattern.removeprefix("**/").removesuffix("/**").rstrip("/")
-    root_part = cleaned.split("/", 1)[0]
-    if not root_part or "*" in root_part:
+    if not cleaned or "/" in cleaned or "*" in cleaned:
         return None
-    return root_part
+    return cleaned
 
 
 def find_matching_workspace_bloat(

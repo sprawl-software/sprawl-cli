@@ -263,9 +263,9 @@ def merge_ignore_content(managed_block: str, existing_content: str | None) -> tu
 
 def _read_existing_target(target_path: Path, workspace_root: Path) -> str | None:
     """Validate and read an existing ignore target file if present on disk."""
-    _validate_ignore_target(target_path, workspace_root)
-    if not target_path.is_file():
+    if not target_path.is_symlink() and not target_path.is_file():
         return None
+    _validate_ignore_target(target_path, workspace_root)
     try:
         if target_path.stat().st_size > MAX_IGNORE_FILE_BYTES:
             raise SprawlError(

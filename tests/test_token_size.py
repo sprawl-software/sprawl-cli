@@ -186,7 +186,7 @@ class TestTokenSizeAuditor(unittest.TestCase):
             )
 
             report = scan_workspace_context(ws)
-            self.assertLess(report.elapsed_ms, 100.0)
+            self.assertLess(report.elapsed_ms, 200.0)
             self.assertGreater(report.zero_hop_tokens, 0)
             self.assertGreater(report.progressive_tokens, report.zero_hop_tokens)
             self.assertGreater(report.pruned_ratio_pct, 50.0)

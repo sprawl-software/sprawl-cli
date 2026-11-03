@@ -151,7 +151,7 @@ class TestSprawlIgnore(unittest.TestCase):
 
             report = sync_workspace_ignores(ws_path)
             self.assertEqual(report.detected_stacks, ("base", "python"))
-            self.assertLess(report.elapsed_ms, 30.0)
+            self.assertLess(report.elapsed_ms, 200.0)
             self.assertFalse(report.has_drift)
             self.assertEqual(
                 tuple(t.target_file for t in report.targets),

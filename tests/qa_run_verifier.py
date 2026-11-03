@@ -288,7 +288,7 @@ def main():
         },
         {
             "name": "Audit Turn-1 Context Token Size",
-            "args": ["context", "--detailed"],
+            "args": ["token-size", "--detailed"],
             "cwd": os.path.join(SANDBOX_DIR, "qa_workspace"),
             "desc": "Audit Turn-1 Always-On vs. Lazy-Loaded token footprint across 4 context layers.",
             "expect_zero": True,

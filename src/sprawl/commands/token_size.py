@@ -34,11 +34,6 @@ def _append_ci_gate_status(
 ) -> None:
     """Appends the CI Budget Gate status or usage tip to the summary banner."""
     if max_tokens is None:
-        banner.append(
-            "\n  Tip: Use 'sprawl context --max-tokens 15000' in CI/CD to fail Pull Requests "
-            "that bloat your team's Turn-1 prompt.",
-            style="dim",
-        )
         return
 
     banner.append("\n• CI Budget Gate:           ", style="info")
@@ -64,6 +59,18 @@ def _append_optimization_hints(banner: Text, report: ContextAuditReport) -> None
     for idx, hint in enumerate(hints, start=1):
         suffix = "\n" if idx < len(hints) else ""
         banner.append(f"  {idx}. {hint}{suffix}", style="warning")
+
+
+def _append_command_legend(banner: Text) -> None:
+    """Appends the self-explanatory command combinations footer."""
+    banner.append("\n\nCommands & Options:\n", style="bold accent")
+    banner.append("  sprawl token-size [dir]                   ", style="accent")
+    banner.append("Audit Turn-1 Always-On vs. On-Demand tokens\n", style="info")
+    banner.append("  sprawl token-size --detailed [dir]        ", style="accent")
+    banner.append("Inspect per-file token breakdown & loading behavior\n", style="info")
+    banner.append("  sprawl token-size --max-tokens <N> [dir]  ", style="accent")
+    banner.append("CI/CD gate: fail (exit 1) if Turn-1 tokens > <N>\n", style="info")
+    banner.append("  Flags: --detailed | --max-tokens <int> | --json", style="dim")
 
 
 def _build_summary_banner(report: ContextAuditReport, max_tokens: int | None = None) -> Text:
@@ -93,6 +100,7 @@ def _build_summary_banner(report: ContextAuditReport, max_tokens: int | None = N
 
     _append_ci_gate_status(banner, report, max_tokens)
     _append_optimization_hints(banner, report)
+    _append_command_legend(banner)
     return banner
 
 
@@ -196,6 +204,6 @@ def cmd_token_size(
 
     if max_tokens is not None and report.zero_hop_tokens > max_tokens:
         raise SprawlError(
-            f"Context budget exceeded: Turn-1 zero-hop baseline is "
+            f"Context budget exceeded: Turn-1 Always-On token count is "
             f"{report.zero_hop_tokens} tokens (limit: {max_tokens})."
         )

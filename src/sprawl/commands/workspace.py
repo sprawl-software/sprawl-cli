@@ -107,6 +107,17 @@ def _resolve_dna_rule(candidates: list[str]) -> str:
     return candidates[0]
 
 
+def _resolve_dna_skill(candidates: list[str]) -> str | None:
+    """Returns the first candidate skill that exists in the active DNA skills folder, or None."""
+    from ..utils import get_active_dna_context
+
+    skills_dir = os.path.join(get_active_dna_context(), "skills")
+    for name in candidates:
+        if os.path.exists(os.path.join(skills_dir, name)):
+            return name
+    return None
+
+
 def cmd_graft() -> None:
     """Surgical Injection Protocol: Stitches Sprawl DNA onto an existing project."""
     cwd = os.getcwd()
@@ -160,7 +171,9 @@ def cmd_graft() -> None:
             discovered_artifacts["rules"].append("engineering.md")  # absolute fallback
 
     if not discovered_artifacts["skills"]:
-        discovered_artifacts["skills"].append("web_artifacts_builder")  # absolute fallback
+        fallback_skill = _resolve_dna_skill(["web_artifacts_builder"])
+        if fallback_skill:
+            discovered_artifacts["skills"].append(fallback_skill)
 
     # 3. Detect MCP configuration
     # (atoms is deprecated, skipping atoms discovery)

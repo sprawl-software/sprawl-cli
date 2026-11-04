@@ -125,3 +125,62 @@ def rmtree_safe(path: str, ignore_errors: bool = False) -> None:
         shutil.rmtree(path, onexc=_onexc, ignore_errors=ignore_errors)
     else:
         shutil.rmtree(path, onerror=_remove_readonly, ignore_errors=ignore_errors)
+
+
+def is_compiled_binary() -> bool:
+    """Returns True when running inside a Nuitka or frozen standalone binary."""
+    import sys
+
+    if "__compiled__" in globals() or getattr(sys, "frozen", False):
+        return True
+    exe_path = sys.executable or ""
+    if not exe_path or not os.path.isfile(exe_path):
+        return True
+    norm_exe = exe_path.replace("\\", "/").lower()
+    if "/onefile_" in norm_exe:
+        return True
+    base_name = os.path.basename(norm_exe)
+    return not base_name.startswith("python")
+
+
+def get_host_python_executable() -> str | None:
+    """Resolves a valid host Python interpreter for provisioning virtual environments."""
+    import shutil
+    import sys
+
+    if not is_compiled_binary() and sys.executable and os.path.isfile(sys.executable):
+        return sys.executable
+    for candidate in ("python3", "python"):
+        found = shutil.which(candidate)
+        if found and os.path.isfile(found):
+            return found
+    return None
+
+
+def get_mcp_command_executable() -> str:
+    """Resolves the persistent executable path for MCP server configurations."""
+    import shutil
+    import sys
+
+    if not is_compiled_binary() and sys.executable and os.path.isfile(sys.executable):
+        return sys.executable
+
+    env_override = os.environ.get("SPRAWL_INSTALL_PATH")
+    if env_override and os.path.isfile(os.path.expanduser(env_override)):
+        return os.path.abspath(os.path.expanduser(env_override))
+
+    argv0 = sys.argv[0] if sys.argv else ""
+    if argv0 and "/onefile_" not in argv0.replace("\\", "/"):
+        abs_argv0 = os.path.abspath(os.path.expanduser(argv0))
+        if os.path.isfile(abs_argv0) and not abs_argv0.endswith(".py"):
+            return abs_argv0
+
+    which_sprawl = shutil.which("sprawl")
+    if which_sprawl and os.path.isfile(which_sprawl):
+        return os.path.abspath(which_sprawl)
+
+    default_bin = os.path.expanduser("~/.local/bin/sprawl")
+    if os.path.isfile(default_bin):
+        return os.path.abspath(default_bin)
+
+    return sys.executable

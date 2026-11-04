@@ -129,6 +129,30 @@ class TestMCPServer(unittest.TestCase):
         read_file_tool = next(t for t in tools if t["name"] == "read_file")
         self.assertIn("@ext_lib", read_file_tool["description"])
 
+    def test_maybe_dispatch_mcp_stdio_routing(self):
+        from unittest.mock import patch
+
+        from src.sprawl.cli import maybe_dispatch_mcp_stdio
+
+        with (
+            patch("src.sprawl.mcp.workspace_fs.run_workspace_fs_cli") as mock_wfs,
+            patch("src.sprawl.mcp.vault.run_vault_cli") as mock_vault,
+        ):
+            self.assertFalse(maybe_dispatch_mcp_stdio(["sync"]))
+            self.assertTrue(
+                maybe_dispatch_mcp_stdio(
+                    ["-m", "sprawl.mcp.workspace_fs", self.test_dir, "--mount", "a=/tmp"]
+                )
+            )
+            mock_wfs.assert_called_once_with([self.test_dir, "--mount", "a=/tmp"])
+
+            mock_wfs.reset_mock()
+            self.assertTrue(maybe_dispatch_mcp_stdio(["mcp", "workspace-fs", self.test_dir]))
+            mock_wfs.assert_called_once_with([self.test_dir])
+
+            self.assertTrue(maybe_dispatch_mcp_stdio(["-m", "sprawl.mcp.vault", self.test_dir]))
+            mock_vault.assert_called_once_with([self.test_dir])
+
 
 if __name__ == "__main__":
     unittest.main()

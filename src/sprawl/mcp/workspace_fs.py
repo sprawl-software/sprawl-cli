@@ -268,7 +268,8 @@ class MCPServer:
         sys.stdout.flush()
 
 
-if __name__ == "__main__":
+def run_workspace_fs_cli(argv: list[str] | None = None) -> None:
+    """CLI entrypoint for launching the sprawl-workspace-fs MCP stdio server."""
     import argparse
 
     parser = argparse.ArgumentParser(description="sprawl-workspace-fs MCP Server")
@@ -280,7 +281,7 @@ if __name__ == "__main__":
         metavar="ALIAS=PATH",
         help="Allowed mount in format alias=path",
     )
-    args = parser.parse_args()
+    args = parser.parse_args(argv)
 
     cli_mounts = {}
     if args.mounts:
@@ -296,3 +297,7 @@ if __name__ == "__main__":
     except Exception as e:
         print(f"Failed to start server: {e}", file=sys.stderr)
         sys.exit(1)
+
+
+if __name__ == "__main__":
+    run_workspace_fs_cli()

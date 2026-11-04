@@ -259,12 +259,14 @@ class MCPServer:
         sys.stdout.flush()
 
 
-if __name__ == "__main__":
-    if len(sys.argv) < 2:
-        print("Usage: python vault.py <vault_path>", file=sys.stderr)
+def run_vault_cli(argv: list[str] | None = None) -> None:
+    """CLI entrypoint for launching the sprawl-vault MCP stdio server."""
+    args_list = sys.argv[1:] if argv is None else list(argv)
+    if not args_list:
+        print("Usage: sprawl mcp vault <vault_path>", file=sys.stderr)
         sys.exit(1)
 
-    root = sys.argv[1]
+    root = args_list[0]
     try:
         mgr = VaultManager(root)
         server = MCPServer(mgr)
@@ -272,3 +274,7 @@ if __name__ == "__main__":
     except Exception as e:
         print(f"Failed to start server: {e}", file=sys.stderr)
         sys.exit(1)
+
+
+if __name__ == "__main__":
+    run_vault_cli()

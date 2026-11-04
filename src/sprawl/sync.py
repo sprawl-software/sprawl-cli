@@ -3,14 +3,28 @@ import json
 import os
 import shutil
 import subprocess
-import sys
 
 from .config import config
 from .exceptions import SprawlError
 from .generators.agents_md import generate_agents_md
 from .generators.mcp_config import generate_mcp_config
 from .output import print_error, print_status, print_warning
-from .utils import CATEGORIES, get_venv_executable
+from .utils import CATEGORIES, get_host_python_executable, get_venv_executable
+
+
+def _provision_workspace_venv(venv_dir: str) -> bool:
+    """Provisions a workspace virtual environment using the host Python interpreter."""
+    if os.path.exists(venv_dir):
+        return False
+    host_python = get_host_python_executable()
+    if not host_python:
+        print_warning(
+            "Host Python interpreter not found on PATH; skipping .agents/.venv provisioning."
+        )
+        return False
+    print_status(f"Provisioning sandboxed virtual environment at {venv_dir}...")
+    subprocess.run([host_python, "-m", "venv", venv_dir], check=True, timeout=120)
+    return True
 
 
 def parse_sprawl_manifest(file_path: str) -> dict[str, list[str]]:
@@ -187,10 +201,7 @@ def _sync_app_directory_impl(app_dir: str, local_agents_dir: str, manifest_path:
 
     provisioned_venv = False
     if not config.dry_run:
-        if not os.path.exists(venv_dir):
-            print_status(f"Provisioning sandboxed virtual environment at {venv_dir}...")
-            subprocess.run([sys.executable, "-m", "venv", venv_dir], check=True)
-            provisioned_venv = True
+        provisioned_venv = _provision_workspace_venv(venv_dir)
 
         valid_skills = [f[1] for f in copied_files if f[0] == "skills"]
         for skill in valid_skills:

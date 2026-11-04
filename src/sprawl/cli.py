@@ -546,7 +546,52 @@ def print_help() -> None:
     console.print(Panel(Align.center(footer), border_style="accent", padding=(0, 2)))
 
 
+def maybe_dispatch_mcp_stdio(argv: list[str] | None = None) -> bool:
+    """Fast pre-parser interceptor for MCP stdio servers.
+
+    Supports both:
+      - sprawl mcp <workspace-fs|vault> <root> [--mount alias=path]
+      - sprawl -m <sprawl.mcp.workspace_fs|sprawl.mcp.vault> <root> [--mount alias=path]
+    """
+    tokens = sys.argv[1:] if argv is None else list(argv)
+    if len(tokens) < 2:
+        return False
+
+    first, second = tokens[0], tokens[1]
+    rest = tokens[2:]
+
+    if first == "-m":
+        if second == "sprawl.mcp.workspace_fs":
+            from .mcp.workspace_fs import run_workspace_fs_cli
+
+            run_workspace_fs_cli(rest)
+            return True
+        if second == "sprawl.mcp.vault":
+            from .mcp.vault import run_vault_cli
+
+            run_vault_cli(rest)
+            return True
+        return False
+
+    if first == "mcp":
+        if second in ("workspace-fs", "workspace_fs", "sprawl.mcp.workspace_fs"):
+            from .mcp.workspace_fs import run_workspace_fs_cli
+
+            run_workspace_fs_cli(rest)
+            return True
+        if second in ("vault", "sprawl.mcp.vault"):
+            from .mcp.vault import run_vault_cli
+
+            run_vault_cli(rest)
+            return True
+
+    return False
+
+
 def main() -> None:
+    if maybe_dispatch_mcp_stdio():
+        sys.exit(0)
+
     parser = get_parser()
 
     # We parse known args first to extract global flags before routing to commands

@@ -109,15 +109,30 @@ class TestMountCommand(unittest.TestCase):
 
         mcp_path = os.path.join(self.workspace_dir, "mcp_config.json")
         agents_path = os.path.join(self.workspace_dir, "AGENTS.md")
+        plugin_mcp_path = os.path.join(self.agents_dir, "plugins", "sprawl-mcp", "mcp_config.json")
+        plugin_manifest_path = os.path.join(self.agents_dir, "plugins", "sprawl-mcp", "plugin.json")
+        claude_mcp_path = os.path.join(self.workspace_dir, ".mcp.json")
+        cursor_mcp_path = os.path.join(self.workspace_dir, ".cursor", "mcp.json")
 
         self.assertTrue(os.path.exists(mcp_path))
         self.assertTrue(os.path.exists(agents_path))
+        self.assertTrue(os.path.exists(plugin_mcp_path))
+        self.assertTrue(os.path.exists(plugin_manifest_path))
+        self.assertTrue(os.path.exists(claude_mcp_path))
+        self.assertTrue(os.path.exists(cursor_mcp_path))
 
         with open(mcp_path) as f:
             mcp_data = json.load(f)
         args = mcp_data["mcpServers"]["sprawl-workspace-fs"]["args"]
         self.assertIn("--mount", args)
         self.assertIn(f"my_mount={os.path.abspath(self.mount_dir)}", args)
+
+        with open(plugin_mcp_path) as f:
+            plugin_mcp = json.load(f)
+        self.assertEqual(
+            plugin_mcp["mcpServers"]["sprawl-workspace-fs"]["args"],
+            args,
+        )
 
         with open(agents_path) as f:
             agents_md = f.read()
@@ -136,6 +151,29 @@ class TestMountCommand(unittest.TestCase):
         with open(agents_path) as f:
             agents_md = f.read()
         self.assertNotIn("@my_mount", agents_md)
+
+    def test_compiled_binary_executable_resolution(self):
+        """Verifies Nuitka onefile /tmp/onefile_ paths resolve to host python and persistent sprawl binary."""
+        from src.sprawl.utils import (
+            get_host_python_executable,
+            get_mcp_command_executable,
+            is_compiled_binary,
+        )
+
+        fake_sprawl_bin = os.path.join(self.temp_dir, "sprawl")
+        with open(fake_sprawl_bin, "w") as f:
+            f.write("#!/bin/sh\n")
+
+        with (
+            patch.object(sys, "executable", "/tmp/onefile_99999_abc/python"),
+            patch.object(sys, "argv", [fake_sprawl_bin, "sync"]),
+        ):
+            self.assertTrue(is_compiled_binary())
+            host_py = get_host_python_executable()
+            self.assertIsNotNone(host_py)
+            self.assertNotIn("onefile_", host_py)
+            mcp_exe = get_mcp_command_executable()
+            self.assertEqual(mcp_exe, os.path.abspath(fake_sprawl_bin))
 
 
 if __name__ == "__main__":

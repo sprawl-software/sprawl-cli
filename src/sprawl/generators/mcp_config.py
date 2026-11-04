@@ -4,7 +4,7 @@ import json
 import os
 from typing import Any
 
-from ..utils import get_mcp_command_executable
+from ..utils import get_mcp_command_executable, is_compiled_binary
 
 
 def _merge_mcp_file(target_path: str, servers: dict[str, Any]) -> None:
@@ -65,9 +65,13 @@ def generate_mcp_config(
     """
     mcp_config: dict[str, dict[str, Any]] = {"mcpServers": {}}
     cmd_exe = get_mcp_command_executable()
+    compiled = is_compiled_binary()
 
     # 1. Inject Workspace Filesystem (The Hard Fence)
-    args = ["-m", "sprawl.mcp.workspace_fs", os.path.abspath(app_dir)]
+    if compiled:
+        args = ["mcp", "workspace-fs", os.path.abspath(app_dir)]
+    else:
+        args = ["-m", "sprawl.mcp.workspace_fs", os.path.abspath(app_dir)]
     if allowed_mounts:
         for alias, target_path in sorted(allowed_mounts.items()):
             args.extend(["--mount", f"{alias}={os.path.abspath(os.path.expanduser(target_path))}"])
@@ -79,9 +83,15 @@ def generate_mcp_config(
 
     # 2. Inject Vault (Global Knowledge)
     if vault_path:
+        resolved_vault = os.path.abspath(os.path.expanduser(vault_path))
+        vault_args = (
+            ["mcp", "vault", resolved_vault]
+            if compiled
+            else ["-m", "sprawl.mcp.vault", resolved_vault]
+        )
         mcp_config["mcpServers"]["sprawl-vault"] = {
             "command": cmd_exe,
-            "args": ["-m", "sprawl.mcp.vault", os.path.abspath(os.path.expanduser(vault_path))],
+            "args": vault_args,
         }
 
     # 3. Provision Antigravity MCP Schemas (legacy path) & Workspace Plugin (Antigravity 2.0)

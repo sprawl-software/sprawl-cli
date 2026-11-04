@@ -175,6 +175,23 @@ class TestMountCommand(unittest.TestCase):
             mcp_exe = get_mcp_command_executable()
             self.assertEqual(mcp_exe, os.path.abspath(fake_sprawl_bin))
 
+            from src.sprawl.generators.mcp_config import generate_mcp_config
+
+            out_mcp = os.path.join(self.workspace_dir, "mcp_config.json")
+            generate_mcp_config(
+                output_path=out_mcp,
+                reqs={},
+                app_dir=self.workspace_dir,
+                local_agents_dir=os.path.join(self.workspace_dir, ".agents"),
+                venv_python=host_py,
+                allowed_mounts={"my_mount": self.mount_dir},
+            )
+            with open(out_mcp, encoding="utf-8") as f:
+                compiled_mcp = json.load(f)
+            ws_srv = compiled_mcp["mcpServers"]["sprawl-workspace-fs"]
+            self.assertEqual(ws_srv["command"], os.path.abspath(fake_sprawl_bin))
+            self.assertEqual(ws_srv["args"][:2], ["mcp", "workspace-fs"])
+
 
 if __name__ == "__main__":
     unittest.main()

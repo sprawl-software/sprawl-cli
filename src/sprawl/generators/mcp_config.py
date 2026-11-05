@@ -138,7 +138,10 @@ def generate_mcp_config(
 
     from .antigravity_schemas import provision_schemas
 
-    provision_schemas(os.path.join(os.path.expanduser("~"), ".gemini", "antigravity", "mcp"))
+    home_dir = os.path.expanduser("~")
+    provision_schemas(os.path.join(home_dir, ".gemini", "antigravity", "mcp"))
+    if os.path.isdir(os.path.join(home_dir, ".gemini", "antigravity-cli")):
+        provision_schemas(os.path.join(home_dir, ".gemini", "antigravity-cli", "mcp"))
     _sync_global_antigravity_mcp(mcp_config["mcpServers"], app_dir, global_agy_mcp_path)
 
     with open(output_path, "w", encoding="utf-8") as f:

@@ -197,6 +197,11 @@ class MCPServer:
                     "protocolVersion": "2024-11-05",
                     "capabilities": {"tools": {"listChanged": True}},
                     "serverInfo": {"name": "sprawl-workspace-fs", "version": "1.0.0"},
+                    "instructions": (
+                        "You have secure access to the local workspace and allowed mount points via this MCP server. "
+                        "To list a mount root, call list_directory with path='@<alias>'. "
+                        "To read, write, or list inside a mount, prefix path with '@<alias>/<subpath>'."
+                    ),
                 },
             }
 

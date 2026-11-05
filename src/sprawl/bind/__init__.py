@@ -50,28 +50,31 @@ def _bind_active_targets(target_dir: str, targets: list[str], force: bool) -> li
     return results
 
 
+def _try_remove_file(
+    path: str, label: str, target_display: str, verbose: bool, prune: bool = False
+) -> None:
+    """Removes a single file or symlink if it exists, optionally pruning empty parent dirs."""
+    if not (os.path.exists(path) or os.path.islink(path)):
+        return
+    try:
+        os.remove(path)
+        console.print(f"  [info][-] {label}:[/info] Removed → {target_display}")
+        if prune:
+            _prune_empty_dirs(path)
+    except OSError as e:
+        if verbose:
+            console.print(f"  [dim]Debug: Failed to remove {path}: {e}[/dim]")
+
+
 def _remove_antigravity_bindings(target_dir: str, targets: list[str], verbose: bool) -> None:
     """Removes legacy .agent symlink and gemini.json when google-antigravity is excluded."""
     ag_link = os.path.join(target_dir, ".agent")
-    if os.path.exists(ag_link) or os.path.islink(ag_link):
-        try:
-            os.remove(ag_link)
-            console.print("  [info][-] Antigravity .agent Binding:[/info] Removed → .agent")
-        except OSError as e:
-            if verbose:
-                console.print(f"  [dim]Debug: Failed to remove {ag_link}: {e}[/dim]")
+    _try_remove_file(ag_link, "Antigravity .agent Binding", ".agent", verbose)
 
     gemini_json_path = os.path.join(target_dir, ".gemini", "antigravity", "gemini.json")
-    if os.path.exists(gemini_json_path):
-        try:
-            os.remove(gemini_json_path)
-            console.print(
-                "  [info][-] Antigravity gemini.json Binding:[/info] Removed → gemini.json"
-            )
-            _prune_empty_dirs(gemini_json_path)
-        except OSError as e:
-            if verbose:
-                console.print(f"  [dim]Debug: Failed to remove {gemini_json_path}: {e}[/dim]")
+    _try_remove_file(
+        gemini_json_path, "Antigravity gemini.json Binding", "gemini.json", verbose, prune=True
+    )
 
     if targets and "antigravity" not in targets and "google-antigravity" not in targets:
         _remove_antigravity_schemas()
@@ -82,30 +85,21 @@ def _remove_symlink_binding(
 ) -> None:
     """Removes an excluded symlink adapter binding and any associated prompt directories."""
     rules_path = os.path.join(target_dir, adapter["path"])
-    if os.path.exists(rules_path) or os.path.islink(rules_path):
-        try:
-            os.remove(rules_path)
-            console.print(
-                f"  [info][-] {adapter['label']} Binding:[/info] Removed → {adapter['path']}"
-            )
-            _prune_empty_dirs(rules_path)
-        except OSError as e:
-            if verbose:
-                console.print(f"  [dim]Debug: Failed to remove {rules_path}: {e}[/dim]")
-    if tkey == "copilot":
-        prompts_dir = os.path.join(target_dir, ".github", "prompts")
-        if os.path.exists(prompts_dir):
-            try:
-                shutil.rmtree(prompts_dir)
-                console.print(
-                    "  [info][-] GitHub Copilot Prompts:[/info] Removed prompts directory"
-                )
-                _prune_empty_dirs(os.path.join(prompts_dir, "dummy.txt"))
-            except OSError as e:
-                if verbose:
-                    console.print(
-                        f"  [dim]Debug: Failed to remove prompts directory {prompts_dir}: {e}[/dim]"
-                    )
+    _try_remove_file(
+        rules_path, f"{adapter['label']} Binding", adapter["path"], verbose, prune=True
+    )
+    if tkey != "copilot":
+        return
+    prompts_dir = os.path.join(target_dir, ".github", "prompts")
+    if not os.path.exists(prompts_dir):
+        return
+    try:
+        shutil.rmtree(prompts_dir)
+        console.print("  [info][-] GitHub Copilot Prompts:[/info] Removed prompts directory")
+        _prune_empty_dirs(os.path.join(prompts_dir, "dummy.txt"))
+    except OSError as e:
+        if verbose:
+            console.print(f"  [dim]Debug: Failed to remove prompts directory {prompts_dir}: {e}[/dim]")
 
 
 def _cleanup_excluded_targets(

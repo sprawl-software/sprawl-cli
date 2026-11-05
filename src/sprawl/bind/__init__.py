@@ -99,7 +99,9 @@ def _remove_symlink_binding(
         _prune_empty_dirs(os.path.join(prompts_dir, "dummy.txt"))
     except OSError as e:
         if verbose:
-            console.print(f"  [dim]Debug: Failed to remove prompts directory {prompts_dir}: {e}[/dim]")
+            console.print(
+                f"  [dim]Debug: Failed to remove prompts directory {prompts_dir}: {e}[/dim]"
+            )
 
 
 def _cleanup_excluded_targets(

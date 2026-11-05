@@ -30,22 +30,8 @@ class WorkspaceFS:
 
     @staticmethod
     def _load_workspace_mounts(workspace_dir: str) -> dict[str, str]:
-        """Reads allowed_mounts from .agents/sprawl-config.json and .agents/sprawl_manifest.yml."""
+        """Reads allowed_mounts from .agents/sprawl-config.json."""
         mounts: dict[str, str] = {}
-        manifest_path = os.path.join(workspace_dir, ".agents", "sprawl_manifest.yml")
-        if os.path.isfile(manifest_path):
-            try:
-                from ..utils.yaml import parse_simple_yaml
-
-                manifest_data = parse_simple_yaml(manifest_path)
-                raw_mounts = manifest_data.get("allowed_mounts", {})
-                if isinstance(raw_mounts, dict):
-                    for k, v in raw_mounts.items():
-                        if isinstance(v, str) and v.strip():
-                            mounts[str(k)] = os.path.abspath(os.path.expanduser(v.strip()))
-            except (OSError, ValueError):
-                pass
-
         config_path = os.path.join(workspace_dir, ".agents", "sprawl-config.json")
         if os.path.isfile(config_path):
             try:

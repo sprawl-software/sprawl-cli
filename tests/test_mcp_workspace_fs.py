@@ -160,6 +160,8 @@ class TestMCPServer(unittest.TestCase):
 
         agents_dir = os.path.join(self.test_dir, ".agents")
         os.makedirs(agents_dir, exist_ok=True)
+        with open(os.path.join(agents_dir, "sprawl_manifest.yml"), "w", encoding="utf-8") as f:
+            f.write("dna: core\n")
         cfg_path = os.path.join(agents_dir, "sprawl-config.json")
         with open(cfg_path, "w", encoding="utf-8") as f:
             json.dump({"allowed_mounts": {}}, f)

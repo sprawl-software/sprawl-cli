@@ -24,24 +24,52 @@ class WorkspaceFS:
         if not os.path.isdir(self.root):
             raise ValueError(f"Root path {self.root} is not a directory.")
 
-        # Load allowed mounts from sprawl-config.json
-        self.allowed_mounts = {}
-        config_path = os.path.join(self.root, ".agents", "sprawl-config.json")
-        if os.path.exists(config_path):
+        self._cli_mounts: dict[str, str] = dict(cli_mounts) if cli_mounts else {}
+        self.allowed_mounts: dict[str, str] = {}
+        self._refresh_mounts()
+
+    @staticmethod
+    def _load_workspace_mounts(workspace_dir: str) -> dict[str, str]:
+        """Reads allowed_mounts from .agents/sprawl-config.json and .agents/sprawl_manifest.yml."""
+        mounts: dict[str, str] = {}
+        manifest_path = os.path.join(workspace_dir, ".agents", "sprawl_manifest.yml")
+        if os.path.isfile(manifest_path):
+            try:
+                from ..utils.yaml import parse_simple_yaml
+
+                manifest_data = parse_simple_yaml(manifest_path)
+                raw_mounts = manifest_data.get("allowed_mounts", {})
+                if isinstance(raw_mounts, dict):
+                    for k, v in raw_mounts.items():
+                        if isinstance(v, str) and v.strip():
+                            mounts[str(k)] = os.path.abspath(os.path.expanduser(v.strip()))
+            except Exception:
+                pass
+
+        config_path = os.path.join(workspace_dir, ".agents", "sprawl-config.json")
+        if os.path.isfile(config_path):
             try:
                 with open(config_path, encoding="utf-8") as f:
                     cfg = json.load(f)
-                self.allowed_mounts = cfg.get("allowed_mounts", {})
+                raw_mounts = cfg.get("allowed_mounts", {})
+                if isinstance(raw_mounts, dict):
+                    for k, v in raw_mounts.items():
+                        if isinstance(v, str) and v.strip():
+                            mounts[str(k)] = os.path.abspath(os.path.expanduser(v.strip()))
             except (json.JSONDecodeError, OSError):
                 pass
-        if not isinstance(self.allowed_mounts, dict):
-            self.allowed_mounts = {}
+        return mounts
 
-        if cli_mounts:
-            self.allowed_mounts.update(cli_mounts)
+    def _refresh_mounts(self) -> None:
+        """Reloads allowed_mounts from workspace config and overlays CLI mounts."""
+        mounts = self._load_workspace_mounts(self.root)
+        if self._cli_mounts:
+            mounts.update(self._cli_mounts)
+        self.allowed_mounts = mounts
 
     def _get_safe_path(self, rel_path: str) -> str:
         """Resolves relative path and ensures it stays within root or allowed mounts."""
+        self._refresh_mounts()
         # Normalize alias backslashes for cross-platform compatibility
         normalized_rel = rel_path.replace("\\", "/") if rel_path.startswith("@") else rel_path
         if normalized_rel.startswith("@"):
@@ -190,6 +218,7 @@ class MCPServer:
             return None
 
         if method == "tools/list":
+            self.fs._refresh_mounts()
             mounts_desc = ""
             if self.fs.allowed_mounts:
                 aliases_str = ", ".join(f"@{a}" for a in sorted(self.fs.allowed_mounts.keys()))
@@ -268,6 +297,27 @@ class MCPServer:
         sys.stdout.flush()
 
 
+def discover_cwd_workspace(start_dir: str | None = None) -> str | None:
+    """Walks up from start_dir (or os.getcwd()) to find an active Sprawl workspace root."""
+    try:
+        curr = os.path.abspath(start_dir or os.getcwd())
+    except OSError:
+        return None
+
+    while True:
+        agents_dir = os.path.join(curr, ".agents")
+        if os.path.isdir(agents_dir) and (
+            os.path.isfile(os.path.join(agents_dir, "sprawl-config.json"))
+            or os.path.isfile(os.path.join(agents_dir, "sprawl_manifest.yml"))
+        ):
+            return curr
+        parent = os.path.dirname(curr)
+        if parent == curr:
+            break
+        curr = parent
+    return None
+
+
 def run_workspace_fs_cli(argv: list[str] | None = None) -> None:
     """CLI entrypoint for launching the sprawl-workspace-fs MCP stdio server."""
     import argparse
@@ -290,8 +340,19 @@ def run_workspace_fs_cli(argv: list[str] | None = None) -> None:
                 alias, path = m.split("=", 1)
                 cli_mounts[alias.strip()] = os.path.abspath(os.path.expanduser(path.strip()))
 
+    # When spawned globally by an IDE (e.g., Antigravity ~/.gemini/config/mcp_config.json),
+    # inherit the active Sprawl workspace from cwd if cwd is a different initialized workspace.
+    configured_root = os.path.abspath(os.path.expanduser(args.root))
+    cwd_workspace = discover_cwd_workspace()
+    if cwd_workspace and os.path.normcase(cwd_workspace) != os.path.normcase(configured_root):
+        active_root = cwd_workspace
+        active_cli_mounts = None
+    else:
+        active_root = configured_root
+        active_cli_mounts = cli_mounts
+
     try:
-        fs = WorkspaceFS(args.root, cli_mounts=cli_mounts)
+        fs = WorkspaceFS(active_root, cli_mounts=active_cli_mounts)
         server = MCPServer(fs)
         server.run()
     except Exception as e:

@@ -118,8 +118,9 @@ def bind_adapters(
                         console.print(
                             f"  [dim]Debug: Failed to remove {gemini_json_path}: {e}[/dim]"
                         )
-            # 3. Antigravity MCP tool schemas removal
-            _remove_antigravity_schemas()
+            # 3. Antigravity MCP tool schemas removal (only if neither modern nor legacy Antigravity is targeted)
+            if "antigravity" not in targets and "google-antigravity" not in targets:
+                _remove_antigravity_schemas()
         elif adapter["type"] == "symlink":
             rules_path = os.path.join(target_dir, adapter["path"])
             if os.path.exists(rules_path) or os.path.islink(rules_path):

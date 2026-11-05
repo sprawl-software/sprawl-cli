@@ -153,6 +153,38 @@ class TestMCPServer(unittest.TestCase):
             self.assertTrue(maybe_dispatch_mcp_stdio(["-m", "sprawl.mcp.vault", self.test_dir]))
             mock_vault.assert_called_once_with([self.test_dir])
 
+    def test_live_refresh_mounts_and_cwd_discovery(self):
+        import json
+
+        from src.sprawl.mcp.workspace_fs import discover_cwd_workspace
+
+        agents_dir = os.path.join(self.test_dir, ".agents")
+        os.makedirs(agents_dir, exist_ok=True)
+        cfg_path = os.path.join(agents_dir, "sprawl-config.json")
+        with open(cfg_path, "w", encoding="utf-8") as f:
+            json.dump({"allowed_mounts": {}}, f)
+
+        self.assertEqual(discover_cwd_workspace(self.test_dir), os.path.abspath(self.test_dir))
+        subdir = os.path.join(self.test_dir, "nested", "dir")
+        os.makedirs(subdir, exist_ok=True)
+        self.assertEqual(discover_cwd_workspace(subdir), os.path.abspath(self.test_dir))
+
+        fs = WorkspaceFS(self.test_dir)
+        server = MCPServer(fs)
+        self.assertEqual(fs.allowed_mounts, {})
+
+        # Dynamically add a mount to sprawl-config.json while server is already instantiated
+        mount_dir = os.path.join(self.test_dir, "live_mount")
+        os.makedirs(mount_dir, exist_ok=True)
+        with open(os.path.join(mount_dir, "hello.txt"), "w", encoding="utf-8") as f:
+            f.write("live reloaded")
+        with open(cfg_path, "w", encoding="utf-8") as f:
+            json.dump({"allowed_mounts": {"live": mount_dir}}, f)
+
+        self.assertEqual(fs.read_file("@live/hello.txt"), "live reloaded")
+        resp = server.handle_request({"jsonrpc": "2.0", "id": 99, "method": "tools/list"})
+        self.assertIn("@live", resp["result"]["tools"][0]["description"])
+
 
 if __name__ == "__main__":
     unittest.main()

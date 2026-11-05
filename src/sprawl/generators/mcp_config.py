@@ -2,6 +2,7 @@
 
 import json
 import os
+import tempfile
 from typing import Any
 
 from ..utils import get_mcp_command_executable, is_compiled_binary
@@ -51,6 +52,7 @@ def generate_mcp_config(
     venv_python: str,
     vault_path: str | None = None,
     allowed_mounts: dict[str, str] | None = None,
+    global_agy_mcp_path: str | None = None,
 ) -> None:
     """Generates standardized MCP configurations for the workspace and active IDEs.
 
@@ -62,6 +64,7 @@ def generate_mcp_config(
         venv_python: Path to the workspace virtual environment python.
         vault_path: Optional path to the global Obsidian vault.
         allowed_mounts: Optional dictionary mapping mount aliases to target paths.
+        global_agy_mcp_path: Optional override path for Antigravity global mcp_config.json.
     """
     mcp_config: dict[str, dict[str, Any]] = {"mcpServers": {}}
     cmd_exe = get_mcp_command_executable()
@@ -94,12 +97,21 @@ def generate_mcp_config(
             "args": vault_args,
         }
 
-    # 3. Provision Antigravity MCP Schemas (legacy path) & Workspace Plugin (Antigravity 2.0)
+    # 3. Provision Antigravity MCP Schemas (legacy path), Global Config, & Workspace Plugin
     user_home = os.path.expanduser("~")
     mcp_base_dir = os.path.join(user_home, ".gemini", "antigravity", "mcp")
     from .antigravity_schemas import provision_schemas
 
     provision_schemas(mcp_base_dir)
+
+    if global_agy_mcp_path is not None:
+        _merge_mcp_file(global_agy_mcp_path, mcp_config["mcpServers"])
+    elif os.path.isdir(app_dir):
+        temp_root = os.path.abspath(tempfile.gettempdir())
+        abs_app = os.path.abspath(app_dir)
+        if abs_app != temp_root and not abs_app.startswith(temp_root + os.sep):
+            default_agy_mcp = os.path.join(user_home, ".gemini", "config", "mcp_config.json")
+            _merge_mcp_file(default_agy_mcp, mcp_config["mcpServers"])
 
     with open(output_path, "w", encoding="utf-8") as f:
         json.dump(mcp_config, f, indent=4)

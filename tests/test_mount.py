@@ -178,6 +178,10 @@ class TestMountCommand(unittest.TestCase):
             from src.sprawl.generators.mcp_config import generate_mcp_config
 
             out_mcp = os.path.join(self.workspace_dir, "mcp_config.json")
+            global_agy_mcp = os.path.join(self.temp_dir, "global_agy_mcp_config.json")
+            with open(global_agy_mcp, "w", encoding="utf-8") as f:
+                json.dump({"mcpServers": {"existing-server": {"command": "node", "args": []}}}, f)
+
             generate_mcp_config(
                 output_path=out_mcp,
                 reqs={},
@@ -185,12 +189,22 @@ class TestMountCommand(unittest.TestCase):
                 local_agents_dir=os.path.join(self.workspace_dir, ".agents"),
                 venv_python=host_py,
                 allowed_mounts={"my_mount": self.mount_dir},
+                global_agy_mcp_path=global_agy_mcp,
             )
             with open(out_mcp, encoding="utf-8") as f:
                 compiled_mcp = json.load(f)
             ws_srv = compiled_mcp["mcpServers"]["sprawl-workspace-fs"]
             self.assertEqual(ws_srv["command"], os.path.abspath(fake_sprawl_bin))
             self.assertEqual(ws_srv["args"][:2], ["mcp", "workspace-fs"])
+
+            with open(global_agy_mcp, encoding="utf-8") as f:
+                merged_global = json.load(f)
+            self.assertIn("existing-server", merged_global["mcpServers"])
+            self.assertIn("sprawl-workspace-fs", merged_global["mcpServers"])
+            self.assertEqual(
+                merged_global["mcpServers"]["sprawl-workspace-fs"]["command"],
+                os.path.abspath(fake_sprawl_bin),
+            )
 
 
 if __name__ == "__main__":

@@ -28,21 +28,105 @@ from .copilot import _export_category_to_prompts, _export_copilot_prompts
 __all__ = ["bind_adapters", "_export_copilot_prompts", "_export_category_to_prompts"]
 
 
+def _bind_active_targets(target_dir: str, targets: list[str], force: bool) -> list[bool]:
+    """Provisions bindings for all selected adapter targets."""
+    results: list[bool] = []
+    for tkey in targets:
+        adapter = ADAPTER_MAP[tkey]
+        if adapter["type"] == "antigravity":
+            ag_link = os.path.join(target_dir, ".agent")
+            results.append(_write_symlink("Antigravity .agent", ag_link, ".agents", force))
+            results.append(_write_antigravity_gemini_json(target_dir, force))
+            results.append(_provision_antigravity_schemas())
+        elif adapter["type"] == "symlink":
+            rules_path = os.path.join(target_dir, adapter["path"])
+            results.append(
+                _bind_rules_symlink(
+                    adapter["label"], rules_path, os.path.join(target_dir, "AGENTS.md"), force
+                )
+            )
+            if tkey == "copilot":
+                _export_copilot_prompts(target_dir)
+    return results
+
+
+def _remove_antigravity_bindings(target_dir: str, targets: list[str], verbose: bool) -> None:
+    """Removes legacy .agent symlink and gemini.json when google-antigravity is excluded."""
+    ag_link = os.path.join(target_dir, ".agent")
+    if os.path.exists(ag_link) or os.path.islink(ag_link):
+        try:
+            os.remove(ag_link)
+            console.print("  [info][-] Antigravity .agent Binding:[/info] Removed → .agent")
+        except OSError as e:
+            if verbose:
+                console.print(f"  [dim]Debug: Failed to remove {ag_link}: {e}[/dim]")
+
+    gemini_json_path = os.path.join(target_dir, ".gemini", "antigravity", "gemini.json")
+    if os.path.exists(gemini_json_path):
+        try:
+            os.remove(gemini_json_path)
+            console.print(
+                "  [info][-] Antigravity gemini.json Binding:[/info] Removed → gemini.json"
+            )
+            _prune_empty_dirs(gemini_json_path)
+        except OSError as e:
+            if verbose:
+                console.print(f"  [dim]Debug: Failed to remove {gemini_json_path}: {e}[/dim]")
+
+    if targets and "antigravity" not in targets and "google-antigravity" not in targets:
+        _remove_antigravity_schemas()
+
+
+def _remove_symlink_binding(
+    target_dir: str, tkey: str, adapter: dict[str, str], verbose: bool
+) -> None:
+    """Removes an excluded symlink adapter binding and any associated prompt directories."""
+    rules_path = os.path.join(target_dir, adapter["path"])
+    if os.path.exists(rules_path) or os.path.islink(rules_path):
+        try:
+            os.remove(rules_path)
+            console.print(
+                f"  [info][-] {adapter['label']} Binding:[/info] Removed → {adapter['path']}"
+            )
+            _prune_empty_dirs(rules_path)
+        except OSError as e:
+            if verbose:
+                console.print(f"  [dim]Debug: Failed to remove {rules_path}: {e}[/dim]")
+    if tkey == "copilot":
+        prompts_dir = os.path.join(target_dir, ".github", "prompts")
+        if os.path.exists(prompts_dir):
+            try:
+                shutil.rmtree(prompts_dir)
+                console.print(
+                    "  [info][-] GitHub Copilot Prompts:[/info] Removed prompts directory"
+                )
+                _prune_empty_dirs(os.path.join(prompts_dir, "dummy.txt"))
+            except OSError as e:
+                if verbose:
+                    console.print(
+                        f"  [dim]Debug: Failed to remove prompts directory {prompts_dir}: {e}[/dim]"
+                    )
+
+
+def _cleanup_excluded_targets(
+    target_dir: str, targets: list[str], excluded_targets: list[str]
+) -> None:
+    """Removes bindings for adapters excluded from the target list."""
+    from ..config import config
+
+    for tkey in excluded_targets:
+        adapter = ADAPTER_MAP[tkey]
+        if adapter["type"] == "antigravity":
+            _remove_antigravity_bindings(target_dir, targets, config.verbose)
+        elif adapter["type"] == "symlink":
+            _remove_symlink_binding(target_dir, tkey, adapter, config.verbose)
+
+
 def bind_adapters(
     target_dir: str = ".", force: bool = False, targets: list[str] | None = None
 ) -> bool:
-    """Generates selective or universal IDE/Agent bindings to the Sprawl .agents/ directory.
-
-    Args:
-        target_dir: Workspace root directory to bind.
-        force: If True, overwrites existing bindings.
-        targets: Optional list of target adapter keys to bind.
-
-    Returns:
-        bool: True if all critical bindings succeeded.
-    """
+    """Generates selective or universal IDE/Agent bindings to the Sprawl .agents/ directory."""
     agents_dir = os.path.join(target_dir, ".agents")
-
     if not os.path.exists(agents_dir):
         print_error(
             f"Cannot bind: {agents_dir} not found. Is this an agentic workspace?\n"
@@ -55,7 +139,6 @@ def bind_adapters(
     else:
         from ..exceptions import SprawlError
 
-        # Normalize and validate target keys
         targets = [t.strip().lower() for t in targets]
         invalid_targets = [t for t in targets if t not in ADAPTER_MAP]
         if invalid_targets:
@@ -64,92 +147,10 @@ def bind_adapters(
     mode_label = "[bold accent]FORCE[/bold accent]" if force else "standard"
     print_status(f"Generating IDE & Agent bindings ({mode_label} mode)...")
 
-    results = []
-
-    for tkey in targets:
-        adapter = ADAPTER_MAP[tkey]
-        if adapter["type"] == "antigravity":
-            # 1. Antigravity .agent symlink
-            ag_link = os.path.join(target_dir, ".agent")
-            results.append(_write_symlink("Antigravity .agent", ag_link, ".agents", force))
-
-            # 2. Antigravity gemini.json workspace manifest
-            results.append(_write_antigravity_gemini_json(target_dir, force))
-
-            # 3. Antigravity MCP tool schemas
-            results.append(_provision_antigravity_schemas())
-        elif adapter["type"] == "symlink":
-            rules_path = os.path.join(target_dir, adapter["path"])
-            results.append(
-                _bind_rules_symlink(
-                    adapter["label"], rules_path, os.path.join(target_dir, "AGENTS.md"), force
-                )
-            )
-            if tkey == "copilot":
-                _export_copilot_prompts(target_dir)
-
-    # Deletion of excluded bindings
+    results = _bind_active_targets(target_dir, targets, force)
     excluded_targets = [k for k in ADAPTER_MAP if k not in targets]
-    from ..config import config
+    _cleanup_excluded_targets(target_dir, targets, excluded_targets)
 
-    for tkey in excluded_targets:
-        adapter = ADAPTER_MAP[tkey]
-        if adapter["type"] == "antigravity":
-            # 1. Antigravity .agent symlink removal
-            ag_link = os.path.join(target_dir, ".agent")
-            if os.path.exists(ag_link) or os.path.islink(ag_link):
-                try:
-                    os.remove(ag_link)
-                    console.print("  [info][-] Antigravity .agent Binding:[/info] Removed → .agent")
-                except Exception as e:
-                    if config.verbose:
-                        console.print(f"  [dim]Debug: Failed to remove {ag_link}: {e}[/dim]")
-            # 2. Antigravity gemini.json manifest removal
-            gemini_json_path = os.path.join(target_dir, ".gemini", "antigravity", "gemini.json")
-            if os.path.exists(gemini_json_path):
-                try:
-                    os.remove(gemini_json_path)
-                    console.print(
-                        "  [info][-] Antigravity gemini.json Binding:[/info] Removed → gemini.json"
-                    )
-                    _prune_empty_dirs(gemini_json_path)
-                except Exception as e:
-                    if config.verbose:
-                        console.print(
-                            f"  [dim]Debug: Failed to remove {gemini_json_path}: {e}[/dim]"
-                        )
-            # 3. Antigravity MCP tool schemas removal (only if neither modern nor legacy Antigravity is targeted)
-            if "antigravity" not in targets and "google-antigravity" not in targets:
-                _remove_antigravity_schemas()
-        elif adapter["type"] == "symlink":
-            rules_path = os.path.join(target_dir, adapter["path"])
-            if os.path.exists(rules_path) or os.path.islink(rules_path):
-                try:
-                    os.remove(rules_path)
-                    console.print(
-                        f"  [info][-] {adapter['label']} Binding:[/info] Removed → {adapter['path']}"
-                    )
-                    _prune_empty_dirs(rules_path)
-                except Exception as e:
-                    if config.verbose:
-                        console.print(f"  [dim]Debug: Failed to remove {rules_path}: {e}[/dim]")
-            if tkey == "copilot":
-                # Clean up prompts folder
-                prompts_dir = os.path.join(target_dir, ".github", "prompts")
-                if os.path.exists(prompts_dir):
-                    try:
-                        shutil.rmtree(prompts_dir)
-                        console.print(
-                            "  [info][-] GitHub Copilot Prompts:[/info] Removed prompts directory"
-                        )
-                        _prune_empty_dirs(os.path.join(prompts_dir, "dummy.txt"))
-                    except Exception as e:
-                        if config.verbose:
-                            console.print(
-                                f"  [dim]Debug: Failed to remove prompts directory {prompts_dir}: {e}[/dim]"
-                            )
-
-    # Summary
     written = sum(1 for r in results if r)
     total = len(results)
     if written > 0 or force:

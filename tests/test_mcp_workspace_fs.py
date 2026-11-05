@@ -78,6 +78,27 @@ class TestMCPServer(unittest.TestCase):
         resp = self.server.handle_request(req)
         self.assertEqual(resp["id"], 1)
         self.assertEqual(resp["result"]["serverInfo"]["name"], "sprawl-workspace-fs")
+        self.assertIn("tools", resp["result"]["capabilities"])
+        self.assertEqual(
+            self.server.handle_request({"jsonrpc": "2.0", "id": 11, "method": "ping"})["result"],
+            {},
+        )
+        self.assertEqual(
+            self.server.handle_request({"jsonrpc": "2.0", "id": 12, "method": "resources/list"})[
+                "result"
+            ],
+            {"resources": []},
+        )
+        self.assertEqual(
+            self.server.handle_request({"jsonrpc": "2.0", "id": 13, "method": "prompts/list"})[
+                "result"
+            ],
+            {"prompts": []},
+        )
+        unknown = self.server.handle_request(
+            {"jsonrpc": "2.0", "id": 14, "method": "unknown/method"}
+        )
+        self.assertEqual(unknown["error"]["code"], -32601)
 
     def test_handle_tools_list(self):
         req = {"jsonrpc": "2.0", "id": 2, "method": "tools/list"}
@@ -186,6 +207,19 @@ class TestMCPServer(unittest.TestCase):
         self.assertEqual(fs.read_file("@live/hello.txt"), "live reloaded")
         resp = server.handle_request({"jsonrpc": "2.0", "id": 99, "method": "tools/list"})
         self.assertIn("@live", resp["result"]["tools"][0]["description"])
+
+        from unittest.mock import patch
+
+        from src.sprawl.mcp.vault import run_vault_cli
+        from src.sprawl.mcp.workspace_fs import run_workspace_fs_cli
+
+        with patch.object(MCPServer, "run") as mock_run:
+            run_workspace_fs_cli([self.test_dir, "--mount", f"live={mount_dir}"])
+            mock_run.assert_called_once()
+
+        with patch("src.sprawl.mcp.vault.MCPServer.run") as mock_vrun:
+            run_vault_cli([self.test_dir])
+            mock_vrun.assert_called_once()
 
 
 if __name__ == "__main__":

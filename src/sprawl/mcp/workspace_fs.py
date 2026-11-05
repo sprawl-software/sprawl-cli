@@ -195,13 +195,25 @@ class MCPServer:
                 "id": msg_id,
                 "result": {
                     "protocolVersion": "2024-11-05",
-                    "capabilities": {},
+                    "capabilities": {"tools": {"listChanged": True}},
                     "serverInfo": {"name": "sprawl-workspace-fs", "version": "1.0.0"},
                 },
             }
 
-        if method == "notifications/initialized":
+        if method and method.startswith("notifications/"):
             return None
+
+        if method == "ping":
+            return {"jsonrpc": "2.0", "id": msg_id, "result": {}}
+
+        if method == "resources/list":
+            return {"jsonrpc": "2.0", "id": msg_id, "result": {"resources": []}}
+
+        if method == "resources/templates/list":
+            return {"jsonrpc": "2.0", "id": msg_id, "result": {"resourceTemplates": []}}
+
+        if method == "prompts/list":
+            return {"jsonrpc": "2.0", "id": msg_id, "result": {"prompts": []}}
 
         if method == "tools/list":
             self.fs._refresh_mounts()
@@ -250,32 +262,40 @@ class MCPServer:
             }
 
         if method == "tools/call":
-            tool_name = params.get("name")
-            arguments = params.get("arguments", {})
-            if tool_name in self.tools:
-                try:
-                    result = self.tools[tool_name](arguments)
-                    return {"jsonrpc": "2.0", "id": msg_id, "result": result}
-                except MCPError as e:
-                    return {
-                        "jsonrpc": "2.0",
-                        "id": msg_id,
-                        "error": {"code": e.code, "message": e.message, "data": e.data},
-                    }
-                except Exception as e:
-                    return {
-                        "jsonrpc": "2.0",
-                        "id": msg_id,
-                        "error": {"code": -32603, "message": str(e)},
-                    }
-            else:
-                return {
-                    "jsonrpc": "2.0",
-                    "id": msg_id,
-                    "error": {"code": -32601, "message": f"Tool not found: {tool_name}"},
-                }
+            return self._handle_tool_call(msg_id, params)
 
+        if msg_id is not None:
+            return {
+                "jsonrpc": "2.0",
+                "id": msg_id,
+                "error": {"code": -32601, "message": f"Method not found: {method}"},
+            }
         return None
+
+    def _handle_tool_call(self, msg_id: Any, params: dict[str, Any]) -> dict[str, Any]:
+        tool_name = params.get("name")
+        arguments = params.get("arguments", {})
+        if tool_name not in self.tools:
+            return {
+                "jsonrpc": "2.0",
+                "id": msg_id,
+                "error": {"code": -32601, "message": f"Tool not found: {tool_name}"},
+            }
+        try:
+            result = self.tools[tool_name](arguments)
+            return {"jsonrpc": "2.0", "id": msg_id, "result": result}
+        except MCPError as e:
+            return {
+                "jsonrpc": "2.0",
+                "id": msg_id,
+                "error": {"code": e.code, "message": e.message, "data": e.data},
+            }
+        except Exception as e:
+            return {
+                "jsonrpc": "2.0",
+                "id": msg_id,
+                "error": {"code": -32603, "message": str(e)},
+            }
 
     def send_error(self, msg_id: Any, code: int, message: str):
         response = {"jsonrpc": "2.0", "id": msg_id, "error": {"code": code, "message": message}}

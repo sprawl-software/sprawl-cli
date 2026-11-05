@@ -43,7 +43,7 @@ class WorkspaceFS:
                     for k, v in raw_mounts.items():
                         if isinstance(v, str) and v.strip():
                             mounts[str(k)] = os.path.abspath(os.path.expanduser(v.strip()))
-            except Exception:
+            except (OSError, ValueError):
                 pass
 
         config_path = os.path.join(workspace_dir, ".agents", "sprawl-config.json")

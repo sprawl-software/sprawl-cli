@@ -14,88 +14,71 @@ from typing import Any
 from .exceptions import SprawlError
 from .output import print_error, print_status
 
-# ---------------------------------------------------------------------------
-# Stdlib YAML Frontmatter Parser (replaces pyyaml)
-# ---------------------------------------------------------------------------
+_LIST_ITEM_RE = re.compile(r"^-\s+(.+)$")
+_KEY_VALUE_RE = re.compile(r"^([a-zA-Z_][\w-]*)\s*:\s*(.*)$")
+
+
+def _strip_matching_quotes(value: str) -> str:
+    """Strips surrounding single or double quotes when present."""
+    if len(value) >= 2 and (
+        (value.startswith('"') and value.endswith('"'))
+        or (value.startswith("'") and value.endswith("'"))
+    ):
+        return value[1:-1]
+    return value
+
+
+def _parse_yaml_scalar(value: str) -> Any:
+    """Coerces a raw YAML scalar token into bool, None, int, float, or str."""
+    if not value:
+        return ""
+    lowered = value.lower()
+    if lowered in ("true", "yes"):
+        return True
+    if lowered in ("false", "no"):
+        return False
+    if lowered in ("null", "none", "~"):
+        return None
+    try:
+        return int(value)
+    except ValueError:
+        pass
+    try:
+        return float(value)
+    except ValueError:
+        return _strip_matching_quotes(value)
 
 
 def parse_yaml_frontmatter(content: str) -> dict[str, Any]:
-    """Parses YAML frontmatter from a markdown file using pure stdlib.
-
-    Handles simple key: value pairs and list values (- item).
-    Does NOT support nested YAML structures — intentionally minimal.
-
-    Args:
-        content: Raw file content string.
-
-    Returns:
-        Dictionary of parsed frontmatter key-value pairs.
-    """
+    """Parses YAML frontmatter from a markdown file using pure stdlib."""
     if not content.startswith("---"):
         return {}
 
     parts = content.split("---", 2)
-    if len(parts) < 3:
-        return {}
-
-    frontmatter_raw = parts[1].strip()
-    if not frontmatter_raw:
+    if len(parts) < 3 or not parts[1].strip():
         return {}
 
     result: dict[str, Any] = {}
     current_key: str | None = None
 
-    for line in frontmatter_raw.splitlines():
+    for line in parts[1].strip().splitlines():
         stripped = line.strip()
         if not stripped or stripped.startswith("#"):
             continue
 
-        # List item under current key
-        list_match = re.match(r"^-\s+(.+)$", stripped)
+        list_match = _LIST_ITEM_RE.match(stripped)
         if list_match and current_key is not None:
             if not isinstance(result.get(current_key), list):
                 result[current_key] = []
             result[current_key].append(list_match.group(1).strip())
             continue
 
-        # Key: value pair
-        kv_match = re.match(r"^([a-zA-Z_][\w-]*)\s*:\s*(.*)$", stripped)
+        kv_match = _KEY_VALUE_RE.match(stripped)
         if kv_match:
-            key = kv_match.group(1)
-            value = kv_match.group(2).strip()
-            current_key = key
-
-            if not value:
-                # Could be a list header or empty value
-                result[key] = ""
-            elif value.lower() in ("true", "yes"):
-                result[key] = True
-            elif value.lower() in ("false", "no"):
-                result[key] = False
-            elif value.lower() in ("null", "none", "~"):
-                result[key] = None
-            else:
-                # Try numeric conversion
-                try:
-                    result[key] = int(value)
-                except ValueError:
-                    try:
-                        result[key] = float(value)
-                    except ValueError:
-                        # Strip optional quotes
-                        if (value.startswith('"') and value.endswith('"')) or (
-                            value.startswith("'") and value.endswith("'")
-                        ):
-                            value = value[1:-1]
-                        result[key] = value
-            continue
+            current_key = kv_match.group(1)
+            result[current_key] = _parse_yaml_scalar(kv_match.group(2).strip())
 
     return result
-
-
-# ---------------------------------------------------------------------------
-# Dataclass Schemas (replaces pydantic BaseModel)
-# ---------------------------------------------------------------------------
 
 
 @dataclass
@@ -157,22 +140,75 @@ class MoleculeSchema:
             )
 
 
-# ---------------------------------------------------------------------------
-# DNA Directory Validation Engine
-# ---------------------------------------------------------------------------
+def _validate_atom_json(data: dict[str, Any], filename: str) -> None:
+    """Validates an Atom JSON payload against AtomSchema."""
+    allowed_fields = {f.name for f in fields(AtomSchema)}
+    filtered = {k: v for k, v in data.items() if k in allowed_fields}
+    name = (
+        filtered["name"]
+        if filtered.get("name") is not None
+        else (data.get("title") or os.path.splitext(filename)[0])
+    )
+    desc = filtered["description"] if filtered.get("description") is not None else ""
+    atype = filtered["type"] if filtered.get("type") is not None else "object"
+    AtomSchema(name=name, description=desc, type=atype).validate()
+
+
+def _validate_molecule_json(data: dict[str, Any], filename: str) -> None:
+    """Validates a Molecule JSON payload against MoleculeSchema (skipping raw MCP configs)."""
+    if "mcpServers" in data and "atoms" not in data:
+        return
+    allowed_fields = {f.name for f in fields(MoleculeSchema)}
+    filtered = {k: v for k, v in data.items() if k in allowed_fields}
+    name = filtered["name"] if filtered.get("name") is not None else os.path.splitext(filename)[0]
+    version = filtered["version"] if filtered.get("version") is not None else "1.0.0"
+    atoms = filtered["atoms"] if filtered.get("atoms") is not None else []
+    MoleculeSchema(name=name, version=version, atoms=atoms).validate()
+
+
+def _validate_json_file(filepath: str, root: str, file: str) -> None:
+    """Parses and validates a JSON DNA file."""
+    with open(filepath, encoding="utf-8") as f:
+        data = json.load(f)
+    if "atoms" in root:
+        _validate_atom_json(data, file)
+    elif "molecules" in root:
+        _validate_molecule_json(data, file)
+
+
+def _validate_markdown_file(filepath: str, root: str, file: str) -> None:
+    """Parses markdown frontmatter and validates SKILL.md schemas."""
+    with open(filepath, encoding="utf-8") as f:
+        content = f.read()
+    frontmatter = parse_yaml_frontmatter(content)
+    if "skills" in root and file == "SKILL.md":
+        SkillSchema(
+            name=frontmatter.get("name", ""),
+            description=frontmatter.get("description", ""),
+        ).validate()
+
+
+def _validate_single_dna_file(filepath: str, root: str, file: str) -> str | None:
+    """Validates a single DNA file and returns an error string if invalid."""
+    try:
+        if file.endswith(".json"):
+            _validate_json_file(filepath, root, file)
+        elif file.endswith((".yaml", ".yml")):
+            with open(filepath, encoding="utf-8") as f:
+                parse_yaml_frontmatter(f"---\n{f.read()}\n---")
+        elif file.endswith(".md"):
+            _validate_markdown_file(filepath, root, file)
+        return None
+    except json.JSONDecodeError as e:
+        return f"Could not parse {filepath}: {e}"
+    except ValueError as e:
+        return f"Validation failed for {filepath}: {e}"
+    except OSError as e:
+        return f"Could not parse {filepath}: {e}"
 
 
 def validate_dna_directory(dna_dir: str) -> None:
-    """Validates all incoming .md, .yml, .yaml, and .json files in a DNA directory.
-
-    Uses dataclass schemas with manual validation (stdlib-only, no pydantic).
-
-    Args:
-        dna_dir: Path to the DNA directory to validate.
-
-    Raises:
-        SprawlError: If any validation errors are found.
-    """
+    """Validates all incoming .md, .yml, .yaml, and .json files in a DNA directory."""
     print_status("Running Zero-Trust validation on DNA...")
     errors: list[str] = []
 
@@ -180,78 +216,9 @@ def validate_dna_directory(dna_dir: str) -> None:
         if ".git" in root:
             continue
         for file in files:
-            filepath = os.path.join(root, file)
-            try:
-                if file.endswith(".json"):
-                    with open(filepath, encoding="utf-8") as f:
-                        data = json.load(f)
-                    if "atoms" in root:
-                        allowed_fields = {f.name for f in fields(AtomSchema)}
-                        filtered_data = {k: v for k, v in data.items() if k in allowed_fields}
-
-                        name = (
-                            filtered_data.get("name")
-                            if filtered_data.get("name") is not None
-                            else (data.get("title") or os.path.splitext(file)[0])
-                        )
-                        desc = (
-                            filtered_data.get("description")
-                            if filtered_data.get("description") is not None
-                            else ""
-                        )
-                        atype = (
-                            filtered_data.get("type")
-                            if filtered_data.get("type") is not None
-                            else "object"
-                        )
-
-                        schema = AtomSchema(name=name, description=desc, type=atype)
-                        schema.validate()
-                    elif "molecules" in root:
-                        if "mcpServers" in data and "atoms" not in data:
-                            # Skip MoleculeSchema validation for raw MCP configs
-                            pass
-                        else:
-                            allowed_fields = {f.name for f in fields(MoleculeSchema)}
-                            filtered_data = {k: v for k, v in data.items() if k in allowed_fields}
-
-                            name = (
-                                filtered_data.get("name")
-                                if filtered_data.get("name") is not None
-                                else os.path.splitext(file)[0]
-                            )
-                            version = (
-                                filtered_data.get("version")
-                                if filtered_data.get("version") is not None
-                                else "1.0.0"
-                            )
-                            atoms = (
-                                filtered_data.get("atoms")
-                                if filtered_data.get("atoms") is not None
-                                else []
-                            )
-
-                            schema = MoleculeSchema(name=name, version=version, atoms=atoms)
-                            schema.validate()
-                elif file.endswith((".yaml", ".yml")):
-                    # Generic structure check — just verify it's parseable
-                    with open(filepath, encoding="utf-8") as f:
-                        content = f.read()
-                    parse_yaml_frontmatter(f"---\n{content}\n---")
-                elif file.endswith(".md"):
-                    with open(filepath, encoding="utf-8") as f:
-                        content = f.read()
-                    frontmatter = parse_yaml_frontmatter(content)
-                    if "skills" in root and file == "SKILL.md":
-                        schema = SkillSchema(
-                            name=frontmatter.get("name", ""),
-                            description=frontmatter.get("description", ""),
-                        )
-                        schema.validate()
-            except ValueError as e:
-                errors.append(f"Validation failed for {filepath}: {e}")
-            except Exception as e:
-                errors.append(f"Could not parse {filepath}: {e}")
+            err = _validate_single_dna_file(os.path.join(root, file), root, file)
+            if err:
+                errors.append(err)
 
     if errors:
         for err in errors:

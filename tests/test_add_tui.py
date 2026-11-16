@@ -3,7 +3,7 @@ import shutil
 import sys
 import tempfile
 import unittest
-from unittest.mock import MagicMock, patch
+from unittest.mock import patch
 
 # Ensure the local src is available
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "../src")))
@@ -35,54 +35,40 @@ workflows:
     def tearDown(self):
         shutil.rmtree(self.test_dir)
 
-    @patch("src.sprawl.commands.artifacts.get_active_dna_context")
-    @patch("src.sprawl.utils.tui.show_checkbox_menu")
-    @patch("src.sprawl.utils.registry_scanner.RegistryScanner")
-    @patch("src.sprawl.commands.artifacts.cmd_sync")
-    def test_cmd_add_tui_cancel(
-        self, mock_sync, mock_scanner_cls, mock_show_menu, mock_get_context
-    ):
-        """Verify cmd_add exits cleanly and does not modify manifest if TUI is cancelled."""
-        mock_get_context.return_value = self.dna_dir
-        mock_scanner = MagicMock()
-        mock_scanner.scan.return_value = {"skills": [("skill1", False)]}
-        mock_scanner_cls.return_value = mock_scanner
-        mock_show_menu.return_value = None  # Cancelled
+    def _run_add_with_selection(self, menu_selection):
+        """Runs cmd_add([]) with mocked TUI selection and real RegistryScanner."""
+        os.makedirs(os.path.join(self.dna_dir, "skills", "skill1"), exist_ok=True)
+        with (
+            patch(
+                "src.sprawl.commands.artifacts.get_active_dna_context", return_value=self.dna_dir
+            ),
+            patch("src.sprawl.utils.tui.show_checkbox_menu", return_value=menu_selection),
+            patch("src.sprawl.commands.artifacts.cmd_sync") as mock_sync,
+        ):
+            cmd_add([], target_dir=self.workspace_dir)
+            return mock_sync
 
-        # Verify initial manifest state
+    def test_cmd_add_tui_cancel(self):
+        """Verify cmd_add exits cleanly and does not modify manifest if TUI is cancelled."""
         with open(self.manifest_path) as f:
             initial_content = f.read()
 
-        cmd_add([], target_dir=self.workspace_dir)
+        mock_sync = self._run_add_with_selection(None)
 
-        # Content should be completely unchanged
         with open(self.manifest_path) as f:
             self.assertEqual(f.read(), initial_content)
         mock_sync.assert_not_called()
 
-    @patch("src.sprawl.commands.artifacts.get_active_dna_context")
-    @patch("src.sprawl.utils.tui.show_checkbox_menu")
-    @patch("src.sprawl.utils.registry_scanner.RegistryScanner")
-    @patch("src.sprawl.commands.artifacts.cmd_sync")
-    def test_cmd_add_tui_success(
-        self, mock_sync, mock_scanner_cls, mock_show_menu, mock_get_context
-    ):
+    def test_cmd_add_tui_success(self):
         """Verify cmd_add saves selection and triggers sync on successful TUI confirmation."""
-        mock_get_context.return_value = self.dna_dir
-        mock_scanner = MagicMock()
-        mock_scanner.scan.return_value = {
-            "skills": [("skill1", False)],
-        }
-        mock_scanner_cls.return_value = mock_scanner
-        mock_show_menu.return_value = {
-            "skills": ["skill1"],
-            "rules": [],
-            "workflows": [],
-        }
+        mock_sync = self._run_add_with_selection(
+            {
+                "skills": ["skill1"],
+                "rules": [],
+                "workflows": [],
+            }
+        )
 
-        cmd_add([], target_dir=self.workspace_dir)
-
-        # Check if sprawl_manifest.yml got updated correctly
         with open(self.manifest_path) as f:
             content = f.read()
             self.assertIn("skill1", content)

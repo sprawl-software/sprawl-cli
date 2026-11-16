@@ -17,60 +17,37 @@ class TestStatusCommand(unittest.TestCase):
                 cmd_status(target_dir=tmpdir)
             self.assertIn("Not in a Sprawl workspace", str(ctx.exception))
 
-    @patch("src.sprawl.commands.status.console")
-    @patch("src.sprawl.commands.status.Workspace")
-    @patch("src.sprawl.commands.status.parse_sprawl_manifest")
-    def test_status_renders_panel(self, mock_manifest, mock_ws_class, mock_console):
-        """Status renders panels when manifest exists."""
-        with tempfile.TemporaryDirectory() as tmpdir:
-            agents_dir = os.path.join(tmpdir, ".agents")
-            os.makedirs(agents_dir)
-            manifest_path = os.path.join(agents_dir, "sprawl_manifest.yml")
-            with open(manifest_path, "w") as f:
-                f.write("rules:\n  - engineering.md\n")
-
-            mock_ws = MagicMock()
-            mock_ws.get_dna_alias.return_value = "core"
-            mock_ws.get_sync_state.return_value = {}
-            mock_ws_class.return_value = mock_ws
-
-            mock_manifest.return_value = {
-                "rules": ["engineering.md"],
-                "skills": [],
-                "atoms": [],
-                "molecules": [],
-                "workflows": [],
-            }
-
-            cmd_status(target_dir=tmpdir)
-
-            # console.print should be called for info panels
-            self.assertTrue(mock_console.print.called)
-
-    @patch("src.sprawl.commands.status.console")
-    @patch("src.sprawl.commands.status.Workspace")
-    @patch("src.sprawl.commands.status.parse_sprawl_manifest")
-    def test_status_stale_sync(self, mock_manifest, mock_ws_class, mock_console):
-        """Status shows stale indicator for old sync timestamps."""
-        from datetime import datetime, timedelta, timezone
-
+    def _run_status_with_sync_state(self, sync_state: dict) -> int:
+        """Creates a real manifest workspace and runs cmd_status with a fake sync_state."""
         with tempfile.TemporaryDirectory() as tmpdir:
             agents_dir = os.path.join(tmpdir, ".agents")
             os.makedirs(agents_dir)
             with open(os.path.join(agents_dir, "sprawl_manifest.yml"), "w") as f:
                 f.write("rules:\n  - engineering.md\n")
 
-            mock_ws = MagicMock()
-            mock_ws.get_dna_alias.return_value = "core"
-            stale_ts = (datetime.now(timezone.utc) - timedelta(days=10)).isoformat()
-            mock_ws.get_sync_state.return_value = {"last_sync_timestamp": stale_ts}
-            mock_ws_class.return_value = mock_ws
-            mock_manifest.return_value = {
-                cat: [] for cat in ["rules", "skills", "atoms", "molecules", "workflows"]
-            }
+            fake_ws = MagicMock()
+            fake_ws.get_dna_alias.return_value = "core"
+            fake_ws.get_sync_state.return_value = sync_state
 
-            cmd_status(target_dir=tmpdir)
-            self.assertTrue(mock_console.print.called)
+            with (
+                patch("src.sprawl.commands.status.Workspace", return_value=fake_ws),
+                patch("src.sprawl.commands.status.console") as mock_console,
+            ):
+                cmd_status(target_dir=tmpdir)
+                return mock_console.print.call_count
+
+    def test_status_renders_panel(self):
+        """Status renders panels when manifest exists."""
+        call_count = self._run_status_with_sync_state({})
+        self.assertGreater(call_count, 0)
+
+    def test_status_stale_sync(self):
+        """Status shows stale indicator for old sync timestamps."""
+        from datetime import datetime, timedelta, timezone
+
+        stale_ts = (datetime.now(timezone.utc) - timedelta(days=10)).isoformat()
+        call_count = self._run_status_with_sync_state({"last_sync_timestamp": stale_ts})
+        self.assertGreater(call_count, 0)
 
 
 if __name__ == "__main__":

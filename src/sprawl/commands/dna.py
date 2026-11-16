@@ -34,11 +34,13 @@ def cmd_dna_update() -> None:
                     ["git", "-C", dna_path, "rev-parse", "--abbrev-ref", "HEAD"],
                     text=True,
                     env=git_env,
+                    timeout=30,
                 ).strip()
                 subprocess.run(
                     ["git", "-C", dna_path, "pull", "origin", current_branch],
                     check=True,
                     env=git_env,
+                    timeout=60,
                 )
                 print_status("Global DNA updated successfully.")
                 # Update registry to bump the last_pulled timestamp
@@ -77,41 +79,37 @@ def cmd_dna_inspect() -> None:
     console.print(tree)
 
 
+def _collect_dna_sources() -> list[dict[str, str]]:
+    """Collects primary and secondary registered DNA source metadata."""
+    out: list[dict[str, str]] = []
+    global_dna = config.agents_dir_global
+    if os.path.exists(global_dna):
+        out.append(
+            {"alias": "@global", "type": "Primary", "path": global_dna, "status": "installed"}
+        )
+    else:
+        out.append(
+            {"alias": "@global", "type": "Primary", "path": "Not Installed", "status": "missing"}
+        )
+
+    registry_dir = config.dna_registry_dir
+    if os.path.exists(registry_dir):
+        for alias in sorted(os.listdir(registry_dir)):
+            path = os.path.join(registry_dir, alias)
+            if os.path.isdir(path):
+                out.append(
+                    {"alias": f"@{alias}", "type": "Secondary", "path": path, "status": "installed"}
+                )
+    return out
+
+
 def cmd_dna_list() -> None:
     """Lists all registered DNA sources."""
+    sources = _collect_dna_sources()
     if config.json_logging:
         import json
 
-        out = []
-        global_dna = config.agents_dir_global
-        if os.path.exists(global_dna):
-            out.append(
-                {"alias": "@global", "type": "Primary", "path": global_dna, "status": "installed"}
-            )
-        else:
-            out.append(
-                {
-                    "alias": "@global",
-                    "type": "Primary",
-                    "path": "Not Installed",
-                    "status": "missing",
-                }
-            )
-
-        registry_dir = config.dna_registry_dir
-        if os.path.exists(registry_dir):
-            for alias in sorted(os.listdir(registry_dir)):
-                path = os.path.join(registry_dir, alias)
-                if os.path.isdir(path):
-                    out.append(
-                        {
-                            "alias": f"@{alias}",
-                            "type": "Secondary",
-                            "path": path,
-                            "status": "installed",
-                        }
-                    )
-        print(json.dumps(out))
+        print(json.dumps(sources))
         return
 
     from rich.table import Table
@@ -122,17 +120,8 @@ def cmd_dna_list() -> None:
     table.add_column("Type", style="info")
     table.add_column("Path", style="info")
 
-    global_dna = config.agents_dir_global
-    if os.path.exists(global_dna):
-        table.add_row("[success]●[/success]", "@global", "Primary", global_dna)
-    else:
-        table.add_row("[error]○[/error]", "@global", "Primary", "Not Installed")
-
-    registry_dir = config.dna_registry_dir
-    if os.path.exists(registry_dir):
-        for alias in sorted(os.listdir(registry_dir)):
-            path = os.path.join(registry_dir, alias)
-            if os.path.isdir(path):
-                table.add_row("[success]●[/success]", f"@{alias}", "Secondary", path)
+    for entry in sources:
+        badge = "[success]●[/success]" if entry["status"] == "installed" else "[error]○[/error]"
+        table.add_row(badge, entry["alias"], entry["type"], entry["path"])
 
     console.print(table)

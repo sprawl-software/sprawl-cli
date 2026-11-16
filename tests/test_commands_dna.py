@@ -33,18 +33,26 @@ class TestDNACommands(unittest.TestCase):
             cmd_dna_update()
         self.assertIn("not found or not a git repository", str(context.exception))
 
-    @patch("src.sprawl.commands.dna.get_dna_registry", return_value={"url": "test-url"})
-    @patch("src.sprawl.commands.dna.os.path.exists", return_value=True)
-    @patch("src.sprawl.commands.dna.subprocess.check_output", return_value="main")
-    @patch("src.sprawl.commands.dna.subprocess.run")
-    @patch("src.sprawl.commands.dna.update_dna_registry")
-    def test_cmd_dna_update_success(
-        self, mock_update_registry, mock_run, mock_check_output, mock_exists, mock_get_registry
-    ):
+    def _run_dna_update_mocked(self):
+        """Runs cmd_dna_update with mocked git subprocess calls."""
         config.dry_run = False
-        cmd_dna_update()
+        with (
+            patch("src.sprawl.commands.dna.get_dna_registry", return_value={"url": "test-url"}),
+            patch("src.sprawl.commands.dna.os.path.exists", return_value=True),
+            patch("src.sprawl.commands.dna.subprocess.check_output", return_value="main"),
+            patch("src.sprawl.commands.dna.subprocess.run") as mock_run,
+            patch("src.sprawl.commands.dna.update_dna_registry") as mock_update_registry,
+        ):
+            cmd_dna_update()
+            return mock_run, mock_update_registry
+
+    def test_cmd_dna_update_success(self):
+        mock_run, mock_update_registry = self._run_dna_update_mocked()
         mock_run.assert_called_once_with(
-            ["git", "-C", config.agents_dir_global, "pull", "origin", "main"], check=True, env=ANY
+            ["git", "-C", config.agents_dir_global, "pull", "origin", "main"],
+            check=True,
+            env=ANY,
+            timeout=60,
         )
         mock_update_registry.assert_called_once_with("test-url")
 

@@ -52,8 +52,8 @@ def cmd_shell(target_dir: str | None = None) -> None:
 
     # Launch subshell
     try:
-        subprocess.run([shell], env=env, check=False)
-    except Exception as e:
-        raise SprawlError(f"Failed to launch shell: {e}")
+        subprocess.run([shell], env=env, check=False, timeout=None)
+    except OSError as e:
+        raise SprawlError(f"Failed to launch shell: {e}") from e
 
     print_status("Exited workspace shell.")

@@ -24,7 +24,7 @@ def slugify(name: str) -> str:
     return s.strip("_")
 
 
-def _get_workspace_paths(target_dir: str = None) -> tuple[str, str, str]:
+def _get_workspace_paths(target_dir: str | None = None) -> tuple[str, str, str]:
     """Helper to verify workspace root and return config paths."""
     workspace_root = os.path.abspath(target_dir) if target_dir else os.getcwd()
     agents_dir = os.path.join(workspace_root, ".agents")
@@ -46,7 +46,7 @@ def _load_config(config_path: str) -> dict[str, Any]:
                 if isinstance(data, dict):
                     return data
         except (json.JSONDecodeError, OSError):
-            pass
+            return {"allowed_mounts": {}}
     return {"allowed_mounts": {}}
 
 
@@ -57,7 +57,7 @@ def _write_config(config_path: str, data: dict[str, Any]) -> None:
         json.dump(data, f, indent=2)
 
 
-def cmd_mount_add(path: str, alias: str = None, target_dir: str = None) -> None:
+def cmd_mount_add(path: str, alias: str | None = None, target_dir: str | None = None) -> None:
     """Directly configures a path into the allowed mounts config."""
     workspace_root, _, config_path = _get_workspace_paths(target_dir)
     cfg = _load_config(config_path)
@@ -88,7 +88,7 @@ def cmd_mount_add(path: str, alias: str = None, target_dir: str = None) -> None:
     cmd_sync(workspace_root)
 
 
-def cmd_mount_remove(alias: str, target_dir: str = None) -> None:
+def cmd_mount_remove(alias: str, target_dir: str | None = None) -> None:
     """Directly removes a mount configuration by alias."""
     workspace_root, _, config_path = _get_workspace_paths(target_dir)
     cfg = _load_config(config_path)
@@ -109,7 +109,7 @@ def cmd_mount_remove(alias: str, target_dir: str = None) -> None:
     cmd_sync(workspace_root)
 
 
-def cmd_mount_list(target_dir: str = None) -> None:
+def cmd_mount_list(target_dir: str | None = None) -> None:
     """Lists all configured directory mounts in a formatted table."""
     _, _, config_path = _get_workspace_paths(target_dir)
     cfg = _load_config(config_path)
@@ -129,6 +129,33 @@ def cmd_mount_list(target_dir: str = None) -> None:
     console.print(table)
 
 
+def _persist_and_sync_mounts(
+    workspace_root: str,
+    config_path: str,
+    selected_mounts: dict[str, str],
+) -> None:
+    """Persists updated mounts to sprawl-config.json and triggers workspace sync."""
+    cfg = _load_config(config_path)
+    cfg["allowed_mounts"] = selected_mounts
+    _write_config(config_path, cfg)
+    print_status("Synchronizing workspace configurations...")
+    cmd_sync(workspace_root)
+
+
+def _launch_mount_dashboard(target_dir: str | None) -> None:
+    """Validates TTY availability and launches the interactive mount dashboard."""
+    if not sys.stdin.isatty() or not sys.stdout.isatty():
+        raise SprawlError("Cannot launch interactive mount dashboard in a non-TTY environment.")
+
+    workspace_root, _, config_path = _get_workspace_paths(target_dir)
+    from ..utils.tui import show_mount_dashboard
+
+    show_mount_dashboard(
+        workspace_root,
+        on_save=lambda selected: _persist_and_sync_mounts(workspace_root, config_path, selected),
+    )
+
+
 def cmd_mount(args: Any) -> None:
     """Core routing entrypoint for the sprawl mount command block."""
     target_dir = getattr(args, "project", None)
@@ -140,11 +167,4 @@ def cmd_mount(args: Any) -> None:
     elif args.mount_command == "list":
         cmd_mount_list(target_dir)
     elif args.mount_command is None:
-        # Launch interactive TUI Dashboard
-        if not sys.stdin.isatty() or not sys.stdout.isatty():
-            raise SprawlError("Cannot launch interactive mount dashboard in a non-TTY environment.")
-
-        workspace_root, _, _ = _get_workspace_paths(target_dir)
-        from ..utils.tui import show_mount_dashboard
-
-        show_mount_dashboard(workspace_root)
+        _launch_mount_dashboard(target_dir)

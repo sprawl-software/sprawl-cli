@@ -95,36 +95,38 @@ def get_venv_executable(venv_dir: str, name: str) -> str:
         return os.path.join(bin_dir, name)
 
 
+def _retry_readonly_remove(
+    func: object,
+    target_path: str,
+    _exc: object,
+    ignore_errors: bool = False,
+) -> None:
+    """Clears read-only permission bits and retries the removal callback."""
+    import stat
+
+    try:
+        os.chmod(target_path, stat.S_IWRITE)
+        if callable(func):
+            func(target_path)
+    except OSError:
+        if not ignore_errors:
+            raise
+
+
 def rmtree_safe(path: str, ignore_errors: bool = False) -> None:
     """Safely removes a directory tree, handling Windows read-only files (e.g. .git objects)."""
+    import functools
     import shutil
-    import stat
     import sys
 
     if not os.path.exists(path):
         return
 
-    def _remove_readonly(func, p, exc_info):
-        try:
-            os.chmod(p, stat.S_IWRITE)
-            func(p)
-        except OSError:
-            if not ignore_errors:
-                raise
-
+    handler = functools.partial(_retry_readonly_remove, ignore_errors=ignore_errors)
     if sys.version_info >= (3, 12):
-
-        def _onexc(func, p, exc):
-            try:
-                os.chmod(p, stat.S_IWRITE)
-                func(p)
-            except OSError:
-                if not ignore_errors:
-                    raise
-
-        shutil.rmtree(path, onexc=_onexc, ignore_errors=ignore_errors)
+        shutil.rmtree(path, onexc=handler, ignore_errors=ignore_errors)
     else:
-        shutil.rmtree(path, onerror=_remove_readonly, ignore_errors=ignore_errors)
+        shutil.rmtree(path, onerror=handler, ignore_errors=ignore_errors)
 
 
 def is_compiled_binary() -> bool:

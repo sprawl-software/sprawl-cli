@@ -1,7 +1,7 @@
 import os
 import sys
 import unittest
-from unittest.mock import MagicMock, patch
+from unittest.mock import patch
 
 # Ensure both repo root and local src are available
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
@@ -34,27 +34,29 @@ class TestTUI(unittest.TestCase):
         mock_read.return_value = "a"
         self.assertEqual(read_key(), "a")
 
+    def _read_key_under_posix_tty(self, os_read_values, select_ready: bool = False) -> str:
+        """Runs read_key() with simulated POSIX TTY stdin."""
+        select_res = ([0], [], []) if select_ready else ([], [], [])
+        with (
+            patch("sys.stdin.fileno", return_value=0),
+            patch("sys.stdin.isatty", return_value=True),
+            patch("select.select", return_value=select_res),
+            patch("os.read", side_effect=os_read_values),
+        ):
+            return read_key()
+
     @unittest.skipIf(sys.platform == "win32", "POSIX-specific terminal test")
-    @patch("sys.stdin.fileno", return_value=0)
-    @patch("sys.stdin.isatty", return_value=True)
-    @patch("os.read")
-    def test_read_key_tty_char(self, mock_os_read, mock_isatty, mock_fileno):
+    def test_read_key_tty_char(self):
         """Verify read_key reads single characters on TTY."""
-        mock_os_read.return_value = b"x"
-        self.assertEqual(read_key(), "x")
+        self.assertEqual(self._read_key_under_posix_tty([b"x"]), "x")
 
     @unittest.skipIf(sys.platform == "win32", "POSIX-specific terminal test")
-    @patch("sys.stdin.fileno", return_value=0)
-    @patch("sys.stdin.isatty", return_value=True)
-    @patch("select.select")
-    @patch("os.read")
-    def test_read_key_tty_arrow(self, mock_os_read, mock_select, mock_isatty, mock_fileno):
+    def test_read_key_tty_arrow(self):
         """Verify read_key parses escape sequences for arrow keys correctly."""
-        # os.read yields escape char, then the rest of the arrow sequence
-        mock_os_read.side_effect = [b"\x1b", b"[B"]
-        mock_select.return_value = ([0], [], [])
-
-        self.assertEqual(read_key(), "\x1b[B")
+        self.assertEqual(
+            self._read_key_under_posix_tty([b"\x1b", b"[B"], select_ready=True),
+            "\x1b[B",
+        )
 
     @patch("src.sprawl.utils.tui.read_key")
     @patch("sys.stdout.write")
@@ -157,33 +159,44 @@ class TestTUI(unittest.TestCase):
         with patch("sys.stdin.isatty", return_value=False):
             self.assertFalse(is_tui_supported())
 
-    def test_is_tui_supported_windows(self):
-        """is_tui_supported checks msvcrt on win32."""
+    def _check_tui_support_under_platform(
+        self,
+        platform_name: str,
+        msvcrt_val: object = None,
+        termios_val: object = None,
+        tty_val: object = None,
+        select_val: object = None,
+    ) -> bool:
+        """Evaluates is_tui_supported() under a simulated platform and module state."""
         with (
-            patch("sys.platform", "win32"),
+            patch("sys.platform", platform_name),
             patch("sys.stdin.isatty", return_value=True),
             patch("sys.stdout.isatty", return_value=True),
+            patch("src.sprawl.utils.tui.msvcrt", msvcrt_val),
+            patch("src.sprawl.utils.tui.termios", termios_val),
+            patch("src.sprawl.utils.tui.tty", tty_val),
+            patch("src.sprawl.utils.tui.select", select_val),
         ):
-            with patch("src.sprawl.utils.tui.msvcrt", MagicMock()):
-                self.assertTrue(is_tui_supported())
-            with patch("src.sprawl.utils.tui.msvcrt", None):
-                self.assertFalse(is_tui_supported())
+            return is_tui_supported()
+
+    def test_is_tui_supported_windows(self):
+        """is_tui_supported checks msvcrt on win32."""
+        self.assertTrue(self._check_tui_support_under_platform("win32", msvcrt_val=object()))
+        self.assertFalse(self._check_tui_support_under_platform("win32", msvcrt_val=None))
 
     def test_is_tui_supported_posix(self):
         """is_tui_supported checks termios, tty, and select on POSIX."""
-        with (
-            patch("sys.platform", "linux"),
-            patch("sys.stdin.isatty", return_value=True),
-            patch("sys.stdout.isatty", return_value=True),
-        ):
-            with (
-                patch("src.sprawl.utils.tui.termios", MagicMock()),
-                patch("src.sprawl.utils.tui.tty", MagicMock()),
-                patch("src.sprawl.utils.tui.select", MagicMock()),
-            ):
-                self.assertTrue(is_tui_supported())
-            with patch("src.sprawl.utils.tui.termios", None):
-                self.assertFalse(is_tui_supported())
+        dummy = object()
+        self.assertTrue(
+            self._check_tui_support_under_platform(
+                "linux", termios_val=dummy, tty_val=dummy, select_val=dummy
+            )
+        )
+        self.assertFalse(
+            self._check_tui_support_under_platform(
+                "linux", termios_val=None, tty_val=dummy, select_val=dummy
+            )
+        )
 
 
 if __name__ == "__main__":

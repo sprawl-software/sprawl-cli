@@ -8,14 +8,11 @@ import abc
 import os
 
 from .output import print_status
+from .validation import parse_yaml_frontmatter
 
 
 class HarvestAdapter(abc.ABC):
-    """Abstract base class for all harvest adapters.
-
-    All adapters must implement matches() and harvest() with a consistent
-    interface returning a list of harvested filenames.
-    """
+    """Abstract base class for all harvest adapters."""
 
     @abc.abstractmethod
     def matches(self, root_dir: str) -> bool:
@@ -23,24 +20,24 @@ class HarvestAdapter(abc.ABC):
 
     @abc.abstractmethod
     def harvest(self, root_dir: str, dest_dir: str) -> list[str]:
-        """Harvest content from root_dir into dest_dir/rules/.
-
-        Returns:
-            List of harvested local rule filenames (e.g. ['local_cursor.md']).
-        """
+        """Harvest content from root_dir into dest_dir/rules/."""
 
 
-# Sentinel strings used to detect Sprawl's own generated workspace directives.
 _SPRAWL_DIRECTIVES = (
     "Agentic Workspace Directives",
     "Your behavior and knowledge base for this workspace",
 )
 
+_PROMPT_TYPE_TO_CATEGORY = {
+    "skill": "skills",
+    "workflow": "workflows",
+}
+
 
 class FileHarvestAdapter(HarvestAdapter):
     """Adapter for harvesting a single file-based legacy rules config."""
 
-    def __init__(self, filename: str, target_key: str):
+    def __init__(self, filename: str, target_key: str) -> None:
         self.filename = filename
         self.target_key = target_key
 
@@ -56,11 +53,7 @@ class FileHarvestAdapter(HarvestAdapter):
         with open(src_path, encoding="utf-8", errors="ignore") as f:
             content = f.read()
 
-        # Ignore our own generated workspace directives
-        if any(sentinel in content for sentinel in _SPRAWL_DIRECTIVES):
-            return []
-
-        if not content.strip():
+        if any(sentinel in content for sentinel in _SPRAWL_DIRECTIVES) or not content.strip():
             return []
 
         local_name = f"local_{self.target_key}.md"
@@ -72,6 +65,40 @@ class FileHarvestAdapter(HarvestAdapter):
         return [f"rules/{local_name}"]
 
 
+def _strip_prompt_extension(filename: str) -> str:
+    """Strips .prompt.md or .md suffix from a prompt filename."""
+    if filename.endswith(".prompt.md"):
+        return filename[:-10]
+    if filename.endswith(".md"):
+        return filename[:-3]
+    return filename
+
+
+def _harvest_prompt_file(file_path: str, filename: str, dest_dir: str) -> str | None:
+    """Harvests a single .github/prompts/*.md file into dest_dir/<category>/."""
+    if not (filename.endswith(".prompt.md") or filename.endswith(".md")):
+        return None
+    if not os.path.isfile(file_path):
+        return None
+
+    with open(file_path, encoding="utf-8", errors="ignore") as f:
+        content = f.read()
+    if not content.strip():
+        return None
+
+    base_name = _strip_prompt_extension(filename)
+    frontmatter = parse_yaml_frontmatter(content)
+    ft_type = str(frontmatter.get("type", "rule")).strip().lower()
+    category = _PROMPT_TYPE_TO_CATEGORY.get(ft_type, "rules")
+
+    local_name = f"local_{base_name}.md"
+    dest_path = os.path.join(dest_dir, category, local_name)
+    os.makedirs(os.path.dirname(dest_path), exist_ok=True)
+    with open(dest_path, "w", encoding="utf-8") as f:
+        f.write(content)
+    return f"{category}/{local_name}"
+
+
 class PromptsFolderAdapter(HarvestAdapter):
     """Adapter for harvesting .github/prompts/ folder contents."""
 
@@ -81,45 +108,14 @@ class PromptsFolderAdapter(HarvestAdapter):
 
     def harvest(self, root_dir: str, dest_dir: str) -> list[str]:
         prompts_dir = os.path.join(root_dir, ".github", "prompts")
-        harvested_files = []
         if not os.path.exists(prompts_dir) or not os.path.isdir(prompts_dir):
-            return harvested_files
+            return []
 
-        from .validation import parse_yaml_frontmatter
-
+        harvested_files: list[str] = []
         for file in os.listdir(prompts_dir):
-            if file.endswith(".prompt.md") or file.endswith(".md"):
-                file_path = os.path.join(prompts_dir, file)
-                if os.path.isfile(file_path):
-                    with open(file_path, encoding="utf-8", errors="ignore") as f:
-                        content = f.read()
-
-                    if not content.strip():
-                        continue
-
-                    base_name = file
-                    if base_name.endswith(".prompt.md"):
-                        base_name = base_name[:-10]
-                    elif base_name.endswith(".md"):
-                        base_name = base_name[:-3]
-
-                    frontmatter = parse_yaml_frontmatter(content)
-                    ft_type = str(frontmatter.get("type", "rule")).strip().lower()
-
-                    if ft_type == "skill":
-                        category = "skills"
-                    elif ft_type == "workflow":
-                        category = "workflows"
-                    else:
-                        category = "rules"
-
-                    local_name = f"local_{base_name}.md"
-                    dest_path = os.path.join(dest_dir, category, local_name)
-                    os.makedirs(os.path.dirname(dest_path), exist_ok=True)
-                    with open(dest_path, "w", encoding="utf-8") as f:
-                        f.write(content)
-                    harvested_files.append(f"{category}/{local_name}")
-
+            harvested = _harvest_prompt_file(os.path.join(prompts_dir, file), file, dest_dir)
+            if harvested:
+                harvested_files.append(harvested)
         return harvested_files
 
 
@@ -136,8 +132,7 @@ def harvest_legacy_rules(root_dir: str, dest_dir: str) -> list[str]:
         PromptsFolderAdapter(),
     ]
 
-    harvested_rules = []
-
+    harvested_rules: list[str] = []
     for adapter in adapters:
         if adapter.matches(root_dir):
             harvested_rules.extend(adapter.harvest(root_dir, dest_dir))
@@ -148,5 +143,4 @@ def harvest_legacy_rules(root_dir: str, dest_dir: str) -> list[str]:
     return harvested_rules
 
 
-# Backward compatibility aliases
 BaseHarvestAdapter = FileHarvestAdapter

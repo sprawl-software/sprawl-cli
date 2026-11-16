@@ -101,7 +101,7 @@ class TestSchemaValidation(unittest.TestCase):
 
     def test_atom_schema_valid(self) -> None:
         schema = AtomSchema(name="test", description="A test atom", type="config")
-        schema.validate()  # Should not raise
+        self.assertIsNone(schema.validate())
 
     def test_atom_schema_missing_field(self) -> None:
         schema = AtomSchema(name="", description="A test", type="config")
@@ -110,7 +110,7 @@ class TestSchemaValidation(unittest.TestCase):
 
     def test_skill_schema_valid(self) -> None:
         schema = SkillSchema(name="test", description="A skill")
-        schema.validate()
+        self.assertIsNone(schema.validate())
 
     def test_skill_schema_empty_name(self) -> None:
         schema = SkillSchema(name="", description="A skill")
@@ -119,7 +119,7 @@ class TestSchemaValidation(unittest.TestCase):
 
     def test_molecule_schema_valid(self) -> None:
         schema = MoleculeSchema(name="test", version="1.0.0", atoms=["a", "b"])
-        schema.validate()
+        self.assertIsNone(schema.validate())
 
     def test_molecule_schema_bad_atoms(self) -> None:
         schema = MoleculeSchema(name="test", version="1.0.0", atoms="not_a_list")
@@ -144,7 +144,7 @@ class TestValidateDnaDirectory(unittest.TestCase):
             with open(atom_file, "w") as f:
                 json.dump({"name": "test", "description": "A test", "type": "config"}, f)
 
-            validate_dna_directory(tmpdir)  # Should not raise
+            self.assertIsNone(validate_dna_directory(tmpdir))
 
     def test_invalid_atom_raises(self) -> None:
         """Invalid atom data triggers SprawlError."""
@@ -167,7 +167,7 @@ class TestValidateDnaDirectory(unittest.TestCase):
             with open(skill_file, "w") as f:
                 f.write("---\nname: Test\ndescription: A test skill\n---\n# Content")
 
-            validate_dna_directory(tmpdir)
+            self.assertIsNone(validate_dna_directory(tmpdir))
 
     def test_invalid_skill_md_raises(self) -> None:
         """SKILL.md with empty name triggers SprawlError."""
@@ -201,7 +201,7 @@ class TestValidateDnaDirectory(unittest.TestCase):
             with open(os.path.join(git_dir, "pack.json"), "w") as f:
                 f.write("{corrupted}")
 
-            validate_dna_directory(tmpdir)  # Should not raise
+            self.assertIsNone(validate_dna_directory(tmpdir))
 
     def test_json_with_extra_keys_ignored(self) -> None:
         """Valid JSON containing unexpected metadata keys passes validation by filtering keys."""
@@ -235,7 +235,7 @@ class TestValidateDnaDirectory(unittest.TestCase):
                     f,
                 )
 
-            validate_dna_directory(tmpdir)  # Should not raise type errors
+            self.assertIsNone(validate_dna_directory(tmpdir))
 
     def test_json_fallback_and_mcp_config(self) -> None:
         """Validates that title/filename fallbacks and raw MCP molecule skips behave correctly."""
@@ -261,7 +261,7 @@ class TestValidateDnaDirectory(unittest.TestCase):
             with open(molecule_file, "w") as f:
                 json.dump({"mcpServers": {"filesystem": {"command": "npx"}}}, f)
 
-            validate_dna_directory(tmpdir)  # Should pass without error
+            self.assertIsNone(validate_dna_directory(tmpdir))
 
 
 if __name__ == "__main__":

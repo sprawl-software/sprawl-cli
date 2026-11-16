@@ -195,38 +195,41 @@ class TestWindowsCompatibility(unittest.TestCase):
                 f.write(rule_content)
 
             # Should not raise any decoding error
-            validate_dna_directory(temp_dir)
+            self.assertIsNone(validate_dna_directory(temp_dir))
         finally:
             shutil.rmtree(temp_dir)
 
-    @patch("src.sprawl.commands.diagnostics.resolve_repo_root", return_value=None)
-    @patch("src.sprawl.commands.diagnostics.subprocess.run")
-    @patch("src.sprawl.commands.diagnostics.os.path.exists", return_value=False)
-    @patch("sys.platform", "win32")
-    def test_cmd_update_windows_uses_pipx_upgrade(self, mock_exists, mock_run, mock_resolve):
-        """cmd_update on Windows must use pipx upgrade to avoid python.exe file-locking PermissionError."""
+    def _run_windows_update_with_side_effect(self, side_effect):
+        """Runs cmd_update under a simulated Windows production environment."""
         from src.sprawl.commands.diagnostics import cmd_update
         from src.sprawl.config import config
 
         config.dry_run = False
-        mock_run.return_value = MagicMock(returncode=0)
-        cmd_update()
+        with (
+            patch("src.sprawl.commands.diagnostics.resolve_repo_root", return_value=None),
+            patch("src.sprawl.commands.diagnostics.os.path.exists", return_value=False),
+            patch("sys.platform", "win32"),
+            patch("src.sprawl.commands.diagnostics.subprocess.run") as mock_run,
+        ):
+            if isinstance(side_effect, list):
+                mock_run.side_effect = [MagicMock(returncode=code) for code in side_effect]
+            else:
+                mock_run.return_value = MagicMock(returncode=side_effect)
+            cmd_update()
+            return mock_run
+
+    def test_cmd_update_windows_uses_pipx_upgrade(self):
+        """cmd_update on Windows must use pipx upgrade to avoid python.exe file-locking PermissionError."""
+        mock_run = self._run_windows_update_with_side_effect(0)
         mock_run.assert_called_with(
-            ["pipx", "upgrade", "sprawl-cli", "--pip-args=--no-cache-dir"], env=ANY
+            ["pipx", "upgrade", "sprawl-cli", "--pip-args=--no-cache-dir"],
+            env=ANY,
+            timeout=120,
         )
 
-    @patch("src.sprawl.commands.diagnostics.resolve_repo_root", return_value=None)
-    @patch("src.sprawl.commands.diagnostics.subprocess.run")
-    @patch("src.sprawl.commands.diagnostics.os.path.exists", return_value=False)
-    @patch("sys.platform", "win32")
-    def test_cmd_update_windows_falls_back_to_runpip(self, mock_exists, mock_run, mock_resolve):
+    def test_cmd_update_windows_falls_back_to_runpip(self):
         """cmd_update on Windows falls back to pipx runpip if pipx upgrade fails."""
-        from src.sprawl.commands.diagnostics import cmd_update
-        from src.sprawl.config import config
-
-        config.dry_run = False
-        mock_run.side_effect = [MagicMock(returncode=1), MagicMock(returncode=0)]
-        cmd_update()
+        mock_run = self._run_windows_update_with_side_effect([1, 0])
         mock_run.assert_any_call(
             [
                 "pipx",
@@ -238,26 +241,12 @@ class TestWindowsCompatibility(unittest.TestCase):
                 "git+https://github.com/sprawl-software/sprawl-cli.git",
             ],
             env=ANY,
+            timeout=120,
         )
 
-    @patch("src.sprawl.commands.diagnostics.resolve_repo_root", return_value=None)
-    @patch("src.sprawl.commands.diagnostics.subprocess.run")
-    @patch("src.sprawl.commands.diagnostics.os.path.exists", return_value=False)
-    @patch("sys.platform", "win32")
-    def test_cmd_update_windows_falls_back_to_pipx_install(
-        self, mock_exists, mock_run, mock_resolve
-    ):
+    def test_cmd_update_windows_falls_back_to_pipx_install(self):
         """cmd_update on Windows falls back to pipx install --force if not yet installed in pipx."""
-        from src.sprawl.commands.diagnostics import cmd_update
-        from src.sprawl.config import config
-
-        config.dry_run = False
-        mock_run.side_effect = [
-            MagicMock(returncode=1),  # pipx upgrade fails
-            MagicMock(returncode=1),  # pipx runpip fails
-            MagicMock(returncode=0),  # pipx install succeeds
-        ]
-        cmd_update()
+        mock_run = self._run_windows_update_with_side_effect([1, 1, 0])
         mock_run.assert_any_call(
             [
                 "pipx",
@@ -268,6 +257,7 @@ class TestWindowsCompatibility(unittest.TestCase):
             ],
             check=True,
             env=ANY,
+            timeout=120,
         )
 
 

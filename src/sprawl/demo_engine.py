@@ -9,8 +9,8 @@ import shutil
 import subprocess
 import tempfile
 
+from .commands._helpers import cmd_clean_test
 from .commands.artifacts import cmd_add
-from .commands.diagnostics import cmd_clean_test
 from .commands.init_cmd import cmd_init
 from .commands.sync_cmd import cmd_sync
 from .commands.workspace import cmd_create
@@ -151,6 +151,25 @@ DEMOS = {
 }
 
 
+def _classify_demo_artifact_category(item: str) -> str:
+    """Determines the DNA category folder for a demo artifact filename."""
+    if item.endswith(".md"):
+        return "rules"
+    if item.endswith((".yml", ".yaml")):
+        return "workflows"
+    return "skills"
+
+
+def _iter_demo_artifacts() -> list[tuple[str, str]]:
+    """Returns all (category, filename) pairs across all configured demo scenarios."""
+    pairs: list[tuple[str, str]] = []
+    for demo in DEMOS.values():
+        for squad in demo["squads"]:
+            for item in squad["artifacts"]:
+                pairs.append((_classify_demo_artifact_category(item), item))
+    return pairs
+
+
 def generate_dummy_dna() -> str:
     """Generates a transient local git repo in a secure temp dir loaded with all required demo artifacts.
 
@@ -159,34 +178,32 @@ def generate_dummy_dna() -> str:
     """
     dummy_path = tempfile.mkdtemp(prefix="sprawl_dummy_dna_")
 
-    # Create category directories
     for cat in CATEGORIES:
         os.makedirs(os.path.join(dummy_path, cat))
 
-    # Create empty files for all known artifacts across all demos
-    for demo in DEMOS.values():
-        for squad in demo["squads"]:
-            for item in squad["artifacts"]:
-                if item.endswith(".md"):
-                    cat = "rules"
-                elif item.endswith(".yml") or item.endswith(".yaml"):
-                    cat = "workflows"
-                else:
-                    cat = "skills"
+    for cat, item in _iter_demo_artifacts():
+        filepath = os.path.join(dummy_path, cat, item)
+        with open(filepath, "w", encoding="utf-8") as f:
+            f.write("# Dummy Content\n")
 
-                filepath = os.path.join(dummy_path, cat, item)
-                with open(filepath, "w", encoding="utf-8") as f:
-                    f.write("# Dummy Content\n")
-
-    # Initialize git
     try:
-        subprocess.run(["git", "init", "-q"], cwd=dummy_path, check=True)
+        subprocess.run(["git", "init", "-q"], cwd=dummy_path, check=True, timeout=30)
         subprocess.run(
-            ["git", "config", "user.email", "test@example.com"], cwd=dummy_path, check=True
+            ["git", "config", "user.email", "test@example.com"],
+            cwd=dummy_path,
+            check=True,
+            timeout=30,
         )
-        subprocess.run(["git", "config", "user.name", "Test"], cwd=dummy_path, check=True)
-        subprocess.run(["git", "add", "."], cwd=dummy_path, check=True)
-        subprocess.run(["git", "commit", "-q", "-m", "init dummy"], cwd=dummy_path, check=True)
+        subprocess.run(
+            ["git", "config", "user.name", "Test"], cwd=dummy_path, check=True, timeout=30
+        )
+        subprocess.run(["git", "add", "."], cwd=dummy_path, check=True, timeout=30)
+        subprocess.run(
+            ["git", "commit", "-q", "-m", "init dummy"],
+            cwd=dummy_path,
+            check=True,
+            timeout=30,
+        )
     except subprocess.CalledProcessError as e:
         print_error(f"Failed to initialize dummy git repo: {e}")
 
@@ -238,6 +255,34 @@ def _provision_squad_workspace(
         console.print("  [dim](no .agents directory found)[/dim]")
 
 
+def _prompt_demo_selection() -> str | None:
+    """Renders the scenario menu and reads the user's demo selection."""
+    console.print(
+        "\n[accent]================================================================[/accent]"
+    )
+    console.print("[accent]  SPRAWL NATIVE DEMONSTRATION ENGINE[/accent]")
+    console.print(
+        "[accent]================================================================[/accent]"
+    )
+    console.print(
+        "[info]Select an industry scenario to simulate an automated agentic rollout:[/info]\n"
+    )
+
+    for key, demo in DEMOS.items():
+        console.print(f"[accent]  [{key}][/accent] [info]{demo['title']}[/info]")
+        console.print(f"      [info]{demo['description']}[/info]\n")
+
+    console.print("  [info][q] Quit[/info]")
+    console.print(
+        "[accent]================================================================[/accent]"
+    )
+
+    try:
+        return input("Enter your choice: ").strip()
+    except EOFError:
+        return None
+
+
 def run_interactive_demo(selected_key: str | None = None) -> None:
     """Runs the interactive demo engine in a fully isolated temp context.
 
@@ -245,30 +290,8 @@ def run_interactive_demo(selected_key: str | None = None) -> None:
         selected_key: Optional pre-selected demo key. If None, prompts the user.
     """
     if not selected_key:
-        console.print(
-            "\n[accent]================================================================[/accent]"
-        )
-        console.print("[accent]  SPRAWL NATIVE DEMONSTRATION ENGINE[/accent]")
-        console.print(
-            "[accent]================================================================[/accent]"
-        )
-        console.print(
-            "[info]Select an industry scenario to simulate an automated agentic rollout:[/info]\n"
-        )
-
-        for key, demo in DEMOS.items():
-            console.print(f"[accent]  [{key}][/accent] [info]{demo['title']}[/info]")
-            console.print(f"      [info]{demo['description']}[/info]\n")
-
-        console.print("  [info][q] Quit[/info]")
-        console.print(
-            "[accent]================================================================[/accent]"
-        )
-
-        try:
-            selected_key = input("Enter your choice: ").strip()
-        except EOFError:
-            # Handle non-interactive environments gracefully
+        selected_key = _prompt_demo_selection()
+        if not selected_key:
             return
 
     if selected_key.lower() == "q":

@@ -159,6 +159,7 @@ class TestOutputModule(unittest.TestCase):
             output_mod.print_warning("Rich warning")
             output_mod.print_error("Rich error")
             output_mod.print_success("Rich success")
+            self.assertFalse(output_mod.config.json_logging)
         finally:
             output_mod.config = original
 

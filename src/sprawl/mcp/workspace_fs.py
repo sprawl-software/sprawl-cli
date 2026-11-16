@@ -8,18 +8,31 @@ import os
 import sys
 from typing import Any
 
+from . import (
+    MCPError,
+    dispatch_mcp_tool_call,
+    format_mcp_text_result,
+    handle_common_mcp_method,
+    read_safe_utf8_file,
+    require_path_and_content_arguments,
+    require_path_argument,
+    write_jsonrpc_error,
+    write_safe_utf8_file,
+)
 
-class MCPError(Exception):
-    def __init__(self, code: int, message: str, data: Any = None):
-        self.code = code
-        self.message = message
-        self.data = data
+
+def _assert_contained_within(real_path: str, real_root: str, error_message: str) -> None:
+    """Enforces strict realpath + normcase containment to block sibling-prefix escapes."""
+    norm_real_path = os.path.normcase(real_path)
+    norm_real_root = os.path.normcase(real_root)
+    if norm_real_path != norm_real_root and not norm_real_path.startswith(norm_real_root + os.sep):
+        raise MCPError(-32602, error_message)
 
 
 class WorkspaceFS:
     """Core logic for sandboxed filesystem operations."""
 
-    def __init__(self, root_path: str, cli_mounts: dict[str, str] | None = None):
+    def __init__(self, root_path: str, cli_mounts: dict[str, str] | None = None) -> None:
         self.root = os.path.abspath(os.path.expanduser(root_path))
         if not os.path.isdir(self.root):
             raise ValueError(f"Root path {self.root} is not a directory.")
@@ -33,17 +46,19 @@ class WorkspaceFS:
         """Reads allowed_mounts from .agents/sprawl-config.json."""
         mounts: dict[str, str] = {}
         config_path = os.path.join(workspace_dir, ".agents", "sprawl-config.json")
-        if os.path.isfile(config_path):
-            try:
-                with open(config_path, encoding="utf-8") as f:
-                    cfg = json.load(f)
-                raw_mounts = cfg.get("allowed_mounts", {})
-                if isinstance(raw_mounts, dict):
-                    for k, v in raw_mounts.items():
-                        if isinstance(v, str) and v.strip():
-                            mounts[str(k)] = os.path.abspath(os.path.expanduser(v.strip()))
-            except (json.JSONDecodeError, OSError):
-                pass
+        if not os.path.isfile(config_path):
+            return mounts
+        try:
+            with open(config_path, encoding="utf-8") as f:
+                cfg = json.load(f)
+        except (json.JSONDecodeError, OSError):
+            return mounts
+
+        raw_mounts = cfg.get("allowed_mounts", {})
+        if isinstance(raw_mounts, dict):
+            for k, v in raw_mounts.items():
+                if isinstance(v, str) and v.strip():
+                    mounts[str(k)] = os.path.abspath(os.path.expanduser(v.strip()))
         return mounts
 
     def _refresh_mounts(self) -> None:
@@ -53,82 +68,58 @@ class WorkspaceFS:
             mounts.update(self._cli_mounts)
         self.allowed_mounts = mounts
 
+    def _resolve_mounted_path(self, rel_path: str, normalized_rel: str) -> str:
+        """Resolves an '@<alias>/<subpath>' mount reference against allowed_mounts."""
+        parts = normalized_rel.split("/", 1)
+        alias = parts[0][1:]
+        if alias not in self.allowed_mounts:
+            raise MCPError(
+                -32602, f"Security Violation: Mount alias '{alias}' is not allowed/configured."
+            )
+
+        mount_root = os.path.abspath(os.path.expanduser(self.allowed_mounts[alias]))
+        sub_path = parts[1] if len(parts) > 1 else ""
+        if os.path.isabs(sub_path) or sub_path.startswith("~"):
+            raise MCPError(
+                -32602,
+                "Security Violation: Absolute paths and home expansion are not allowed inside mounts.",
+            )
+
+        real_path = os.path.realpath(os.path.abspath(os.path.join(mount_root, sub_path)))
+        real_mount_root = os.path.realpath(mount_root)
+        _assert_contained_within(
+            real_path,
+            real_mount_root,
+            f"Security Violation: Path '{rel_path}' resolves outside mount root '{alias}'.",
+        )
+        return real_path
+
     def _get_safe_path(self, rel_path: str) -> str:
         """Resolves relative path and ensures it stays within root or allowed mounts."""
         self._refresh_mounts()
-        # Normalize alias backslashes for cross-platform compatibility
         normalized_rel = rel_path.replace("\\", "/") if rel_path.startswith("@") else rel_path
         if normalized_rel.startswith("@"):
-            parts = normalized_rel.split("/", 1)
-            alias = parts[0][1:]
+            return self._resolve_mounted_path(rel_path, normalized_rel)
 
-            if alias in self.allowed_mounts:
-                mount_root = os.path.abspath(os.path.expanduser(self.allowed_mounts[alias]))
-                sub_path = parts[1] if len(parts) > 1 else ""
-
-                # Prevent absolute paths or home expansion inside mount
-                if os.path.isabs(sub_path) or sub_path.startswith("~"):
-                    raise MCPError(
-                        -32602,
-                        "Security Violation: Absolute paths and home expansion are not allowed inside mounts.",
-                    )
-
-                abs_path = os.path.abspath(os.path.join(mount_root, sub_path))
-                real_path = os.path.realpath(abs_path)
-                real_mount_root = os.path.realpath(mount_root)
-
-                # Enforce strict directory boundary — prevent sibling-directory prefix escapes
-                # e.g. /home/user/mount vs /home/user/mount-secrets
-                # Use os.path.normcase to ensure drive-letter case-insensitivity on Windows
-                norm_real_path = os.path.normcase(real_path)
-                norm_real_mount_root = os.path.normcase(real_mount_root)
-                if norm_real_path != norm_real_mount_root and not norm_real_path.startswith(
-                    norm_real_mount_root + os.sep
-                ):
-                    raise MCPError(
-                        -32602,
-                        f"Security Violation: Path '{rel_path}' resolves outside mount root '{alias}'.",
-                    )
-                return real_path
-            else:
-                raise MCPError(
-                    -32602, f"Security Violation: Mount alias '{alias}' is not allowed/configured."
-                )
-
-        # Prevent absolute paths or home expansion
         if os.path.isabs(rel_path) or rel_path.startswith("~"):
             raise MCPError(
                 -32602, "Security Violation: Absolute paths and home expansion are not allowed."
             )
 
-        abs_path = os.path.abspath(os.path.join(self.root, rel_path))
-        real_path = os.path.realpath(abs_path)
+        real_path = os.path.realpath(os.path.abspath(os.path.join(self.root, rel_path)))
         real_root = os.path.realpath(self.root)
-
-        # Enforce strict directory boundary — prevent sibling-directory prefix escapes
-        norm_real_path = os.path.normcase(real_path)
-        norm_real_root = os.path.normcase(real_root)
-        if norm_real_path != norm_real_root and not norm_real_path.startswith(
-            norm_real_root + os.sep
-        ):
-            raise MCPError(
-                -32602, f"Security Violation: Path '{rel_path}' resolves outside workspace root."
-            )
+        _assert_contained_within(
+            real_path,
+            real_root,
+            f"Security Violation: Path '{rel_path}' resolves outside workspace root.",
+        )
         return real_path
 
     def read_file(self, path: str) -> str:
-        safe_path = self._get_safe_path(path)
-        if not os.path.isfile(safe_path):
-            raise MCPError(-32602, f"File not found: {path}")
-        with open(safe_path, encoding="utf-8", errors="ignore") as f:
-            return f.read()
+        return read_safe_utf8_file(self._get_safe_path(path), path, kind_label="File")
 
     def write_file(self, path: str, content: str) -> str:
-        safe_path = self._get_safe_path(path)
-        os.makedirs(os.path.dirname(safe_path), exist_ok=True)
-        with open(safe_path, "w", encoding="utf-8") as f:
-            f.write(content)
-        return f"Successfully wrote to {path}"
+        return write_safe_utf8_file(self._get_safe_path(path), path, content)
 
     def list_directory(self, path: str = ".") -> list[str]:
         safe_path = self._get_safe_path(path)
@@ -140,7 +131,7 @@ class WorkspaceFS:
 class MCPServer:
     """JSON-RPC 2.0 Server for MCP over stdio."""
 
-    def __init__(self, workspace_fs: WorkspaceFS):
+    def __init__(self, workspace_fs: WorkspaceFS) -> None:
         self.fs = workspace_fs
         self.tools = {
             "read_file": self._tool_read_file,
@@ -149,24 +140,15 @@ class MCPServer:
         }
 
     def _tool_read_file(self, arguments: dict[str, Any]) -> dict[str, Any]:
-        path = arguments.get("path")
-        if not path:
-            raise MCPError(-32602, "Missing 'path' argument.")
-        content = self.fs.read_file(path)
-        return {"content": [{"type": "text", "text": content}]}
+        return format_mcp_text_result(self.fs.read_file(require_path_argument(arguments)))
 
     def _tool_write_file(self, arguments: dict[str, Any]) -> dict[str, Any]:
-        path = arguments.get("path")
-        content = arguments.get("content")
-        if not path or content is None:
-            raise MCPError(-32602, "Missing 'path' or 'content' argument.")
-        result = self.fs.write_file(path, content)
-        return {"content": [{"type": "text", "text": result}]}
+        path, content = require_path_and_content_arguments(arguments)
+        return format_mcp_text_result(self.fs.write_file(path, content))
 
     def _tool_list_directory(self, arguments: dict[str, Any]) -> dict[str, Any]:
         path = arguments.get("path", ".")
-        items = self.fs.list_directory(path)
-        return {"content": [{"type": "text", "text": "\n".join(items)}]}
+        return format_mcp_text_result("\n".join(self.fs.list_directory(path)))
 
     def run(self) -> None:
         """Main loop reading from stdin."""
@@ -181,8 +163,8 @@ class MCPServer:
                     sys.stdout.flush()
             except json.JSONDecodeError:
                 self.send_error(None, -32700, "Parse error")
-            except Exception as e:
-                self.send_error(None, -32603, f"Internal error: {str(e)}")
+            except (OSError, ValueError, TypeError, KeyError) as e:
+                self.send_error(None, -32603, f"Internal error: {e}")
 
     def handle_request(self, request: dict[str, Any]) -> dict[str, Any] | None:
         msg_id = request.get("id")
@@ -205,66 +187,12 @@ class MCPServer:
                 },
             }
 
-        if method and method.startswith("notifications/"):
-            return None
-
-        if method == "ping":
-            return {"jsonrpc": "2.0", "id": msg_id, "result": {}}
-
-        if method == "resources/list":
-            return {"jsonrpc": "2.0", "id": msg_id, "result": {"resources": []}}
-
-        if method == "resources/templates/list":
-            return {"jsonrpc": "2.0", "id": msg_id, "result": {"resourceTemplates": []}}
-
-        if method == "prompts/list":
-            return {"jsonrpc": "2.0", "id": msg_id, "result": {"prompts": []}}
+        handled, common_resp = handle_common_mcp_method(msg_id, method)
+        if handled:
+            return common_resp
 
         if method == "tools/list":
-            self.fs._refresh_mounts()
-            mounts_desc = ""
-            if self.fs.allowed_mounts:
-                aliases_str = ", ".join(f"@{a}" for a in sorted(self.fs.allowed_mounts.keys()))
-                mounts_desc = f" You can also access allowed mount directories outside the workspace using the '@<alias>/<subpath>' prefix. Configured mounts: {aliases_str}."
-
-            return {
-                "jsonrpc": "2.0",
-                "id": msg_id,
-                "result": {
-                    "tools": [
-                        {
-                            "name": "read_file",
-                            "description": f"Read the content of a file within the workspace.{mounts_desc}",
-                            "inputSchema": {
-                                "type": "object",
-                                "properties": {"path": {"type": "string"}},
-                                "required": ["path"],
-                            },
-                        },
-                        {
-                            "name": "write_file",
-                            "description": f"Write content to a file within the workspace.{mounts_desc}",
-                            "inputSchema": {
-                                "type": "object",
-                                "properties": {
-                                    "path": {"type": "string"},
-                                    "content": {"type": "string"},
-                                },
-                                "required": ["path", "content"],
-                            },
-                        },
-                        {
-                            "name": "list_directory",
-                            "description": f"List contents of a directory within the workspace.{mounts_desc}",
-                            "inputSchema": {
-                                "type": "object",
-                                "properties": {"path": {"type": "string"}},
-                                "required": [],
-                            },
-                        },
-                    ]
-                },
-            }
+            return {"jsonrpc": "2.0", "id": msg_id, "result": {"tools": self._build_tools_list()}}
 
         if method == "tools/call":
             return self._handle_tool_call(msg_id, params)
@@ -277,35 +205,54 @@ class MCPServer:
             }
         return None
 
-    def _handle_tool_call(self, msg_id: Any, params: dict[str, Any]) -> dict[str, Any]:
-        tool_name = params.get("name")
-        arguments = params.get("arguments", {})
-        if tool_name not in self.tools:
-            return {
-                "jsonrpc": "2.0",
-                "id": msg_id,
-                "error": {"code": -32601, "message": f"Tool not found: {tool_name}"},
-            }
-        try:
-            result = self.tools[tool_name](arguments)
-            return {"jsonrpc": "2.0", "id": msg_id, "result": result}
-        except MCPError as e:
-            return {
-                "jsonrpc": "2.0",
-                "id": msg_id,
-                "error": {"code": e.code, "message": e.message, "data": e.data},
-            }
-        except Exception as e:
-            return {
-                "jsonrpc": "2.0",
-                "id": msg_id,
-                "error": {"code": -32603, "message": str(e)},
-            }
+    def _build_tools_list(self) -> list[dict[str, Any]]:
+        """Builds the tools/list response dynamically incorporating active mount aliases."""
+        self.fs._refresh_mounts()
+        mounts_desc = ""
+        if self.fs.allowed_mounts:
+            aliases_str = ", ".join(f"@{a}" for a in sorted(self.fs.allowed_mounts.keys()))
+            mounts_desc = (
+                " You can also access allowed mount directories outside the workspace "
+                f"using the '@<alias>/<subpath>' prefix. Configured mounts: {aliases_str}."
+            )
+        return [
+            {
+                "name": "read_file",
+                "description": f"Read the content of a file within the workspace.{mounts_desc}",
+                "inputSchema": {
+                    "type": "object",
+                    "properties": {"path": {"type": "string"}},
+                    "required": ["path"],
+                },
+            },
+            {
+                "name": "write_file",
+                "description": f"Write content to a file within the workspace.{mounts_desc}",
+                "inputSchema": {
+                    "type": "object",
+                    "properties": {
+                        "path": {"type": "string"},
+                        "content": {"type": "string"},
+                    },
+                    "required": ["path", "content"],
+                },
+            },
+            {
+                "name": "list_directory",
+                "description": f"List contents of a directory within the workspace.{mounts_desc}",
+                "inputSchema": {
+                    "type": "object",
+                    "properties": {"path": {"type": "string"}},
+                    "required": [],
+                },
+            },
+        ]
 
-    def send_error(self, msg_id: Any, code: int, message: str):
-        response = {"jsonrpc": "2.0", "id": msg_id, "error": {"code": code, "message": message}}
-        sys.stdout.write(json.dumps(response) + "\n")
-        sys.stdout.flush()
+    def _handle_tool_call(self, msg_id: Any, params: dict[str, Any]) -> dict[str, Any]:
+        return dispatch_mcp_tool_call(msg_id, params, self.tools)
+
+    def send_error(self, msg_id: Any, code: int, message: str) -> None:
+        write_jsonrpc_error(msg_id, code, message)
 
 
 def discover_cwd_workspace(start_dir: str | None = None) -> str | None:
@@ -329,6 +276,18 @@ def discover_cwd_workspace(start_dir: str | None = None) -> str | None:
     return None
 
 
+def _parse_cli_mounts(mount_args: list[str] | None) -> dict[str, str]:
+    """Parses --mount ALIAS=PATH CLI arguments into an absolute path dictionary."""
+    cli_mounts: dict[str, str] = {}
+    if not mount_args:
+        return cli_mounts
+    for item in mount_args:
+        if "=" in item:
+            alias, path = item.split("=", 1)
+            cli_mounts[alias.strip()] = os.path.abspath(os.path.expanduser(path.strip()))
+    return cli_mounts
+
+
 def run_workspace_fs_cli(argv: list[str] | None = None) -> None:
     """CLI entrypoint for launching the sprawl-workspace-fs MCP stdio server."""
     import argparse
@@ -343,16 +302,8 @@ def run_workspace_fs_cli(argv: list[str] | None = None) -> None:
         help="Allowed mount in format alias=path",
     )
     args = parser.parse_args(argv)
+    cli_mounts = _parse_cli_mounts(args.mounts)
 
-    cli_mounts = {}
-    if args.mounts:
-        for m in args.mounts:
-            if "=" in m:
-                alias, path = m.split("=", 1)
-                cli_mounts[alias.strip()] = os.path.abspath(os.path.expanduser(path.strip()))
-
-    # When spawned globally by an IDE (e.g., Antigravity ~/.gemini/config/mcp_config.json),
-    # inherit the active Sprawl workspace from cwd if cwd is a different initialized workspace.
     configured_root = os.path.abspath(os.path.expanduser(args.root))
     cwd_workspace = discover_cwd_workspace()
     if cwd_workspace and os.path.normcase(cwd_workspace) != os.path.normcase(configured_root):
@@ -366,7 +317,7 @@ def run_workspace_fs_cli(argv: list[str] | None = None) -> None:
         fs = WorkspaceFS(active_root, cli_mounts=active_cli_mounts)
         server = MCPServer(fs)
         server.run()
-    except Exception as e:
+    except (OSError, ValueError) as e:
         print(f"Failed to start server: {e}", file=sys.stderr)
         sys.exit(1)
 

@@ -588,16 +588,8 @@ def maybe_dispatch_mcp_stdio(argv: list[str] | None = None) -> bool:
     return False
 
 
-def main() -> None:
-    if maybe_dispatch_mcp_stdio():
-        sys.exit(0)
-
-    parser = get_parser()
-
-    # We parse known args first to extract global flags before routing to commands
-    args, unknown = parser.parse_known_args()
-
-    # Set configuration state globally across the package
+def _apply_global_cli_flags(args: Any, unknown: list[str]) -> None:
+    """Applies global verbose, dry-run, json, and testmode flags to config."""
     if args.verbose or "--verbose" in unknown or "-v" in unknown:
         config.verbose = True
         from rich.traceback import install as install_traceback
@@ -607,93 +599,87 @@ def main() -> None:
         config.dry_run = True
     if args.json or "--json" in unknown:
         config.json_logging = True
-
-    # We must explicitly check for testmode here to initialize the paths if running without wrapper
     if args.testmode:
         os.environ["SPRAWL_TEST_MODE"] = "1"
         config.reinitialize()
 
-    if args.help or (len(sys.argv) < 2):
-        print_help()
-        sys.exit(0)
 
-    if args.version:
-        if config.json_logging:
-            print(
-                json.dumps(
-                    {
-                        "level": "info",
-                        "message": f"Sprawl Orchestrator {__version__} (Atomic Agentic Fabric)",
-                    }
-                )
-            )
-        else:
-            console.print(
-                f"[accent]\\[*][/accent] [info]Sprawl Orchestrator {__version__} (Atomic Agentic Fabric)[/info]"
-            )
-        sys.exit(0)
+def _print_cli_version() -> None:
+    """Prints the Sprawl Orchestrator version string in JSON or Rich format."""
+    msg = f"Sprawl Orchestrator {__version__} (Atomic Agentic Fabric)"
+    if config.json_logging:
+        print(json.dumps({"level": "info", "message": msg}))
+    else:
+        console.print(f"[accent]\\[*][/accent] [info]{msg}[/info]")
 
-    # -----------------------------------------------------------------------
-    # Command Registry — single-point registration, dict-based dispatch
-    # -----------------------------------------------------------------------
-    def handle_dna_command(a: Any) -> None:
-        from .commands.dna import cmd_dna_list
 
-        if a.dna_command == "update":
-            cmd_dna_update()
-        elif a.dna_command == "inspect":
-            cmd_dna_inspect()
-        elif a.dna_command == "list":
-            cmd_dna_list()
-        else:
-            raise SprawlError(f"Unknown DNA command: {a.dna_command}")
+def _handle_dna_command(a: Any) -> None:
+    """Routes 'sprawl dna <update|inspect|list>' subcommands."""
+    from .commands.dna import cmd_dna_list
 
-    def handle_ws_command(a: Any) -> None:
-        from .commands.workspace import cmd_ws_list, cmd_ws_push, cmd_ws_remove
+    dispatch = {
+        "update": cmd_dna_update,
+        "inspect": cmd_dna_inspect,
+        "list": cmd_dna_list,
+    }
+    fn = dispatch.get(a.dna_command)
+    if fn is None:
+        raise SprawlError(f"Unknown DNA command: {a.dna_command}")
+    fn()
 
-        if a.ws_command == "list":
-            cmd_ws_list()
-        elif a.ws_command == "remove":
-            cmd_ws_remove(a.name, a.delete)
-        elif a.ws_command == "push":
-            cmd_ws_push(a.name)
-        else:
-            raise SprawlError(f"Unknown Workspace command: {a.ws_command}")
 
-    def handle_mount_command(a: Any) -> None:
-        from .commands.mount import cmd_mount
+def _handle_ws_command(a: Any) -> None:
+    """Routes 'sprawl ws <list|remove|push>' subcommands."""
+    from .commands.workspace import cmd_ws_list, cmd_ws_push, cmd_ws_remove
 
-        cmd_mount(a)
+    if a.ws_command == "list":
+        cmd_ws_list()
+    elif a.ws_command == "remove":
+        cmd_ws_remove(a.name, a.delete)
+    elif a.ws_command == "push":
+        cmd_ws_push(a.name)
+    else:
+        raise SprawlError(f"Unknown Workspace command: {a.ws_command}")
 
-    def handle_test_command(a: Any) -> None:
-        if os.environ.get("SPRAWL_DEV") != "1":
-            raise SprawlError("Unknown command: test")
-        # Dynamically locate the tests package relative to the active file location
-        sprawl_dir = os.path.dirname(os.path.abspath(__file__))
-        repo_root = os.path.dirname(os.path.dirname(sprawl_dir))
-        tests_dir = os.path.join(repo_root, "tests")
 
-        if os.path.isdir(tests_dir) and os.path.isfile(os.path.join(tests_dir, "run_tests.py")):
-            import sys
+def _handle_mount_command(a: Any) -> None:
+    """Routes 'sprawl mount' subcommands."""
+    from .commands.mount import cmd_mount
 
-            if repo_root not in sys.path:
-                sys.path.insert(0, repo_root)
-            if tests_dir not in sys.path:
-                sys.path.insert(0, tests_dir)
+    cmd_mount(a)
 
-            from tests.run_tests import run_tests
 
-            run_tests()
-        else:
-            raise SprawlError(
-                "Test suite runner is only available in developer source installations."
-            )
+def _prepend_sys_paths(paths: tuple[str, ...]) -> None:
+    """Prepends missing directory paths to sys.path."""
+    for p in paths:
+        if p not in sys.path:
+            sys.path.insert(0, p)
 
-    COMMAND_REGISTRY = {
+
+def _handle_test_command(a: Any) -> None:
+    """Executes the internal developer test suite when SPRAWL_DEV=1."""
+    if os.environ.get("SPRAWL_DEV") != "1":
+        raise SprawlError("Unknown command: test")
+    sprawl_dir = os.path.dirname(os.path.abspath(__file__))
+    repo_root = os.path.dirname(os.path.dirname(sprawl_dir))
+    tests_dir = os.path.join(repo_root, "tests")
+
+    if not (os.path.isdir(tests_dir) and os.path.isfile(os.path.join(tests_dir, "run_tests.py"))):
+        raise SprawlError("Test suite runner is only available in developer source installations.")
+
+    _prepend_sys_paths((repo_root, tests_dir))
+    from tests.run_tests import run_tests
+
+    run_tests()
+
+
+def _build_command_registry() -> dict[str, Any]:
+    """Constructs the top-level CLI command dispatch table."""
+    return {
         "init": lambda a: cmd_init(a.git_url, a.target_dir),
         "fetch-dna": lambda a: cmd_fetch_dna(a.git_url, a.alias),
-        "dna": handle_dna_command,
-        "ws": handle_ws_command,
+        "dna": _handle_dna_command,
+        "ws": _handle_ws_command,
         "ls": lambda a: cmd_list(),
         "add": lambda a: cmd_add(a.items),
         "create": lambda a: cmd_create(a.workspace, getattr(a, "path", None)),
@@ -731,37 +717,62 @@ def main() -> None:
             force=getattr(a, "force", False),
             local_only=getattr(a, "local_only", False),
         ),
-        "mount": handle_mount_command,
+        "mount": _handle_mount_command,
         "ignore": lambda a: cmd_ignore(
             getattr(a, "ignore_action", "sync"),
             getattr(a, "target_dir", None),
             all_targets=getattr(a, "all", False),
             positional_dir=getattr(a, "positional_dir", None),
         ),
-        "test": handle_test_command,
+        "test": _handle_test_command,
     }
 
+
+def _maybe_run_onboarding_for_command(args: Any) -> None:
+    """Runs the interactive onboarding wizard on init/create when TTY is attached."""
+    if args.command not in ("init", "create"):
+        return
+    non_interactive = getattr(args, "non_interactive", False) or getattr(args, "yes", False)
+    if not non_interactive and sys.stdin.isatty() and sys.stdout.isatty():
+        from .onboarding import run_onboarding_wizard
+
+        run_onboarding_wizard()
+
+
+def _dispatch_cli_command(args: Any) -> None:
+    """Checks DNA staleness, runs optional onboarding, and invokes the command handler."""
+    if args.command not in ("init", "dna", "ws", "ignore", "token-size", "context"):
+        from .registry import check_dna_staleness
+
+        check_dna_staleness()
+
+    handler = _build_command_registry().get(args.command)
+    if handler is None:
+        print_help()
+        raise SprawlError(f"Unknown command: {args.command}")
+
+    _maybe_run_onboarding_for_command(args)
+    handler(args)
+
+
+def main() -> None:
+    if maybe_dispatch_mcp_stdio():
+        sys.exit(0)
+
+    parser = get_parser()
+    args, unknown = parser.parse_known_args()
+    _apply_global_cli_flags(args, unknown)
+
+    if args.help or len(sys.argv) < 2:
+        print_help()
+        sys.exit(0)
+
+    if args.version:
+        _print_cli_version()
+        sys.exit(0)
+
     try:
-        if args.command not in ("init", "dna", "ws", "ignore", "token-size", "context"):
-            from .registry import check_dna_staleness
-
-            check_dna_staleness()
-
-        handler = COMMAND_REGISTRY.get(args.command)
-        if handler:
-            if args.command in ("init", "create"):
-                non_interactive = getattr(args, "non_interactive", False) or getattr(
-                    args, "yes", False
-                )
-                if not non_interactive and sys.stdin.isatty() and sys.stdout.isatty():
-                    from .onboarding import run_onboarding_wizard
-
-                    run_onboarding_wizard()
-            handler(args)
-        else:
-            print_help()
-            raise SprawlError(f"Unknown command: {args.command}")
-
+        _dispatch_cli_command(args)
     except SprawlError as e:
         print_error(str(e))
         sys.exit(1)
@@ -771,12 +782,11 @@ def main() -> None:
     except Exception as e:
         if config.verbose:
             raise
-        else:
-            print_error(f"An unexpected system fault occurred: {str(e)}")
-            console.print(
-                "[info]Tip: Re-run this command with the [accent]--verbose[/accent] flag to view the full diagnostic stack trace.[/info]"
-            )
-            sys.exit(1)
+        print_error(f"An unexpected system fault occurred: {e}")
+        console.print(
+            "[info]Tip: Re-run this command with the [accent]--verbose[/accent] flag to view the full diagnostic stack trace.[/info]"
+        )
+        sys.exit(1)
 
 
 if __name__ == "__main__":

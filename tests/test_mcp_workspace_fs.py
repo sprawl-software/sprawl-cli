@@ -150,29 +150,38 @@ class TestMCPServer(unittest.TestCase):
         read_file_tool = next(t for t in tools if t["name"] == "read_file")
         self.assertIn("@ext_lib", read_file_tool["description"])
 
-    def test_maybe_dispatch_mcp_stdio_routing(self):
+    def _capture_mcp_stdio_calls(self, token_lists: list[list[str]]):
+        """Runs maybe_dispatch_mcp_stdio across token_lists and returns (results, wfs_calls, vault_calls)."""
         from unittest.mock import patch
 
         from src.sprawl.cli import maybe_dispatch_mcp_stdio
 
+        wfs_calls: list[list[str]] = []
+        vault_calls: list[list[str]] = []
+        results: list[bool] = []
         with (
-            patch("src.sprawl.mcp.workspace_fs.run_workspace_fs_cli") as mock_wfs,
-            patch("src.sprawl.mcp.vault.run_vault_cli") as mock_vault,
+            patch("src.sprawl.mcp.workspace_fs.run_workspace_fs_cli", side_effect=wfs_calls.append),
+            patch("src.sprawl.mcp.vault.run_vault_cli", side_effect=vault_calls.append),
         ):
-            self.assertFalse(maybe_dispatch_mcp_stdio(["sync"]))
-            self.assertTrue(
-                maybe_dispatch_mcp_stdio(
-                    ["-m", "sprawl.mcp.workspace_fs", self.test_dir, "--mount", "a=/tmp"]
-                )
-            )
-            mock_wfs.assert_called_once_with([self.test_dir, "--mount", "a=/tmp"])
+            for tokens in token_lists:
+                results.append(maybe_dispatch_mcp_stdio(tokens))
+        return results, wfs_calls, vault_calls
 
-            mock_wfs.reset_mock()
-            self.assertTrue(maybe_dispatch_mcp_stdio(["mcp", "workspace-fs", self.test_dir]))
-            mock_wfs.assert_called_once_with([self.test_dir])
-
-            self.assertTrue(maybe_dispatch_mcp_stdio(["-m", "sprawl.mcp.vault", self.test_dir]))
-            mock_vault.assert_called_once_with([self.test_dir])
+    def test_maybe_dispatch_mcp_stdio_routing(self):
+        results, wfs_calls, vault_calls = self._capture_mcp_stdio_calls(
+            [
+                ["sync"],
+                ["-m", "sprawl.mcp.workspace_fs", self.test_dir, "--mount", "a=/tmp"],
+                ["mcp", "workspace-fs", self.test_dir],
+                ["-m", "sprawl.mcp.vault", self.test_dir],
+            ]
+        )
+        self.assertEqual(results, [False, True, True, True])
+        self.assertEqual(
+            wfs_calls,
+            [[self.test_dir, "--mount", "a=/tmp"], [self.test_dir]],
+        )
+        self.assertEqual(vault_calls, [[self.test_dir]])
 
     def test_live_refresh_mounts_and_cwd_discovery(self):
         import json
@@ -207,19 +216,22 @@ class TestMCPServer(unittest.TestCase):
         self.assertEqual(fs.read_file("@live/hello.txt"), "live reloaded")
         resp = server.handle_request({"jsonrpc": "2.0", "id": 99, "method": "tools/list"})
         self.assertIn("@live", resp["result"]["tools"][0]["description"])
+        self._verify_cli_entrypoints(mount_dir)
 
+    def _verify_cli_entrypoints(self, mount_dir: str) -> None:
         from unittest.mock import patch
 
         from src.sprawl.mcp.vault import run_vault_cli
         from src.sprawl.mcp.workspace_fs import run_workspace_fs_cli
 
-        with patch.object(MCPServer, "run") as mock_run:
+        started: list[str] = []
+        with patch.object(MCPServer, "run", side_effect=lambda: started.append("wfs")):
             run_workspace_fs_cli([self.test_dir, "--mount", f"live={mount_dir}"])
-            mock_run.assert_called_once()
-
-        with patch("src.sprawl.mcp.vault.MCPServer.run") as mock_vrun:
+        with patch(
+            "src.sprawl.mcp.vault.MCPServer.run", side_effect=lambda: started.append("vault")
+        ):
             run_vault_cli([self.test_dir])
-            mock_vrun.assert_called_once()
+        self.assertEqual(started, ["wfs", "vault"])
 
 
 if __name__ == "__main__":

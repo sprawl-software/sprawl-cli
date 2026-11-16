@@ -61,7 +61,8 @@ class TestCommandConfig(unittest.TestCase):
 
             cmd_config_set("key1", "val1")
             cmd_config_set("key2", "val2")
-            cmd_config_list()  # Just check no exception raised
+            cmd_config_list()
+            self.assertEqual(cfg.load()["key1"], "val1")
 
 
 if __name__ == "__main__":

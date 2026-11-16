@@ -4,6 +4,39 @@ from .config import config
 from .tui.formatter import format_panel
 
 
+def _prompt_non_empty_field(prompt_label: str) -> str:
+    """Prompts repeatedly until the user enters a non-empty text response."""
+    value = ""
+    while not value:
+        try:
+            value = input(prompt_label).strip()
+        except (KeyboardInterrupt, EOFError) as e:
+            raise KeyboardInterrupt from e
+    return value
+
+
+def _prompt_numbered_option(
+    header_label: str,
+    select_prompt: str,
+    options: list[str],
+) -> str:
+    """Prints a numbered menu and prompts until a valid 1-based choice is entered."""
+    print(f"\n{header_label}")
+    for idx, option in enumerate(options, 1):
+        print(f"  {idx}) {option}")
+
+    while True:
+        try:
+            choice = input(select_prompt).strip()
+            idx = int(choice) - 1
+            if 0 <= idx < len(options):
+                return options[idx]
+        except (KeyboardInterrupt, EOFError) as e:
+            raise KeyboardInterrupt from e
+        except ValueError:
+            continue
+
+
 def run_onboarding_wizard() -> None:
     """Launches the premium first-run interactive onboarding flow."""
     cfg = config.load()
@@ -24,63 +57,19 @@ def run_onboarding_wizard() -> None:
     print(panel_str)
     print()
 
-    # Question 1: Name
-    name = ""
-    while not name.strip():
-        try:
-            name = input("\033[38;2;93;92;255m[1/4] Name:\033[0m ").strip()
-        except (KeyboardInterrupt, EOFError):
-            raise KeyboardInterrupt
+    name = _prompt_non_empty_field("\033[38;2;93;92;255m[1/4] Name:\033[0m ")
+    email = _prompt_non_empty_field("\033[38;2;93;92;255m[2/4] Business Email:\033[0m ")
+    size_choice = _prompt_numbered_option(
+        "\033[38;2;93;92;255m[3/4] Company Size:\033[0m",
+        "\033[38;2;93;92;255mSelect choice (1-4):\033[0m ",
+        ["1-10", "11-50", "51-200", "200+"],
+    )
+    case_choice = _prompt_numbered_option(
+        "\033[38;2;93;92;255m[4/4] Primary Use Case:\033[0m",
+        "\033[38;2;93;92;255mSelect choice (1-3):\033[0m ",
+        ["AST Compliance", "PII Shielding", "Workspace Virtualization"],
+    )
 
-    # Question 2: Business Email
-    email = ""
-    while not email.strip():
-        try:
-            email = input("\033[38;2;93;92;255m[2/4] Business Email:\033[0m ").strip()
-        except (KeyboardInterrupt, EOFError):
-            raise KeyboardInterrupt
-
-    # Question 3: Company Size
-    company_sizes = ["1-10", "11-50", "51-200", "200+"]
-    print("\n\033[38;2;93;92;255m[3/4] Company Size:\033[0m")
-    for i, size in enumerate(company_sizes, 1):
-        print(f"  {i}) {size}")
-
-    size_choice = None
-    while size_choice is None:
-        try:
-            choice = input("\033[38;2;93;92;255mSelect choice (1-4):\033[0m ").strip()
-            idx = int(choice) - 1
-            if 0 <= idx < len(company_sizes):
-                size_choice = company_sizes[idx]
-        except (KeyboardInterrupt, EOFError):
-            raise KeyboardInterrupt
-        except ValueError:
-            pass
-
-    # Question 4: Primary Use Case
-    use_cases = [
-        "AST Compliance",
-        "PII Shielding",
-        "Workspace Virtualization",
-    ]
-    print("\n\033[38;2;93;92;255m[4/4] Primary Use Case:\033[0m")
-    for i, case in enumerate(use_cases, 1):
-        print(f"  {i}) {case}")
-
-    case_choice = None
-    while case_choice is None:
-        try:
-            choice = input("\033[38;2;93;92;255mSelect choice (1-3):\033[0m ").strip()
-            idx = int(choice) - 1
-            if 0 <= idx < len(use_cases):
-                case_choice = use_cases[idx]
-        except (KeyboardInterrupt, EOFError):
-            raise KeyboardInterrupt
-        except ValueError:
-            pass
-
-    # Save to config.json
     config.update(
         {
             "onboarding_completed": True,

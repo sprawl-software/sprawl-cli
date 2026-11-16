@@ -6,6 +6,23 @@ import os
 from ..output import print_status, print_warning
 
 
+def _read_prompt_candidate(
+    item_path: str,
+    item: str,
+    check_skill_subdirs: bool,
+) -> tuple[str | None, str | None]:
+    """Resolves (prompt_name, markdown_content) from a file or SKILL.md subdirectory."""
+    if os.path.isfile(item_path) and item.endswith(".md"):
+        with open(item_path, encoding="utf-8", errors="ignore") as f:
+            return item[:-3], f.read()
+    if check_skill_subdirs and os.path.isdir(item_path):
+        skill_md = os.path.join(item_path, "SKILL.md")
+        if os.path.exists(skill_md):
+            with open(skill_md, encoding="utf-8", errors="ignore") as f:
+                return item, f.read()
+    return None, None
+
+
 def _export_category_to_prompts(
     category_dir: str,
     prompts_dir: str,
@@ -19,30 +36,18 @@ def _export_category_to_prompts(
         if item.startswith("."):
             continue
         item_path = os.path.join(category_dir, item)
+        name, content = _read_prompt_candidate(item_path, item, check_skill_subdirs)
+        if not (content and name):
+            continue
 
-        content = None
-        name = None
-
-        if os.path.isfile(item_path) and item.endswith(".md"):
-            with open(item_path, encoding="utf-8", errors="ignore") as f:
-                content = f.read()
-            name = item[:-3]
-        elif check_skill_subdirs and os.path.isdir(item_path):
-            skill_md = os.path.join(item_path, "SKILL.md")
-            if os.path.exists(skill_md):
-                with open(skill_md, encoding="utf-8", errors="ignore") as f:
-                    content = f.read()
-            name = item
-
-        if content and name:
-            os.makedirs(prompts_dir, exist_ok=True)
-            prompt_file = os.path.join(prompts_dir, f"{name}.prompt.md")
-            try:
-                with open(prompt_file, "w", encoding="utf-8") as f:
-                    f.write(content)
-                print_status(f"Exported Copilot prompt: .github/prompts/{name}.prompt.md")
-            except Exception as e:
-                print_warning(f"Failed to export prompt {name}: {e}")
+        os.makedirs(prompts_dir, exist_ok=True)
+        prompt_file = os.path.join(prompts_dir, f"{name}.prompt.md")
+        try:
+            with open(prompt_file, "w", encoding="utf-8") as f:
+                f.write(content)
+            print_status(f"Exported Copilot prompt: .github/prompts/{name}.prompt.md")
+        except OSError as e:
+            print_warning(f"Failed to export prompt {name}: {e}")
 
 
 def _export_copilot_prompts(target_dir: str) -> None:
@@ -50,14 +55,12 @@ def _export_copilot_prompts(target_dir: str) -> None:
     agents_dir = os.path.join(target_dir, ".agents")
     prompts_dir = os.path.join(target_dir, ".github", "prompts")
 
-    # Clean up stale prompt files before re-exporting
     if os.path.exists(prompts_dir):
         for f in os.listdir(prompts_dir):
             if f.endswith(".prompt.md"):
                 with contextlib.suppress(OSError):
                     os.remove(os.path.join(prompts_dir, f))
 
-    # Export skills (with SKILL.md subdir support) and workflows
     _export_category_to_prompts(
         os.path.join(agents_dir, "skills"),
         prompts_dir,

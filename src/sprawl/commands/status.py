@@ -1,6 +1,9 @@
 """Workspace status command — rich dashboard view of workspace state."""
 
+import json
 import os
+import re
+import subprocess
 from datetime import datetime, timezone
 
 from rich.panel import Panel
@@ -14,16 +17,99 @@ from ..utils import CATEGORIES, get_venv_executable
 from ..workspace import Workspace
 
 
+def _scan_installed_artifacts(
+    local_agents_dir: str,
+) -> tuple[dict[str, list[str]], dict[str, list[str]]]:
+    """Scans .agents/ categories into (standard_installed, local_installed) mappings."""
+    standard_installed: dict[str, list[str]] = {cat: [] for cat in CATEGORIES}
+    local_installed: dict[str, list[str]] = {cat: [] for cat in CATEGORIES}
+
+    for cat in CATEGORIES:
+        cat_dir = os.path.join(local_agents_dir, cat)
+        if not os.path.exists(cat_dir):
+            continue
+        files = sorted(f for f in os.listdir(cat_dir) if not f.startswith("."))
+        standard_installed[cat] = [f for f in files if not f.startswith("local_")]
+        local_installed[cat] = [f for f in files if f.startswith("local_")]
+
+    return standard_installed, local_installed
+
+
+def _evaluate_venv_health(local_agents_dir: str) -> str:
+    """Checks .agents/.venv Python binary availability and returns a Rich status string."""
+    venv_dir = os.path.join(local_agents_dir, ".venv")
+    venv_python = get_venv_executable(venv_dir, "python3")
+    if not os.path.exists(venv_python):
+        venv_python = get_venv_executable(venv_dir, "python")
+
+    if os.path.exists(venv_python):
+        try:
+            result = subprocess.check_output(
+                [venv_python, "--version"],
+                text=True,
+                stderr=subprocess.STDOUT,
+                timeout=5,
+            ).strip()
+            return f"[success]● Healthy[/success] ({result})"
+        except (OSError, subprocess.SubprocessError):
+            return "[warning]⚠ Python not executable[/warning]"
+
+    if os.path.exists(venv_dir):
+        return "[warning]⚠ Exists but incomplete[/warning]"
+    return "[error]○ Not provisioned[/error]"
+
+
+def _format_sync_timestamp(last_sync: str | None) -> str:
+    """Formats the ISO last_sync timestamp with staleness color indicators."""
+    if not last_sync or last_sync == "Never":
+        return "[error]Never[/error]"
+    try:
+        dt = datetime.fromisoformat(last_sync)
+        delta = datetime.now(timezone.utc) - dt
+        if delta.days > 7:
+            return f"[error]{last_sync} ({delta.days}d ago — STALE)[/error]"
+        if delta.days > 3:
+            return f"[warning]{last_sync} ({delta.days}d ago)[/warning]"
+        return f"[success]{last_sync}[/success]"
+    except ValueError:
+        return last_sync
+
+
+def _strip_rich_tags(text: str) -> str:
+    """Removes Rich bracket markup tags for clean JSON serialization."""
+    return re.sub(r"\[.*?\]", "", text)
+
+
+def _build_artifacts_table(
+    reqs: dict[str, list[str]],
+    local_artifacts: dict[str, list[str]],
+    local_installed: dict[str, list[str]],
+) -> Table:
+    """Constructs the DNA Artifacts Rich table comparing manifest vs installed items."""
+    artifact_table = Table(show_header=True, border_style="#5D5CFF")
+    artifact_table.add_column("Category", style="accent", width=14)
+    artifact_table.add_column("Manifest (Requested)", style="info")
+    artifact_table.add_column("Local .agents/ (Installed)", style="success")
+
+    for cat in CATEGORIES:
+        requested = ", ".join(reqs.get(cat, [])) or "[dim]—[/dim]"
+        installed = ", ".join(local_artifacts.get(cat, [])) or "[dim]—[/dim]"
+        artifact_table.add_row(cat.capitalize(), requested, installed)
+
+    for cat in CATEGORIES:
+        req_local = reqs.get(f"local_{cat}", [])
+        inst_local = local_installed.get(cat, [])
+        if req_local or inst_local:
+            requested_str = ", ".join(req_local) or "[dim]—[/dim]"
+            installed_str = ", ".join(inst_local) or "[dim]—[/dim]"
+            artifact_table.add_row(f"Local {cat.capitalize()}", requested_str, installed_str)
+
+    return artifact_table
+
+
 def cmd_status(target_dir: str | None = None) -> None:
-    """Displays a Rich Panel with workspace name, DNA binding, loaded artifacts, venv health.
-
-    Reads from ~/.sprawl/workspaces/<hash>/ + scans local .agents/ for actual state.
-
-    Args:
-        target_dir: Optional workspace path. Defaults to current working directory.
-    """
+    """Displays a Rich Panel with workspace name, DNA binding, loaded artifacts, venv health."""
     cwd = os.path.abspath(target_dir or os.getcwd())
-
     local_agents_dir = os.path.join(cwd, ".agents")
     manifest_path = os.path.join(local_agents_dir, "sprawl_manifest.yml")
 
@@ -34,95 +120,27 @@ def cmd_status(target_dir: str | None = None) -> None:
         )
 
     workspace_name = os.path.basename(cwd)
-
-    # --- Resolve DNA Binding ---
     ws = Workspace(cwd)
     dna_alias = ws.get_dna_alias() or "global/core (default)"
 
-    # --- Read manifest ---
     try:
         reqs = parse_sprawl_manifest(manifest_path)
-    except Exception:
+    except (OSError, SprawlError, ValueError):
         reqs = {cat: [] for cat in CATEGORIES}
 
-    # --- Scan local .agents/ for real file state ---
-    local_artifacts: dict[str, list[str]] = {cat: [] for cat in CATEGORIES}
-    local_rules_installed = []
-    local_skills_installed = []
-    local_workflows_installed = []
-    for cat in CATEGORIES:
-        cat_dir = os.path.join(local_agents_dir, cat)
-        if os.path.exists(cat_dir):
-            files = sorted([f for f in os.listdir(cat_dir) if not f.startswith(".")])
-            if cat == "rules":
-                local_artifacts[cat] = [f for f in files if not f.startswith("local_")]
-                local_rules_installed = [f for f in files if f.startswith("local_")]
-            elif cat == "skills":
-                local_artifacts[cat] = [f for f in files if not f.startswith("local_")]
-                local_skills_installed = [f for f in files if f.startswith("local_")]
-            elif cat == "workflows":
-                local_artifacts[cat] = [f for f in files if not f.startswith("local_")]
-                local_workflows_installed = [f for f in files if f.startswith("local_")]
-            else:
-                local_artifacts[cat] = files
-
-    # --- Venv health ---
-    venv_dir = os.path.join(local_agents_dir, ".venv")
-    venv_python = get_venv_executable(venv_dir, "python3")
-    if not os.path.exists(venv_python):
-        venv_python = get_venv_executable(venv_dir, "python")
-    if os.path.exists(venv_python):
-        try:
-            import subprocess
-
-            result = subprocess.check_output(
-                [venv_python, "--version"], text=True, stderr=subprocess.STDOUT, timeout=5
-            ).strip()
-            venv_status = f"[success]● Healthy[/success] ({result})"
-        except Exception:
-            venv_status = "[warning]⚠ Python not executable[/warning]"
-    elif os.path.exists(venv_dir):
-        venv_status = "[warning]⚠ Exists but incomplete[/warning]"
-    else:
-        venv_status = "[error]○ Not provisioned[/error]"
-
-    # --- Last sync timestamp ---
-    sync_state = ws.get_sync_state()
-    last_sync = sync_state.get("last_sync_timestamp", "Never")
-    if last_sync and last_sync != "Never":
-        try:
-            dt = datetime.fromisoformat(last_sync)
-            delta = datetime.now(timezone.utc) - dt
-            if delta.days > 7:
-                sync_display = f"[error]{last_sync} ({delta.days}d ago — STALE)[/error]"
-            elif delta.days > 3:
-                sync_display = f"[warning]{last_sync} ({delta.days}d ago)[/warning]"
-            else:
-                sync_display = f"[success]{last_sync}[/success]"
-        except ValueError:
-            sync_display = last_sync
-    else:
-        sync_display = "[error]Never[/error]"
-
-    # --- Active model from config ---
-    cfg_data = config.load()
-    active_model = cfg_data.get("active_model", "[dim]Not set[/dim]")
+    local_artifacts, local_installed = _scan_installed_artifacts(local_agents_dir)
+    venv_status = _evaluate_venv_health(local_agents_dir)
+    last_sync = ws.get_sync_state().get("last_sync_timestamp", "Never")
+    sync_display = _format_sync_timestamp(last_sync)
+    active_model = config.load().get("active_model", "[dim]Not set[/dim]")
 
     if config.json_logging:
-        import json
-
-        # Strip rich tags for clean JSON output
-        import re
-
-        def strip_tags(text: str) -> str:
-            return re.sub(r"\[.*?\]", "", text)
-
         payload = {
             "workspace": workspace_name,
             "path": cwd,
             "dna_binding": dna_alias,
-            "active_model": strip_tags(active_model),
-            "venv_status": strip_tags(venv_status),
+            "active_model": _strip_rich_tags(active_model),
+            "venv_status": _strip_rich_tags(venv_status),
             "last_sync": last_sync,
             "artifacts_requested": reqs,
             "artifacts_installed": local_artifacts,
@@ -130,14 +148,10 @@ def cmd_status(target_dir: str | None = None) -> None:
         print(json.dumps(payload))
         return
 
-    # --- Build status panel ---
     console.print()
-
-    # Header info table
     info_table = Table(show_header=False, box=None, padding=(0, 1))
     info_table.add_column("Key", style="accent", no_wrap=True, width=20)
     info_table.add_column("Value", style="info")
-
     info_table.add_row("Workspace", workspace_name)
     info_table.add_row("Path", cwd)
     info_table.add_row("DNA Binding", f"@{dna_alias}")
@@ -152,39 +166,12 @@ def cmd_status(target_dir: str | None = None) -> None:
             border_style="#5D5CFF",
         )
     )
-
-    # Artifacts table
-    artifact_table = Table(show_header=True, border_style="#5D5CFF")
-    artifact_table.add_column("Category", style="accent", width=14)
-    artifact_table.add_column("Manifest (Requested)", style="info")
-    artifact_table.add_column("Local .agents/ (Installed)", style="success")
-
-    for cat in CATEGORIES:
-        requested = ", ".join(reqs.get(cat, [])) or "[dim]—[/dim]"
-        installed = ", ".join(local_artifacts.get(cat, [])) or "[dim]—[/dim]"
-        artifact_table.add_row(cat.capitalize(), requested, installed)
-
-    local_rules_requested = reqs.get("local_rules", [])
-    if local_rules_requested or local_rules_installed:
-        requested_str = ", ".join(local_rules_requested) or "[dim]—[/dim]"
-        installed_str = ", ".join(local_rules_installed) or "[dim]—[/dim]"
-        artifact_table.add_row("Local Rules", requested_str, installed_str)
-
-    local_skills_requested = reqs.get("local_skills", [])
-    if local_skills_requested or local_skills_installed:
-        requested_str = ", ".join(local_skills_requested) or "[dim]—[/dim]"
-        installed_str = ", ".join(local_skills_installed) or "[dim]—[/dim]"
-        artifact_table.add_row("Local Skills", requested_str, installed_str)
-
-    local_workflows_requested = reqs.get("local_workflows", [])
-    if local_workflows_requested or local_workflows_installed:
-        requested_str = ", ".join(local_workflows_requested) or "[dim]—[/dim]"
-        installed_str = ", ".join(local_workflows_installed) or "[dim]—[/dim]"
-        artifact_table.add_row("Local Workflows", requested_str, installed_str)
-
+    artifact_table = _build_artifacts_table(reqs, local_artifacts, local_installed)
     console.print(
         Panel(
-            artifact_table, title="[bold accent]DNA Artifacts[/bold accent]", border_style="#5D5CFF"
+            artifact_table,
+            title="[bold accent]DNA Artifacts[/bold accent]",
+            border_style="#5D5CFF",
         )
     )
     console.print()

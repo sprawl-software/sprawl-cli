@@ -5,6 +5,7 @@ from __future__ import annotations
 import json
 import re
 import time
+from collections.abc import Callable
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -153,25 +154,28 @@ def analyze_mcp_json(relative_path: str, content: str) -> ContextArtifactMetric:
     )
 
 
+def _summarize_layer(
+    layer_name: str,
+    artifacts: tuple[ContextArtifactMetric, ...],
+) -> LayerSummary:
+    """Computes aggregated size and token totals for a single context layer."""
+    items = [a for a in artifacts if a.layer == layer_name]
+    return LayerSummary(
+        layer=layer_name,
+        artifact_count=len(items),
+        bytes_size=sum(a.bytes_size for a in items),
+        zero_hop_tokens=sum(a.zero_hop_tokens for a in items),
+        progressive_tokens=sum(a.progressive_tokens for a in items),
+    )
+
+
 def build_context_report(
     workspace_dir: str,
     artifacts: tuple[ContextArtifactMetric, ...],
     elapsed_ms: float,
 ) -> ContextAuditReport:
     """Aggregates individual artifact metrics into layer summaries and workspace totals."""
-    layers: list[LayerSummary] = []
-    for layer_name in _LAYER_ORDER:
-        items = [a for a in artifacts if a.layer == layer_name]
-        layers.append(
-            LayerSummary(
-                layer=layer_name,
-                artifact_count=len(items),
-                bytes_size=sum(a.bytes_size for a in items),
-                zero_hop_tokens=sum(a.zero_hop_tokens for a in items),
-                progressive_tokens=sum(a.progressive_tokens for a in items),
-            )
-        )
-
+    layers = tuple(_summarize_layer(name, artifacts) for name in _LAYER_ORDER)
     zero_hop_total = sum(row.zero_hop_tokens for row in layers)
     progressive_total = sum(row.progressive_tokens for row in layers)
     peak_total = zero_hop_total + progressive_total
@@ -180,7 +184,7 @@ def build_context_report(
     return ContextAuditReport(
         workspace_dir=workspace_dir,
         artifacts=artifacts,
-        layers=tuple(layers),
+        layers=layers,
         zero_hop_tokens=zero_hop_total,
         progressive_tokens=progressive_total,
         peak_tokens=peak_total,
@@ -313,34 +317,34 @@ def _resolve_agents_subdir(workspace_dir: Path, subdir: str) -> Path | None:
     return fallback if fallback.is_dir() else None
 
 
-def _collect_rules(workspace_dir: Path) -> list[ContextArtifactMetric]:
-    """Scans markdown rule files inside the workspace rules directory."""
-    rules_dir = _resolve_agents_subdir(workspace_dir, "rules")
-    if rules_dir is None:
+def _collect_subdir_artifacts(
+    workspace_dir: Path,
+    subdir: str,
+    glob_pattern: str,
+    analyzer_fn: Callable[[str, str], ContextArtifactMetric],
+) -> list[ContextArtifactMetric]:
+    """Scans a workspace .agents/<subdir> matching glob_pattern with analyzer_fn."""
+    target_dir = _resolve_agents_subdir(workspace_dir, subdir)
+    if target_dir is None:
         return []
     metrics: list[ContextArtifactMetric] = []
-    for rule_path in sorted(rules_dir.glob("*.md")):
-        resolved = _resolve_within_allowed_bounds(rule_path, workspace_dir)
+    for artifact_path in sorted(target_dir.glob(glob_pattern)):
+        resolved = _resolve_within_allowed_bounds(artifact_path, workspace_dir)
         read_result = _read_bounded_text(resolved) if resolved is not None else None
         if read_result is not None:
-            rel = rule_path.relative_to(workspace_dir).as_posix()
-            metrics.append(analyze_rule_text(rel, read_result[0]))
+            rel = artifact_path.relative_to(workspace_dir).as_posix()
+            metrics.append(analyzer_fn(rel, read_result[0]))
     return metrics
+
+
+def _collect_rules(workspace_dir: Path) -> list[ContextArtifactMetric]:
+    """Scans markdown rule files inside the workspace rules directory."""
+    return _collect_subdir_artifacts(workspace_dir, "rules", "*.md", analyze_rule_text)
 
 
 def _collect_skills(workspace_dir: Path) -> list[ContextArtifactMetric]:
     """Scans SKILL.md files inside the workspace skills directory."""
-    skills_dir = _resolve_agents_subdir(workspace_dir, "skills")
-    if skills_dir is None:
-        return []
-    metrics: list[ContextArtifactMetric] = []
-    for skill_path in sorted(skills_dir.glob("*/SKILL.md")):
-        resolved = _resolve_within_allowed_bounds(skill_path, workspace_dir)
-        read_result = _read_bounded_text(resolved) if resolved is not None else None
-        if read_result is not None:
-            rel = skill_path.relative_to(workspace_dir).as_posix()
-            metrics.append(analyze_skill_text(rel, read_result[0]))
-    return metrics
+    return _collect_subdir_artifacts(workspace_dir, "skills", "*/SKILL.md", analyze_skill_text)
 
 
 def _collect_mcp_configs(workspace_dir: Path) -> list[ContextArtifactMetric]:

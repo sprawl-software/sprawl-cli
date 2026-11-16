@@ -4,116 +4,82 @@ import os
 import shutil
 import sys
 
+from rich.panel import Panel
+from rich.table import Table
+
 from ..config import config
 from ..output import console
 
+_STYLE_COLOR_MAP = {
+    "success": "green",
+    "error": "red",
+    "warning": "yellow",
+}
 
-def cmd_doctor() -> None:
-    """Runs system diagnostics to verify dependencies and health."""
-    from rich.panel import Panel
-    from rich.table import Table
+_STYLE_BADGE_MAP = {
+    "success": "[green]✔ PASS[/green]",
+    "error": "[bold red]✗ FAIL[/bold red]",
+    "warning": "[yellow]⚠ WARN[/yellow]",
+}
 
-    console.print("\n[bold accent]Running Sprawl Diagnostics...[/bold accent]\n")
 
-    checks: list[tuple[str, str, str, str]] = []
+def _check_binary(
+    label: str,
+    binary: str,
+    missing_icon: str,
+    missing_style: str,
+    missing_msg: str,
+) -> tuple[str, str, str, str]:
+    """Checks whether a CLI binary exists on PATH and returns a diagnostic tuple."""
+    resolved = shutil.which(binary)
+    if resolved:
+        return (label, "✔", "success", f"Installed ({resolved})")
+    return (label, missing_icon, missing_style, missing_msg)
 
-    # 1. Python version
-    py_version = sys.version_info
-    if py_version >= (3, 10):
-        checks.append(
-            (
-                "Python 3.10+",
-                "✔",
-                "success",
-                f"{py_version.major}.{py_version.minor}.{py_version.micro}",
-            )
-        )
-    else:
-        checks.append(
-            (
-                "Python 3.10+",
-                "✗",
-                "error",
-                f"{py_version.major}.{py_version.minor}.{py_version.micro} (Requires >= 3.10)",
-            )
-        )
 
-    # 2. Git
-    git_path = shutil.which("git")
-    if git_path:
-        checks.append(("Git", "✔", "success", f"Installed ({git_path})"))
-    else:
-        checks.append(("Git", "✗", "error", "Not Found (Required for DNA orchestration)"))
+def _collect_doctor_checks() -> list[tuple[str, str, str, str]]:
+    """Evaluates Python, Git, Node, Rust, Global DNA, and Local Workspace health."""
+    py = sys.version_info
+    py_ver = f"{py.major}.{py.minor}.{py.micro}"
+    py_check = (
+        ("Python 3.10+", "✔", "success", py_ver)
+        if py >= (3, 10)
+        else ("Python 3.10+", "✗", "error", f"{py_ver} (Requires >= 3.10)")
+    )
 
-    # 3. Node/NPM
-    npm_path = shutil.which("npm")
-    if npm_path:
-        checks.append(("Node/NPM", "✔", "success", f"Installed ({npm_path})"))
-    else:
-        checks.append(("Node/NPM", "⚠", "warning", "Not Found (Optional for TS/JS skills)"))
+    dna_check = (
+        ("Global DNA", "✔", "success", f"Initialized at {config.agents_dir_global}")
+        if os.path.exists(config.agents_dir_global)
+        else ("Global DNA", "✗", "error", "Not initialized (Run 'sprawl init')")
+    )
 
-    # 4. Cargo/Rust
-    cargo_path = shutil.which("cargo")
-    if cargo_path:
-        checks.append(("Rust/Cargo", "✔", "success", f"Installed ({cargo_path})"))
-    else:
-        checks.append(("Rust/Cargo", "⚠", "warning", "Not Found (Optional for Rust skills)"))
-
-    # 5. Global DNA Setup
-    if os.path.exists(config.agents_dir_global):
-        checks.append(("Global DNA", "✔", "success", f"Initialized at {config.agents_dir_global}"))
-    else:
-        checks.append(("Global DNA", "✗", "error", "Not initialized (Run 'sprawl init')"))
-
-    # 6. Current Workspace State
     cwd = os.getcwd()
     manifest_path = os.path.join(cwd, ".agents", "sprawl_manifest.yml")
-    if os.path.exists(manifest_path):
-        checks.append(("Local Workspace", "✔", "success", f"Active at {cwd}"))
-    else:
-        checks.append(
-            ("Local Workspace", "⚠", "warning", "Not in a workspace (No sprawl_manifest.yml found)")
+    ws_check = (
+        ("Local Workspace", "✔", "success", f"Active at {cwd}")
+        if os.path.exists(manifest_path)
+        else (
+            "Local Workspace",
+            "⚠",
+            "warning",
+            "Not in a workspace (No sprawl_manifest.yml found)",
         )
-
-    # Print checklist interactively
-    for name, icon, style, _details in checks:
-        if style == "success":
-            color = "green"
-        elif style == "error":
-            color = "red"
-        else:
-            color = "yellow"
-
-        console.print(f"[{color}]{icon}[/{color}] {name}")
-
-    console.print()
-
-    # Render Output Table
-    table = Table(
-        title="[bold]Diagnostic Summary[/bold]", border_style="#5D5CFF", title_justify="left"
     )
-    table.add_column("Component", style="cyan", no_wrap=True)
-    table.add_column("Status", justify="center")
-    table.add_column("Details", style="dim")
 
-    error_count = 0
-    warning_count = 0
+    return [
+        py_check,
+        _check_binary("Git", "git", "✗", "error", "Not Found (Required for DNA orchestration)"),
+        _check_binary("Node/NPM", "npm", "⚠", "warning", "Not Found (Optional for TS/JS skills)"),
+        _check_binary(
+            "Rust/Cargo", "cargo", "⚠", "warning", "Not Found (Optional for Rust skills)"
+        ),
+        dna_check,
+        ws_check,
+    ]
 
-    for name, icon, style, details in checks:
-        if style == "success":
-            status_text = f"[green]{icon} PASS[/green]"
-        elif style == "error":
-            status_text = f"[bold red]{icon} FAIL[/bold red]"
-            error_count += 1
-        else:
-            status_text = f"[yellow]{icon} WARN[/yellow]"
-            warning_count += 1
 
-        table.add_row(name, status_text, details)
-
-    console.print(table)
-
-    console.print()
+def _render_final_verdict_panel(error_count: int, warning_count: int) -> None:
+    """Prints the final red/yellow/green diagnostic verdict panel."""
     if error_count > 0:
         console.print(
             Panel(
@@ -135,3 +101,31 @@ def cmd_doctor() -> None:
                 border_style="green",
             )
         )
+
+
+def cmd_doctor() -> None:
+    """Runs system diagnostics to verify dependencies and health."""
+    console.print("\n[bold accent]Running Sprawl Diagnostics...[/bold accent]\n")
+    checks = _collect_doctor_checks()
+
+    for name, icon, style, _details in checks:
+        color = _STYLE_COLOR_MAP.get(style, "yellow")
+        console.print(f"[{color}]{icon}[/{color}] {name}")
+
+    console.print()
+    table = Table(
+        title="[bold]Diagnostic Summary[/bold]", border_style="#5D5CFF", title_justify="left"
+    )
+    table.add_column("Component", style="cyan", no_wrap=True)
+    table.add_column("Status", justify="center")
+    table.add_column("Details", style="dim")
+
+    error_count = sum(1 for _, _, style, _ in checks if style == "error")
+    warning_count = sum(1 for _, _, style, _ in checks if style == "warning")
+
+    for name, _icon, style, details in checks:
+        table.add_row(name, _STYLE_BADGE_MAP.get(style, "[yellow]WARN[/yellow]"), details)
+
+    console.print(table)
+    console.print()
+    _render_final_verdict_panel(error_count, warning_count)

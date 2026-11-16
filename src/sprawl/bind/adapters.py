@@ -67,7 +67,7 @@ def _write_binding(
             f"  [success]✔ {label} Binding:[/success] {action} → {os.path.basename(target_path)}"
         )
         return True
-    except Exception as e:
+    except OSError as e:
         console.print(f"  [error]✗ {label} Binding:[/error] Failed: {e}")
         return False
 
@@ -89,13 +89,47 @@ def _is_safe_symlink_target(link_path: str, target: str) -> bool:
     """Verifies if the symlink target resolves strictly inside the workspace containing link_path."""
     workspace_root = _find_workspace_root(link_path)
     if not workspace_root:
-        return (
-            True  # Allow outside-of-workspace symlinks if no .agents context exists (e.g. testing)
-        )
+        return True
 
     abs_target = os.path.realpath(os.path.join(os.path.dirname(link_path), target))
     real_root = os.path.realpath(workspace_root)
     return abs_target == real_root or abs_target.startswith(real_root + os.sep)
+
+
+def _fallback_junction_or_copy(label: str, link_path: str, target: str) -> bool:
+    """Falls back to a Windows NTFS junction or file/directory copy when os.symlink fails."""
+    abs_target = os.path.abspath(os.path.join(os.path.dirname(link_path), target))
+    if sys.platform == "win32" and os.path.isdir(abs_target):
+        try:
+            import _winapi
+
+            _winapi.CreateJunction(abs_target, os.path.abspath(link_path))
+            console.print(
+                f"  [success]✔ {label} Binding:[/success] Created junction (fallback) → {target}"
+            )
+            return True
+        except (AttributeError, OSError):  # nosec B110
+            pass
+
+    try:
+        if os.path.isdir(abs_target):
+            shutil.copytree(abs_target, link_path)
+            console.print(
+                f"  [success]✔ {label} Binding:[/success] Created directory copy (fallback) → {target}"
+            )
+            return True
+        if os.path.isfile(abs_target):
+            shutil.copy2(abs_target, link_path)
+            console.print(
+                f"  [success]✔ {label} Binding:[/success] Created file copy (fallback) → {target}"
+            )
+            return True
+    except OSError as e:
+        console.print(f"  [error]✗ {label} Binding:[/error] Failed: {e}")
+        return False
+
+    console.print(f"  [error]✗ {label} Binding:[/error] Target '{target}' not found for fallback.")
+    return False
 
 
 def _write_symlink(label: str, link_path: str, target: str, force: bool) -> bool:
@@ -122,40 +156,34 @@ def _write_symlink(label: str, link_path: str, target: str, force: bool) -> bool
         console.print(f"  [success]✔ {label} Binding:[/success] Created symlink → {target}")
         return True
     except OSError:
-        # Fallback on Windows or restricted filesystems
-        abs_target = os.path.abspath(os.path.join(os.path.dirname(link_path), target))
-        if sys.platform == "win32" and os.path.isdir(abs_target):
-            try:
-                import _winapi
+        return _fallback_junction_or_copy(label, link_path, target)
 
-                _winapi.CreateJunction(abs_target, os.path.abspath(link_path))
-                console.print(
-                    f"  [success]✔ {label} Binding:[/success] Created junction (fallback) → {target}"
-                )
-                return True
-            except (AttributeError, OSError):  # nosec B110
-                pass
 
-        try:
-            if os.path.isdir(abs_target):
-                shutil.copytree(abs_target, link_path)
-                console.print(
-                    f"  [success]✔ {label} Binding:[/success] Created directory copy (fallback) → {target}"
-                )
-                return True
-            elif os.path.isfile(abs_target):
-                shutil.copy2(abs_target, link_path)
-                console.print(
-                    f"  [success]✔ {label} Binding:[/success] Created file copy (fallback) → {target}"
-                )
-                return True
-        except Exception as e:
-            console.print(f"  [error]✗ {label} Binding:[/error] Failed: {e}")
-            return False
+def _fallback_copy_rules_file(
+    label: str,
+    rules_path: str,
+    agents_md_path: str,
+    force: bool,
+) -> bool:
+    """Writes a plain copy of AGENTS.md (or default rules) when symlink creation fails."""
+    try:
+        content = _RULES_CONTENT
+        if os.path.exists(agents_md_path):
+            with open(agents_md_path, encoding="utf-8") as f:
+                content = f.read()
 
+        if os.path.exists(rules_path) or os.path.islink(rules_path):
+            os.remove(rules_path)
+
+        with open(rules_path, "w", encoding="utf-8") as f:
+            f.write(content)
+        action = "Overwritten copy (fallback)" if force else "Created copy (fallback)"
         console.print(
-            f"  [error]✗ {label} Binding:[/error] Target '{target}' not found for fallback."
+            f"  [success]✔ {label} Binding:[/success] {action} → {os.path.basename(rules_path)}"
         )
+        return True
+    except OSError as e:
+        console.print(f"  [error]✗ {label} Binding:[/error] Failed: {e}")
         return False
 
 
@@ -171,8 +199,6 @@ def _bind_rules_symlink(
         return False
 
     os.makedirs(os.path.dirname(rules_path), exist_ok=True)
-
-    # Calculate target path of the symlink (relative to the directory of rules_path)
     rel_target = os.path.relpath(agents_md_path, os.path.dirname(rules_path))
 
     if not _is_safe_symlink_target(rules_path, rel_target):
@@ -181,7 +207,6 @@ def _bind_rules_symlink(
         )
         return False
 
-    # Try to create symlink
     try:
         if os.path.exists(rules_path) or os.path.islink(rules_path):
             os.remove(rules_path)
@@ -190,26 +215,7 @@ def _bind_rules_symlink(
         console.print(f"  [success]✔ {label} Binding:[/success] {action} → {rel_target}")
         return True
     except OSError:
-        # Fallback to copy content of AGENTS.md
-        try:
-            content = _RULES_CONTENT
-            if os.path.exists(agents_md_path):
-                with open(agents_md_path, encoding="utf-8") as f:
-                    content = f.read()
-
-            if os.path.exists(rules_path) or os.path.islink(rules_path):
-                os.remove(rules_path)
-
-            with open(rules_path, "w", encoding="utf-8") as f:
-                f.write(content)
-            action = "Overwritten copy (fallback)" if force else "Created copy (fallback)"
-            console.print(
-                f"  [success]✔ {label} Binding:[/success] {action} → {os.path.basename(rules_path)}"
-            )
-            return True
-        except Exception as e:
-            console.print(f"  [error]✗ {label} Binding:[/error] Failed: {e}")
-            return False
+        return _fallback_copy_rules_file(label, rules_path, agents_md_path, force)
 
 
 def _prune_empty_dirs(path: str) -> None:
@@ -219,7 +225,7 @@ def _prune_empty_dirs(path: str) -> None:
         if os.path.isdir(dir_name) and not os.listdir(dir_name):
             os.rmdir(dir_name)
             _prune_empty_dirs(dir_name)
-    except Exception as e:
+    except OSError as e:
         from ..config import config
 
         if config.verbose:

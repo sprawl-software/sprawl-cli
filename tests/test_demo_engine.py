@@ -39,13 +39,7 @@ class TestDemoEngine(unittest.TestCase):
             patch("src.sprawl.demo_engine.cmd_clean_test"),
             patch("src.sprawl.demo_engine.generate_dummy_dna", return_value="/tmp/fake_dna"),
             patch("src.sprawl.demo_engine._provision_squad_workspace"),
-            patch("src.sprawl.demo_engine.config") as mock_config,
-            patch("src.sprawl.demo_engine.tempfile.TemporaryDirectory") as mock_td,
         ):
-            mock_config.sprawl_dir = "/tmp/fake_sprawl"
-            mock_td.return_value.__enter__ = lambda s: "/tmp/fake_demo"
-            mock_td.return_value.__exit__ = MagicMock(return_value=False)
-
             run_interactive_demo(selected_key="1")
 
         # CWD must be unchanged
